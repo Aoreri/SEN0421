@@ -1,0 +1,19 @@
+# Proje raporları repoya yüklenmez
+*.docx
+*.pdf
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Node
+node_modules/
+dist/
+
+# Diğer
+.env
+.DS_Store
+.claude/
+*.tsbuildinfo

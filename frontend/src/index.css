@@ -1,0 +1,28 @@
+* { box-sizing: border-box; }
+body { margin: 0; font-family: system-ui, sans-serif; background: #f5f6f8; color: #222; }
+.banner { background: #fff3cd; color: #7a5a00; padding: 10px 16px; text-align: center; border-bottom: 1px solid #f0d58c; }
+header { background: #1f3a5f; color: #fff; padding: 20px 16px; }
+header h1 { margin: 0 0 4px; font-size: 1.4rem; }
+header p { margin: 0; opacity: .8; font-size: .9rem; }
+main { max-width: 960px; margin: 0 auto; padding: 16px; }
+section { background: #fff; border-radius: 8px; padding: 16px; margin-bottom: 16px; overflow-x: auto; }
+h2 { margin-top: 0; font-size: 1.1rem; }
+.metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; background: none; padding: 0; }
+.card { background: #fff; border-radius: 8px; padding: 14px; display: flex; flex-direction: column; gap: 4px; }
+.card span { font-size: .85rem; color: #666; }
+.card strong { font-size: 1.6rem; }
+table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+th, td { text-align: left; padding: 8px; border-bottom: 1px solid #eee; }
+form { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+input, select, button { padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; font: inherit; }
+input { flex: 1; min-width: 180px; }
+button { background: #1f3a5f; color: #fff; border: none; cursor: pointer; }
+td button { font-size: .8rem; padding: 3px 8px; margin-right: 4px; }
+.badge { padding: 2px 8px; border-radius: 10px; font-size: .8rem; background: #e5e7eb; }
+.passed, .closed { background: #d1fae5; color: #065f46; }
+.failed, .open { background: #fee2e2; color: #991b1b; }
+.blocked, .in-progress { background: #fef3c7; color: #92400e; }
+.resolved { background: #dbeafe; color: #1e40af; }
+.hint { font-size: .8rem; color: #666; margin-bottom: 0; }
+.error { color: #b91c1c; }
+footer { text-align: center; font-size: .8rem; color: #888; padding: 16px; }
