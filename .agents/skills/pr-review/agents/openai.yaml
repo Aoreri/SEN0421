@@ -1,0 +1,4 @@
+interface:
+  display_name: "PR Review"
+  short_description: "Review a teammate's PR against the SDS-06 plan and standards"
+  default_prompt: "Use $pr-review to review PR #<n>."
