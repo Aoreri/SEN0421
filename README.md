@@ -1,7 +1,7 @@
 # SDS-06: Agile Test and Defect Tracking System
 
 > ⚠️ **Bu repo şu an bir DEMO / TEMPLATE'tir.** Proje iskeletini ve temel akışı göstermek için hazırlanmıştır;
-> veriler bellekte tutulur, kimlik doğrulama yoktur ve üretim için uygun değildir.
+> veriler PostgreSQL'de tutulur ancak kimlik doğrulama henüz yoktur; üretim için uygun değildir.
 
 İstanbul Kültür Üniversitesi · Software Development with Standards dersi projesi.
 ISO/IEC/IEEE 12207 yaşam döngüsü süreç modeline dayalı; IEEE 829 ve ISO/IEC/IEEE 29119-2 / 29119-3 referans alınır.
@@ -15,14 +15,26 @@ frontend/   React + TypeScript (Vite) arayüz
 
 ## Çalıştırma
 
+**Veritabanı** (PostgreSQL 16, Docker gerekir)
+
+```bash
+docker compose up -d db
+```
+
 **Backend** (http://localhost:8000, API dokümanı: `/docs`)
 
 ```bash
 cd backend
 python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
+alembic upgrade head          # şemayı oluşturur + demo tohum verisini yükler
 uvicorn app.main:app --reload
+pytest                        # testler (varsayılan: geçici SQLite)
 ```
+
+Bağlantı adresi `DATABASE_URL` ortam değişkeninden okunur
+(varsayılan `postgresql+psycopg://sds06:sds06@localhost:5432/sds06`).
+Yeni migrasyon: `alembic revision -m "açıklama"`.
 
 **Frontend** (http://localhost:5173, Node.js 18+ gerekir)
 
@@ -43,10 +55,9 @@ Vite geliştirme sunucusu `/api` isteklerini `http://localhost:8000` adresindeki
 
 ## Planlanan (template sonrası)
 
-- PostgreSQL + Alembic, kimlik doğrulama ve rol tabanlı erişim
+- Kimlik doğrulama ve rol tabanlı erişim
 - IEEE 829 test planı / test özet raporu üretimi (Jinja2 + WeasyPrint)
 - JUnit / Cobertura sonuç içe aktarımı, CI/CD, Docker Compose
-
 
 ## PLN-11 — Sürekli entegrasyon (Esra Kaya)
 
@@ -81,7 +92,8 @@ npm run build
 
 Başlangıç API testleri sağlık kontrolünü, defect oluşturmayı, boş başlık reddini,
 geçerli/geçersiz durum geçişlerini, geçmişin korunmasını, bulunamayan defect'i
-ve örnek metrikleri kapsar. Her testten sonra bellek içi veri geri yüklenir.
+ve örnek metrikleri kapsar. Testler varsayılan olarak geçici bir SQLite veritabanında çalışır (Alembic migrasyonlarıyla kurulur);
+`DATABASE_URL` verilirse o veritabanını kullanır.
 Bu aşamada frontend için lint, tip kontrolü ve derleme çalışır; frontend birim
 test altyapısı henüz eklenmemiştir. Genişletilmiş testler ve Cobertura raporu
 PLN-13 kapsamındadır. Sonuçlar GitHub → Actions → CI ekranından izlenebilir.

@@ -1,0 +1,14 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: sds06
+      POSTGRES_PASSWORD: sds06  # yalnızca yerel geliştirme için
+      POSTGRES_DB: sds06
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
