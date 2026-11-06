@@ -1,7 +1,6 @@
 from logging.config import fileConfig
 
 from alembic import context
-
 from app import models  # noqa: F401  (modelleri metadata'ya kaydeder)
 from app.db import Base, engine
 

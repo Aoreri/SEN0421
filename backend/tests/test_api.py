@@ -5,10 +5,10 @@ from pathlib import Path
 
 os.environ.setdefault("DATABASE_URL", f"sqlite:///{tempfile.mkdtemp()}/test.db")
 
-from alembic import command  # noqa: E402
-from alembic.config import Config  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 
+from alembic import command  # noqa: E402
+from alembic.config import Config  # noqa: E402
 from app.main import app  # noqa: E402
 
 BACKEND = Path(__file__).resolve().parents[1]
