@@ -47,7 +47,6 @@ Vite geliştirme sunucusu `/api` isteklerini `http://localhost:8000` adresindeki
 - IEEE 829 test planı / test özet raporu üretimi (Jinja2 + WeasyPrint)
 - JUnit / Cobertura sonuç içe aktarımı, CI/CD, Docker Compose
 
-
 ## PLN-11 — Sürekli entegrasyon (Esra Kaya)
 
 GitHub Actions `CI` hattı, `main` dalına push yapıldığında,
@@ -86,3 +85,10 @@ Bu aşamada frontend için lint, tip kontrolü ve derleme çalışır; frontend 
 test altyapısı henüz eklenmemiştir. Genişletilmiş testler ve Cobertura raporu
 PLN-13 kapsamındadır. Sonuçlar GitHub → Actions → CI ekranından izlenebilir.
 Bu hat branch koruma kurallarını kendiliğinden etkinleştirmez.
+
+## Katkı süreci
+
+`main` korumalıdır: doğrudan push yapılamaz. Her iş için `feature/<plan-id>-kisa-ad` branch'i açın
+ve Pull Request gönderin; birleştirme için en az 1 onay gerekir. PR açıklaması
+`.github/pull_request_template.md` bölümlerini doldurmalı ve `Agent:` satırıyla bitmelidir;
+`PR description` CI kontrolü bunu denetler. Ajan kuralları: [AGENTS.md](AGENTS.md).
