@@ -59,7 +59,6 @@ Vite geliştirme sunucusu `/api` isteklerini `http://localhost:8000` adresindeki
 - IEEE 829 test planı / test özet raporu üretimi (Jinja2 + WeasyPrint)
 - JUnit / Cobertura sonuç içe aktarımı, CI/CD, Docker Compose
 
-
 ## PLN-11 — Sürekli entegrasyon (Esra Kaya)
 
 GitHub Actions `CI` hattı, `main` dalına push yapıldığında,
@@ -93,14 +92,9 @@ npm run build
 
 Başlangıç API testleri sağlık kontrolünü, defect oluşturmayı, boş başlık reddini,
 geçerli/geçersiz durum geçişlerini, geçmişin korunmasını, bulunamayan defect'i
-ve örnek metrikleri kapsar. Her testten sonra bellek içi veri geri yüklenir.
+ve örnek metrikleri kapsar. Testler varsayılan olarak geçici bir SQLite veritabanında çalışır (Alembic migrasyonlarıyla kurulur);
+`DATABASE_URL` verilirse o veritabanını kullanır.
 Bu aşamada frontend için lint, tip kontrolü ve derleme çalışır; frontend birim
 test altyapısı henüz eklenmemiştir. Genişletilmiş testler ve Cobertura raporu
 PLN-13 kapsamındadır. Sonuçlar GitHub → Actions → CI ekranından izlenebilir.
 Bu hat branch koruma kurallarını kendiliğinden etkinleştirmez.
-
-## Katkı süreci
-
-`main` korumalıdır: doğrudan push yapılamaz. Her iş için `feature/<iş-id>-kisa-ad` branch'i açın,
-Pull Request gönderin; birleştirme için en az 1 onay gerekir. PR açıklaması şablondaki
-iş paketi / standart / test bölümlerini doldurmalıdır.
