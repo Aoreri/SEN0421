@@ -50,7 +50,7 @@ Vite geliştirme sunucusu `/api` isteklerini `http://localhost:8000` adresindeki
 
 ## PLN-11 — Sürekli entegrasyon (Esra Kaya)
 
-GitHub Actions `CI` hattı, `main` ve `esra/**` dallarına push yapıldığında,
+GitHub Actions `CI` hattı, `main` dalına push yapıldığında,
 her pull request açılışında/güncellemesinde ve Actions ekranından elle çalışır.
 İki bağımsız iş bulunur; başarısız bir komut ilgili işi başarısız yapar:
 

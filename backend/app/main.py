@@ -138,4 +138,3 @@ def metrics():
         "pass_rate": round(passed / len(executed) * 100, 1) if executed else 0,
         "open_defects": open_defects,
     }
-
