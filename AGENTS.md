@@ -124,6 +124,8 @@ option, delete the two links, and run `git checkout -- CLAUDE.md
 
 - `leaving-pr-comments`: format for every comment an agent posts on GitHub on
   a developer's behalf.
+- `pr-review`: review a teammate's PR against the plan and standards. Run it
+  only when the developer asks.
 
 ## Documentation
 
