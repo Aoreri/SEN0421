@@ -46,3 +46,10 @@ Vite geliştirme sunucusu `/api` isteklerini `http://localhost:8000` adresindeki
 - PostgreSQL + Alembic, kimlik doğrulama ve rol tabanlı erişim
 - IEEE 829 test planı / test özet raporu üretimi (Jinja2 + WeasyPrint)
 - JUnit / Cobertura sonuç içe aktarımı, CI/CD, Docker Compose
+
+## Katkı süreci
+
+`main` korumalıdır: doğrudan push yapılamaz. Her iş için `feature/<plan-id>-kisa-ad` branch'i açın
+ve Pull Request gönderin; birleştirme için en az 1 onay gerekir. PR açıklaması
+`.github/pull_request_template.md` bölümlerini doldurmalı ve `Agent:` satırıyla bitmelidir;
+`PR description` CI kontrolü bunu denetler. Ajan kuralları: [AGENTS.md](AGENTS.md).
