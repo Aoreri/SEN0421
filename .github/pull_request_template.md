@@ -18,4 +18,4 @@
 
 <!-- Note migrations, environment variables, or Docker changes; otherwise write None. -->
 
-<!-- Last line: "Agent: <model> via <harness>" (e.g. "Agent: Claude Opus 5.5 via Claude Code"), or "Agent: none". -->
+<!-- After the last section: "Agent: <model> via <harness>" (e.g. "Agent: Claude Opus 5.5 via Claude Code"), or "Agent: none". -->

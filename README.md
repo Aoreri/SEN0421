@@ -13,6 +13,13 @@ backend/    FastAPI REST API (test vakaları, defect'ler, yaşam döngüsü, met
 frontend/   React + TypeScript (Vite) arayüz
 ```
 
+## Katkı süreci
+
+`main` korumalıdır: doğrudan push yapılamaz. Her iş için `feature/<plan-id>-kisa-ad` branch'i açın
+ve Pull Request gönderin; birleştirme için en az 1 onay gerekir. PR açıklaması
+`.github/pull_request_template.md` bölümlerini doldurmalı ve tüm bölümlerden sonra bir `Agent:` satırı içermelidir;
+`PR description` CI kontrolü bunu denetler. Ajan kuralları: [AGENTS.md](AGENTS.md).
+
 ## Çalıştırma
 
 **Backend** (http://localhost:8000, API dokümanı: `/docs`)
@@ -85,10 +92,3 @@ Bu aşamada frontend için lint, tip kontrolü ve derleme çalışır; frontend 
 test altyapısı henüz eklenmemiştir. Genişletilmiş testler ve Cobertura raporu
 PLN-13 kapsamındadır. Sonuçlar GitHub → Actions → CI ekranından izlenebilir.
 Bu hat branch koruma kurallarını kendiliğinden etkinleştirmez.
-
-## Katkı süreci
-
-`main` korumalıdır: doğrudan push yapılamaz. Her iş için `feature/<plan-id>-kisa-ad` branch'i açın
-ve Pull Request gönderin; birleştirme için en az 1 onay gerekir. PR açıklaması
-`.github/pull_request_template.md` bölümlerini doldurmalı ve `Agent:` satırıyla bitmelidir;
-`PR description` CI kontrolü bunu denetler. Ajan kuralları: [AGENTS.md](AGENTS.md).

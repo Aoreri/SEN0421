@@ -107,9 +107,9 @@ approving review. Never push directly to `main`.
 - PR body: fill every section of `.github/pull_request_template.md`. The
   `PR description` CI check rejects missing or empty sections and a missing
   `Agent:` line.
-- End the body with `Agent: <model> via <harness>` (for example
+- After the last section, add `Agent: <model> via <harness>` (for example
   `Agent: Claude Opus 5.5 via Claude Code`), or `Agent: none` if no agent was
-  used.
+  used. A footer may follow it.
 - One concern per PR. If the description says "also", split it.
 - Do not commit plans, research notes, or agent scratch files.
 
