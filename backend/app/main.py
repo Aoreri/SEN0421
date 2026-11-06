@@ -5,6 +5,7 @@ Gerçek sürümde PostgreSQL, rol tabanlı erişim ve Alembic migrasyonları kul
 """
 
 from datetime import datetime, timezone
+from typing import TypedDict
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -42,7 +43,15 @@ TEST_CASES = [
     {"id": "TC-006", "title": "JUnit sonuç içe aktarımı", "requirement": "R7", "status": "Blocked"},
 ]
 
-DEFECTS = {
+class DefectRecord(TypedDict):
+    id: int
+    title: str
+    severity: str
+    status: str
+    test_case: str | None
+
+
+DEFECTS: dict[int, DefectRecord] = {
     1: {"id": 1, "title": "Defect formu boş başlığı kabul ediyor", "severity": "High",
         "status": "Open", "test_case": "TC-003"},
     2: {"id": 2, "title": "Dashboard grafiği yavaş yükleniyor", "severity": "Medium",
@@ -89,7 +98,13 @@ def create_defect(body: DefectCreate):
     if not body.title.strip():
         raise HTTPException(422, "Başlık boş olamaz")
     new_id = max(DEFECTS, default=0) + 1
-    DEFECTS[new_id] = {"id": new_id, "status": "Open", **body.model_dump()}
+    DEFECTS[new_id] = {
+        "id": new_id,
+        "status": "Open",
+        "title": body.title,
+        "severity": body.severity,
+        "test_case": body.test_case,
+    }
     HISTORY.append({"defect_id": new_id, "from": None, "to": "Open", "at": now()})
     return DEFECTS[new_id]
 
