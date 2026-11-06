@@ -15,5 +15,6 @@ dist/
 # Diğer
 .env
 .DS_Store
-.claude/
+.claude/*
+!.claude/skills
 *.tsbuildinfo
