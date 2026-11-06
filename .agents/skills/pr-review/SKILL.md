@@ -25,7 +25,7 @@ On Git Bash, set `MSYS_NO_PATHCONV=1` before `git show <rev>:<path>`.
 Do not rerun lint, tests, or build by hand when CI ran on the PR head and
 passed. If CI did not run in this repository (fork PRs may run only in the
 fork), check the fork's run for the same `headRefOid` with
-`gh api repos/<owner>/<repo>/actions/runs`, or run the commands from
+`gh api "repos/<owner>/<repo>/actions/runs?head_sha=<headRefOid>"`, or run the commands from
 AGENTS.md > Checks in a worktree under the scratchpad, never in the main
 checkout. Say which of the two you did.
 
@@ -72,4 +72,7 @@ gh api -X POST repos/<owner>/<repo>/pulls/<n>/reviews --input review.json
 ```
 
 `review.json` holds `event` (`APPROVE` or `REQUEST_CHANGES`), `body`, and
-`comments` (`path`, `line`, `side`, `body`). Report the returned review URL.
+`comments` (`path`, `line`, `side`, `body`). GitHub rejects both events on a
+PR authored by the account posting the review; use `COMMENT` there and put
+the verdict ("Would approve" / "Would request changes") on the body's first
+line. Report the returned review URL.
