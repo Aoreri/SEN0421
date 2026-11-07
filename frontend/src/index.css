@@ -13,16 +13,27 @@ h2 { margin-top: 0; font-size: 1.1rem; }
 .card strong { font-size: 1.6rem; }
 table { width: 100%; border-collapse: collapse; font-size: .9rem; }
 th, td { text-align: left; padding: 8px; border-bottom: 1px solid #eee; }
-form { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+.table-empty { text-align: center; color: #666; padding: 16px; font-style: italic; }
+form { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; align-items: flex-start; }
+.form-field { display: flex; flex-direction: column; gap: 4px; min-width: 150px; }
+.form-field:first-child { flex: 1; min-width: 220px; }
+.form-field label { font-size: .8rem; font-weight: 600; color: #374151; }
+.required-mark { color: #b91c1c; }
+.form-field.has-error input, .form-field.has-error select { border-color: #dc2626; background: #fef2f2; }
+.field-error { font-size: .78rem; color: #b91c1c; }
+.form-actions { display: flex; align-items: flex-end; padding-top: 19px; }
 input, select, button { padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; font: inherit; }
-input { flex: 1; min-width: 180px; }
 button { background: #1f3a5f; color: #fff; border: none; cursor: pointer; }
+button:disabled { opacity: .6; cursor: not-allowed; }
 td button { font-size: .8rem; padding: 3px 8px; margin-right: 4px; }
-.badge { padding: 2px 8px; border-radius: 10px; font-size: .8rem; background: #e5e7eb; }
-.passed, .closed { background: #d1fae5; color: #065f46; }
-.failed, .open { background: #fee2e2; color: #991b1b; }
-.blocked, .in-progress { background: #fef3c7; color: #92400e; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: .8rem; background: #e5e7eb; color: #374151; }
+.passed, .closed, .low { background: #d1fae5; color: #065f46; }
+.failed, .open, .critical, .high { background: #fee2e2; color: #991b1b; }
+.blocked, .in-progress, .medium { background: #fef3c7; color: #92400e; }
 .resolved { background: #dbeafe; color: #1e40af; }
+.not-run { background: #e5e7eb; color: #4b5563; }
 .hint { font-size: .8rem; color: #666; margin-bottom: 0; }
-.error { color: #b91c1c; }
+.error-alert { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; border-radius: 8px; padding: 10px 14px; margin-bottom: 16px; font-size: .9rem; }
+.error-dismiss { background: transparent; color: #991b1b; border: 1px solid #fca5a5; padding: 3px 8px; font-size: .8rem; }
 footer { text-align: center; font-size: .8rem; color: #888; padding: 16px; }
+
