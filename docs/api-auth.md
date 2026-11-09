@@ -41,9 +41,27 @@ Errors use FastAPI's format: `{ "detail": "<message>" }`.
 | Endpoint | Allowed |
 | --- | --- |
 | `POST /api/defects` | `Admin`, `Test Lead`, `Tester` |
-| `POST /api/defects/{id}/transition` | any logged-in user |
+| `POST /api/defects/{id}/transition` | depends on the transition, see below |
 
-`GET` endpoints stay public.
+`GET` endpoints stay public. A token is optional on them, but an invalid or expired one gets `401`.
+
+## Defect transitions
+
+Rules are stored in the `defect_transitions` table. The seeded rules are:
+
+| From | To | Allowed |
+| --- | --- | --- |
+| `Open` | `In Progress` | `Developer`, `Admin` |
+| `In Progress` | `Resolved` | `Developer`, `Admin` |
+| `Resolved` | `Closed` | `Tester`, `Test Lead`, `Admin` |
+| `Resolved` | `Open` (Reopen) | `Tester`, `Test Lead`, `Admin` |
+| `Closed` | `Open` (Reopen) | `Tester`, `Test Lead`, `Admin` |
+
+`POST /api/defects/{id}/transition` with `{ "to": "<status>" }` returns `409` if no rule exists for
+that move and `403` if the rule exists but excludes the caller's role.
+
+A defect's `allowed` field lists only the moves the current token may make, and is `[]` without a
+token. Offer exactly these moves in the UI.
 
 ## Server configuration
 
