@@ -1,11 +1,17 @@
 import { FormEvent, useEffect, useState } from "react";
-import { api, Defect, Metrics, TestCase } from "./api";
+import { api, Defect, formatErrorMessage, Metrics, SEVERITIES, TestCase } from "./api";
+import { DataTable, DataTableColumn } from "./components/DataTable";
+import { ErrorAlert } from "./components/ErrorAlert";
+import { FormField } from "./components/FormField";
+import { StatusBadge } from "./components/StatusBadge";
+import { DefectFormErrors, hasFormErrors, validateDefectForm } from "./validation";
 
-const SEVERITIES = ["Low", "Medium", "High", "Critical"];
-
-function Badge({ text }: { text: string }) {
-  return <span className={`badge ${text.replace(/\s/g, "-").toLowerCase()}`}>{text}</span>;
-}
+const TEST_CASE_COLUMNS: DataTableColumn<TestCase>[] = [
+  { key: "id", header: "ID", render: (t) => t.id },
+  { key: "title", header: "Başlık", render: (t) => t.title },
+  { key: "requirement", header: "Gereksinim", render: (t) => t.requirement },
+  { key: "status", header: "Durum", render: (t) => <StatusBadge text={t.status} /> },
+];
 
 export default function App() {
   const [metrics, setMetrics] = useState<Metrics | null>(null);
@@ -13,6 +19,10 @@ export default function App() {
   const [defects, setDefects] = useState<Defect[]>([]);
   const [title, setTitle] = useState("");
   const [severity, setSeverity] = useState("Medium");
+  const [testCase, setTestCase] = useState("");
+  const [formErrors, setFormErrors] = useState<DefectFormErrors>({});
+  const [submitting, setSubmitting] = useState(false);
+  const [transitioningId, setTransitioningId] = useState<number | null>(null);
   const [error, setError] = useState("");
 
   async function load() {
@@ -22,8 +32,13 @@ export default function App() {
       setTests(t);
       setDefects(d);
       setError("");
-    } catch {
-      setError("Backend'e ulaşılamadı. Önce backend'i başlatın (README'ye bakın).");
+    } catch (err) {
+      setError(
+        formatErrorMessage(
+          err,
+          "Backend'e ulaşılamadı. Önce backend'i başlatın (README'ye bakın).",
+        ),
+      );
     }
   }
 
@@ -33,15 +48,65 @@ export default function App() {
 
   async function addDefect(e: FormEvent) {
     e.preventDefault();
-    await api.createDefect(title, severity);
-    setTitle("");
-    load();
+    const validationErrors = validateDefectForm(
+      { title, severity, testCase },
+      tests.map((t) => t.id),
+    );
+    setFormErrors(validationErrors);
+    if (hasFormErrors(validationErrors)) {
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await api.createDefect(title, severity, testCase || null);
+      setTitle("");
+      setTestCase("");
+      setFormErrors({});
+      setError("");
+      await load();
+    } catch (err) {
+      setError(formatErrorMessage(err, "Defect oluşturulurken bir hata oluştu."));
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   async function move(id: number, to: string) {
-    await api.transition(id, to);
-    load();
+    setTransitioningId(id);
+    try {
+      await api.transition(id, to);
+      setError("");
+      await load();
+    } catch (err) {
+      setError(formatErrorMessage(err, "Durum geçişi sırasında bir hata oluştu."));
+    } finally {
+      setTransitioningId(null);
+    }
   }
+
+  const defectColumns: DataTableColumn<Defect>[] = [
+    { key: "id", header: "#", render: (d) => d.id },
+    { key: "title", header: "Başlık", render: (d) => d.title },
+    { key: "test_case", header: "Test Vakası", render: (d) => d.test_case ?? "—" },
+    { key: "severity", header: "Önem", render: (d) => <StatusBadge text={d.severity} /> },
+    { key: "status", header: "Durum", render: (d) => <StatusBadge text={d.status} /> },
+    {
+      key: "allowed",
+      header: "Geçiş",
+      render: (d) =>
+        d.allowed.map((to) => (
+          <button
+            key={to}
+            type="button"
+            disabled={transitioningId === d.id}
+            onClick={() => move(d.id, to)}
+          >
+            → {to}
+          </button>
+        )),
+    },
+  ];
 
   return (
     <>
@@ -56,6 +121,8 @@ export default function App() {
       </header>
 
       <main>
+        <ErrorAlert message={error} onDismiss={() => setError("")} />
+
         {metrics && (
           <section className="metrics">
             {[
@@ -74,64 +141,99 @@ export default function App() {
 
         <section>
           <h2>Test Vakaları</h2>
-          <table>
-            <thead>
-              <tr><th>ID</th><th>Başlık</th><th>Gereksinim</th><th>Durum</th></tr>
-            </thead>
-            <tbody>
-              {tests.map((t) => (
-                <tr key={t.id}>
-                  <td>{t.id}</td>
-                  <td>{t.title}</td>
-                  <td>{t.requirement}</td>
-                  <td><Badge text={t.status} /></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <DataTable
+            columns={TEST_CASE_COLUMNS}
+            rows={tests}
+            getRowKey={(t) => t.id}
+            emptyMessage="Kayıtlı test vakası bulunamadı."
+            ariaLabel="Test Vakaları"
+          />
         </section>
 
         <section>
-          <h2>Defect'ler</h2>
-          <form onSubmit={addDefect}>
-            <input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Yeni defect başlığı"
-              required
-            />
-            <select value={severity} onChange={(e) => setSeverity(e.target.value)}>
-              {SEVERITIES.map((s) => <option key={s}>{s}</option>)}
-            </select>
-            <button type="submit">Ekle</button>
+          <h2>Defect&apos;ler</h2>
+          <form onSubmit={addDefect} noValidate>
+            <FormField id="defect-title" label="Başlık" required error={formErrors.title}>
+              <input
+                id="defect-title"
+                value={title}
+                onChange={(e) => {
+                  setTitle(e.target.value);
+                  if (formErrors.title) {
+                    setFormErrors((prev) => ({ ...prev, title: undefined }));
+                  }
+                }}
+                placeholder="Yeni defect başlığı (en az 3 karakter)"
+                aria-invalid={Boolean(formErrors.title)}
+                aria-describedby={formErrors.title ? "defect-title-error" : undefined}
+              />
+            </FormField>
+
+            <FormField id="defect-severity" label="Önem" required error={formErrors.severity}>
+              <select
+                id="defect-severity"
+                value={severity}
+                onChange={(e) => {
+                  setSeverity(e.target.value);
+                  if (formErrors.severity) {
+                    setFormErrors((prev) => ({ ...prev, severity: undefined }));
+                  }
+                }}
+                aria-invalid={Boolean(formErrors.severity)}
+                aria-describedby={formErrors.severity ? "defect-severity-error" : undefined}
+              >
+                {SEVERITIES.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </FormField>
+
+            <FormField id="defect-test-case" label="Test Vakası" error={formErrors.testCase}>
+              <select
+                id="defect-test-case"
+                value={testCase}
+                onChange={(e) => {
+                  setTestCase(e.target.value);
+                  if (formErrors.testCase) {
+                    setFormErrors((prev) => ({ ...prev, testCase: undefined }));
+                  }
+                }}
+                aria-invalid={Boolean(formErrors.testCase)}
+                aria-describedby={formErrors.testCase ? "defect-test-case-error" : undefined}
+              >
+                <option value="">Bağlı değil</option>
+                {tests.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.id} · {t.title}
+                  </option>
+                ))}
+              </select>
+            </FormField>
+
+            <div className="form-actions">
+              <button type="submit" disabled={submitting}>
+                {submitting ? "Ekleniyor..." : "Ekle"}
+              </button>
+            </div>
           </form>
-          <table>
-            <thead>
-              <tr><th>#</th><th>Başlık</th><th>Önem</th><th>Durum</th><th>Geçiş</th></tr>
-            </thead>
-            <tbody>
-              {defects.map((d) => (
-                <tr key={d.id}>
-                  <td>{d.id}</td>
-                  <td>{d.title}</td>
-                  <td>{d.severity}</td>
-                  <td><Badge text={d.status} /></td>
-                  <td>
-                    {d.allowed.map((to) => (
-                      <button key={to} onClick={() => move(d.id, to)}>→ {to}</button>
-                    ))}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+
+          <DataTable
+            columns={defectColumns}
+            rows={defects}
+            getRowKey={(d) => d.id}
+            emptyMessage="Kayıtlı defect bulunamadı."
+            ariaLabel="Defect Listesi"
+          />
           <p className="hint">Yaşam döngüsü: Open → In Progress → Resolved → Closed (+ Reopen)</p>
         </section>
-
-        {error && <p className="error">{error}</p>}
       </main>
 
-      <footer>İstanbul Kültür Üniversitesi · Software Development with Standards · Template v0.1</footer>
+      <footer>
+        İstanbul Kültür Üniversitesi · Software Development with Standards · Template v0.1
+      </footer>
     </>
   );
 }
+
