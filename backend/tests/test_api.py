@@ -1,72 +1,66 @@
-from copy import deepcopy
+"""API + migrasyon testi. Varsayılan olarak geçici SQLite kullanır; DATABASE_URL verilirse o veritabanında çalışır."""
+import os
+import tempfile
+from pathlib import Path
 
-import pytest
-from fastapi.testclient import TestClient
+os.environ.setdefault("DATABASE_URL", f"sqlite:///{tempfile.mkdtemp()}/test.db")
 
-from app import main
+import pytest  # noqa: E402
+from fastapi.testclient import TestClient  # noqa: E402
 
+from alembic import command  # noqa: E402
+from alembic.config import Config  # noqa: E402
+from app.main import app  # noqa: E402
 
-@pytest.fixture
-def client():
-    defects = deepcopy(main.DEFECTS)
-    history = deepcopy(main.HISTORY)
-    with TestClient(main.app) as test_client:
-        yield test_client
-    main.DEFECTS.clear()
-    main.DEFECTS.update(defects)
-    main.HISTORY[:] = history
-
-
-def test_health(client):
-    response = client.get("/api/health")
-    assert response.status_code == 200
-    assert response.json() == {"status": "ok", "template": True}
+BACKEND = Path(__file__).resolve().parents[1]
+cfg = Config(str(BACKEND / "alembic.ini"))
+cfg.set_main_option("script_location", str(BACKEND / "alembic"))
+client = TestClient(app)
 
 
-def test_create_defect_records_initial_history(client):
-    response = client.post("/api/defects", json={"title": "CI test defect"})
-    assert response.status_code == 201
-    defect = response.json()
-    assert defect["status"] == "Open"
-    history = client.get(f"/api/defects/{defect['id']}/history").json()
-    assert len(history) == 1
-    assert history[0]["from"] is None
-    assert history[0]["to"] == "Open"
+@pytest.fixture(autouse=True)
+def fresh_seed():
+    """Her testi temiz tohum durumuyla başlat; testler sıradan bağımsız olsun."""
+    command.downgrade(cfg, "base")
+    command.upgrade(cfg, "head")
 
 
-@pytest.mark.parametrize("title", ["", "   "])
-def test_blank_title_is_rejected_without_mutation(client, title):
-    before = deepcopy(main.DEFECTS), deepcopy(main.HISTORY)
-    assert client.post("/api/defects", json={"title": title}).status_code == 422
-    assert (main.DEFECTS, main.HISTORY) == before
-
-
-def test_invalid_transition_does_not_change_state_or_history(client):
-    before = deepcopy(main.DEFECTS), deepcopy(main.HISTORY)
-    response = client.post("/api/defects/1/transition", json={"to": "Closed"})
-    assert response.status_code == 400
-    assert (main.DEFECTS, main.HISTORY) == before
-
-
-def test_valid_transition_preserves_existing_history(client):
-    before = deepcopy(main.HISTORY)
-    response = client.post("/api/defects/1/transition", json={"to": "In Progress"})
-    assert response.status_code == 200
-    assert response.json()["status"] == "In Progress"
-    assert main.HISTORY[:-1] == before
-    assert main.HISTORY[-1]["from"] == "Open"
-    assert main.HISTORY[-1]["to"] == "In Progress"
-
-
-def test_unknown_defect_transition_returns_404(client):
-    response = client.post("/api/defects/99999/transition", json={"to": "Open"})
-    assert response.status_code == 404
-
-
-def test_seed_metrics(client):
+def test_seed_and_metrics():
+    assert len(client.get("/api/test-cases").json()) == 6
     assert client.get("/api/metrics").json() == {
-        "total_tests": 6,
-        "execution_rate": 66.7,
-        "pass_rate": 75.0,
-        "open_defects": 3,
+        "total_tests": 6, "execution_rate": 66.7, "pass_rate": 75.0, "open_defects": 3,
     }
+
+
+def test_defect_lifecycle_and_history():
+    d = client.post("/api/defects", json={"title": "Yeni hata", "test_case": "TC-001"}).json()
+    assert d["id"] == 4 and d["status"] == "Open" and d["allowed"] == ["In Progress"]
+
+    assert client.post(f"/api/defects/{d['id']}/transition", json={"to": "Closed"}).status_code == 400
+    for to in ("In Progress", "Resolved", "Closed", "Open"):
+        assert client.post(f"/api/defects/{d['id']}/transition", json={"to": to}).json()["status"] == to
+
+    hist = client.get(f"/api/defects/{d['id']}/history").json()
+    assert [(h["from"], h["to"]) for h in hist] == [
+        (None, "Open"), ("Open", "In Progress"), ("In Progress", "Resolved"),
+        ("Resolved", "Closed"), ("Closed", "Open"),
+    ]
+
+
+def test_validation():
+    assert client.post("/api/defects", json={"title": "  "}).status_code == 422
+    assert client.post("/api/defects", json={"title": "x", "test_case": "TC-999"}).status_code == 422
+    assert client.post("/api/defects/999/transition", json={"to": "Open"}).status_code == 404
+
+
+def test_health():
+    assert client.get("/api/health").json() == {"status": "ok", "template": True}
+
+
+def test_rejected_requests_leave_data_unchanged():
+    before = client.get("/api/defects/1/history").json()
+    count = len(client.get("/api/defects").json())
+    assert client.post("/api/defects/1/transition", json={"to": "Closed"}).status_code == 400
+    assert client.post("/api/defects", json={"title": " "}).status_code == 422
+    assert client.get("/api/defects/1/history").json() == before
+    assert len(client.get("/api/defects").json()) == count
