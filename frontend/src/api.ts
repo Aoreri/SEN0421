@@ -5,6 +5,7 @@ export type TestCase = {
   id: string;
   title: string;
   requirement: string;
+  requirements: string[];
   status: string;
 };
 

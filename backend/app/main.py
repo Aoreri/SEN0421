@@ -9,9 +9,9 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
-from . import auth
+from . import auth, projects
 from .auth import ADMIN, TEST_LEAD, TESTER, CurrentUser, OptionalUser, require_roles
 from .db import DB
 from .models import Defect, DefectHistory, DefectTransition, TestCase, User
@@ -25,6 +25,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(auth.router)
+app.include_router(projects.router)
 
 # --- Şemalar ------------------------------------------------------------------
 class DefectCreate(BaseModel):
@@ -57,8 +58,10 @@ def health():
 
 @app.get("/api/test-cases")
 def list_test_cases(db: DB):
-    return [{"id": t.id, "title": t.title, "requirement": t.requirement, "status": t.status}
-            for t in db.scalars(select(TestCase).order_by(TestCase.id))]
+    rows = db.scalars(select(TestCase).options(selectinload(TestCase.requirements))
+                      .order_by(TestCase.id))
+    return [{"id": t.id, "title": t.title, "requirement": t.requirement, "status": t.status,
+             "requirements": sorted(r.id for r in t.requirements)} for t in rows]
 
 
 @app.get("/api/defects")
