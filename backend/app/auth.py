@@ -42,9 +42,10 @@ def current_user(
     try:
         claims = jwt.decode(creds.credentials, JWT_SECRET, algorithms=[JWT_ALGORITHM],
                             options={"require": ["exp", "sub"]})
-    except jwt.PyJWTError:
+        user_id = int(claims["sub"])
+    except (jwt.PyJWTError, ValueError):
         raise unauthorized() from None
-    user = db.get(User, int(claims["sub"]))
+    user = db.get(User, user_id)
     if user is None:
         raise unauthorized()
     return user
@@ -77,7 +78,9 @@ def user_out(u: User) -> dict:
 def login(body: Login, db: DB):
     user = db.scalar(select(User).where(User.username == body.username))
     stored = user.password_hash.encode() if user else DUMMY_HASH
-    if not bcrypt.checkpw(body.password.encode(), stored) or user is None:
+    password = body.password.encode()
+    # bcrypt 72 bayttan sonrasını yok sayar; uzun parola kesilip eşleşmiş sayılmasın diye reddedilir.
+    if len(password) > 72 or not bcrypt.checkpw(password, stored) or user is None:
         raise HTTPException(401, "Geçersiz kullanıcı adı veya şifre")
     token = jwt.encode({"sub": str(user.id), "exp": datetime.now(UTC) + TOKEN_LIFETIME},
                        JWT_SECRET, algorithm=JWT_ALGORITHM)
