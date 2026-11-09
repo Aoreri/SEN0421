@@ -5,6 +5,7 @@ from pathlib import Path
 
 os.environ.setdefault("DATABASE_URL", f"sqlite:///{tempfile.mkdtemp()}/test.db")
 
+import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 
 from alembic import command  # noqa: E402
@@ -14,9 +15,14 @@ from app.main import app  # noqa: E402
 BACKEND = Path(__file__).resolve().parents[1]
 cfg = Config(str(BACKEND / "alembic.ini"))
 cfg.set_main_option("script_location", str(BACKEND / "alembic"))
-command.downgrade(cfg, "base")
-command.upgrade(cfg, "head")
 client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def fresh_seed():
+    """Her testi temiz tohum durumuyla başlat; testler sıradan bağımsız olsun."""
+    command.downgrade(cfg, "base")
+    command.upgrade(cfg, "head")
 
 
 def test_seed_and_metrics():
