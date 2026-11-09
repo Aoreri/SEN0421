@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, func
+from sqlalchemy import JSON, DateTime, ForeignKey, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .db import Base
@@ -32,6 +32,14 @@ class Defect(Base):
     severity: Mapped[str] = mapped_column(String(20), default="Medium")
     status: Mapped[str] = mapped_column(String(20), default="Open")
     test_case: Mapped[str | None] = mapped_column(ForeignKey("test_cases.id"))
+
+
+class DefectTransition(Base):
+    __tablename__ = "defect_transitions"
+
+    from_status: Mapped[str] = mapped_column(String(20), primary_key=True)
+    to_status: Mapped[str] = mapped_column(String(20), primary_key=True)
+    allowed_roles: Mapped[list[str]] = mapped_column(JSON)
 
 
 class DefectHistory(Base):
