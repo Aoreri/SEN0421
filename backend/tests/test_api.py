@@ -8,6 +8,7 @@ os.environ.setdefault("DATABASE_URL", f"sqlite:///{tempfile.mkdtemp()}/test.db")
 from datetime import UTC, datetime, timedelta  # noqa: E402
 from functools import cache  # noqa: E402
 
+import bcrypt  # noqa: E402
 import jwt  # noqa: E402
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
@@ -17,7 +18,7 @@ from alembic.config import Config  # noqa: E402
 from app.auth import JWT_ALGORITHM, JWT_SECRET  # noqa: E402
 from app.db import SessionLocal  # noqa: E402
 from app.main import app  # noqa: E402
-from app.models import DefectTransition  # noqa: E402
+from app.models import DefectTransition, User  # noqa: E402
 
 BACKEND = Path(__file__).resolve().parents[1]
 cfg = Config(str(BACKEND / "alembic.ini"))
@@ -107,6 +108,17 @@ def test_login_rejects_bad_credentials(username, password):
     assert res.status_code == 401 and "access_token" not in res.json()
 
 
+def test_login_does_not_truncate_long_passwords():
+    password = "a" * 72
+    with SessionLocal() as db:
+        db.add(User(username="uzun", role="Tester",
+                    password_hash=bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()))
+        db.commit()
+    for attempt, status in [(password, 200), (password + "x", 401)]:
+        res = client.post("/api/auth/login", json={"username": "uzun", "password": attempt})
+        assert res.status_code == status
+
+
 def forged(secret=JWT_SECRET, expires_in=60, sub="1") -> dict:
     claims = {"sub": sub, "exp": datetime.now(UTC) + timedelta(seconds=expires_in)}
     return {"Authorization": f"Bearer {jwt.encode(claims, secret, algorithm=JWT_ALGORITHM)}"}
@@ -118,6 +130,7 @@ def forged(secret=JWT_SECRET, expires_in=60, sub="1") -> dict:
     forged(secret="x" * 32),
     forged(expires_in=-60),
     forged(sub="999"),
+    forged(sub="abc"),
 ])
 def test_bad_tokens_are_rejected(headers):
     assert client.get("/api/auth/me", headers=headers).status_code == 401
