@@ -22,8 +22,12 @@ export type Metrics = {
 };
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const token = localStorage.getItem("token");
   const res = await fetch("/api" + path, {
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(token && { Authorization: `Bearer ${token}` }),
+    },
     ...options,
   });
   if (!res.ok) throw new Error((await res.json()).detail ?? res.statusText);
