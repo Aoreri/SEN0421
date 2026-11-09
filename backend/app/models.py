@@ -1,7 +1,7 @@
 from datetime import datetime
 
-from sqlalchemy import JSON, DateTime, ForeignKey, String, func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import JSON, Column, DateTime, ForeignKey, String, Table, UniqueConstraint, func
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .db import Base
 
@@ -15,6 +15,42 @@ class User(Base):
     role: Mapped[str] = mapped_column(String(20))
 
 
+test_case_requirements = Table(
+    "test_case_requirements",
+    Base.metadata,
+    Column("test_case_id", ForeignKey("test_cases.id"), primary_key=True),
+    Column("requirement_id", ForeignKey("requirements.id"), primary_key=True),
+)
+
+
+class Project(Base):
+    __tablename__ = "projects"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(100), unique=True)
+    description: Mapped[str] = mapped_column(String(1000), default="")
+
+
+class Release(Base):
+    __tablename__ = "releases"
+    __table_args__ = (UniqueConstraint("project_id", "version"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    version: Mapped[str] = mapped_column(String(50))
+
+
+class Requirement(Base):
+    __tablename__ = "requirements"
+
+    id: Mapped[str] = mapped_column(String(20), primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    title: Mapped[str] = mapped_column(String(200))
+    description: Mapped[str] = mapped_column(String(1000), default="")
+    test_cases: Mapped[list["TestCase"]] = relationship(
+        secondary=test_case_requirements, back_populates="requirements")
+
+
 class TestCase(Base):
     __tablename__ = "test_cases"
 
@@ -22,6 +58,8 @@ class TestCase(Base):
     title: Mapped[str] = mapped_column(String(200))
     requirement: Mapped[str] = mapped_column(String(20))
     status: Mapped[str] = mapped_column(String(20), default="Not Run")
+    requirements: Mapped[list[Requirement]] = relationship(
+        secondary=test_case_requirements, back_populates="test_cases")
 
 
 class Defect(Base):
