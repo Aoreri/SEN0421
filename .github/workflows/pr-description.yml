@@ -1,0 +1,24 @@
+name: PR description
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: PR description
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python .github/scripts/check_pr_description.py --self-test
+      - name: Check PR body against the template
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}  # via env, never inlined into the script
+        run: python .github/scripts/check_pr_description.py
