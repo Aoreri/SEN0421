@@ -34,17 +34,27 @@ def unauthorized() -> HTTPException:
     return HTTPException(401, "Kimlik doğrulama gerekli", headers={"WWW-Authenticate": "Bearer"})
 
 
-def current_user(
+def optional_user(
     db: DB, creds: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer)]
-) -> User:
+) -> User | None:
+    """Token yoksa None; token verilmiş ama geçersizse 401."""
     if creds is None:
-        raise unauthorized()
+        return None
     try:
         claims = jwt.decode(creds.credentials, JWT_SECRET, algorithms=[JWT_ALGORITHM],
                             options={"require": ["exp", "sub"]})
     except jwt.PyJWTError:
         raise unauthorized() from None
     user = db.get(User, int(claims["sub"]))
+    if user is None:
+        raise unauthorized()
+    return user
+
+
+OptionalUser = Annotated[User | None, Depends(optional_user)]
+
+
+def current_user(user: OptionalUser) -> User:
     if user is None:
         raise unauthorized()
     return user
