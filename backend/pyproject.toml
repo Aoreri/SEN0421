@@ -13,3 +13,14 @@ warn_unused_ignores = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+addopts = "--strict-markers"
+markers = [
+    "unit: isolated checks without database requests",
+    "integration: API and migrated database behavior",
+    "postgres: PostgreSQL-specific database guarantees",
+]
+
+[tool.coverage.run]
+branch = true
+relative_files = true
+source = ["app"]
