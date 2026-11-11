@@ -100,6 +100,7 @@ def test_metrics_handle_unexecuted_tests(client):
 def test_metrics_handle_no_test_cases(client):
     with SessionLocal.begin() as db:
         db.execute(update(Defect).values(test_case=None))
+        db.execute(text("DELETE FROM test_case_requirements"))
         db.execute(delete(CaseRecord))
     assert client.get("/api/metrics").json() == {
         "total_tests": 0, "execution_rate": 0, "pass_rate": 0, "open_defects": 3,

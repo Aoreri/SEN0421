@@ -168,3 +168,124 @@ def test_transition_rules_come_from_the_database(client):
     url = "/api/defects/1/transition"
     assert client.post(url, json={"to": "In Progress"}, headers=as_user("developer")).status_code == 403
     assert client.post(url, json={"to": "In Progress"}, headers=as_user("tester")).status_code == 200
+
+
+def test_project_crud(client):
+    lead = as_user("testlead")
+    created = client.post("/api/projects", json={"name": " Yeni "}, headers=lead)
+    assert created.status_code == 201
+    project = created.json()
+    assert project["name"] == "Yeni" and project["description"] == ""
+    url = f"/api/projects/{project['id']}"
+    assert client.get(url).json() == project
+    updated = client.put(url, json={"name": "Yeni 2", "description": "d"}, headers=lead).json()
+    assert updated == {"id": project["id"], "name": "Yeni 2", "description": "d"}
+    assert updated in client.get("/api/projects").json()
+    assert client.delete(url, headers=lead).status_code == 204
+    assert client.get(url).status_code == 404
+
+
+def test_release_crud(client):
+    lead = as_user("testlead")
+    release = client.post("/api/releases", json={"project_id": 1, "version": "v1"}, headers=lead)
+    assert release.status_code == 201
+    url = f"/api/releases/{release.json()['id']}"
+    assert client.get(url).json()["version"] == "v1"
+    assert client.put(url, json={"project_id": 1, "version": "v2"},
+                      headers=lead).json()["version"] == "v2"
+    assert len(client.get("/api/releases").json()) == 1
+    assert client.delete(url, headers=lead).status_code == 204
+    assert client.get(url).status_code == 404
+
+
+def test_requirement_crud(client):
+    lead = as_user("testlead")
+    body = {"id": "R9", "project_id": 1, "title": "Yeni gereksinim"}
+    assert client.post("/api/requirements", json=body, headers=lead).status_code == 201
+    update = {"project_id": 1, "title": "Değişti", "description": "d"}
+    assert client.put("/api/requirements/R9", json=update, headers=lead).json() == {
+        "id": "R9", "project_id": 1, "title": "Değişti", "description": "d", "test_cases": [],
+    }
+    assert len(client.get("/api/requirements").json()) == 9
+    assert client.delete("/api/requirements/R9", headers=lead).status_code == 204
+    assert client.get("/api/requirements/R9").status_code == 404
+
+
+@pytest.mark.parametrize("url,body,status", [
+    ("/api/projects", {"name": "SDS-06"}, 409),
+    ("/api/projects", {"name": "   "}, 422),
+    ("/api/projects", {"name": "x" * 101}, 422),
+    ("/api/releases", {"project_id": 999, "version": "v1"}, 422),
+    ("/api/requirements", {"id": "R1", "project_id": 1, "title": "x"}, 409),
+    ("/api/requirements", {"id": "R9", "project_id": 999, "title": "x"}, 422),
+])
+def test_invalid_writes(client, url, body, status):
+    assert client.post(url, json=body, headers=as_user("admin")).status_code == status
+
+
+def test_duplicate_release_version_conflicts(client):
+    body = {"project_id": 1, "version": "v1"}
+    assert client.post("/api/releases", json=body, headers=as_user("admin")).status_code == 201
+    assert client.post("/api/releases", json=body, headers=as_user("admin")).status_code == 409
+
+
+@pytest.mark.parametrize("method,url,body", [
+    ("post", "/api/projects", {"name": "x"}),
+    ("put", "/api/projects/1", {"name": "x"}),
+    ("delete", "/api/projects/1", None),
+    ("post", "/api/releases", {"project_id": 1, "version": "v1"}),
+    ("put", "/api/releases/1", {"project_id": 1, "version": "v1"}),
+    ("delete", "/api/releases/1", None),
+    ("post", "/api/requirements", {"id": "R9", "project_id": 1, "title": "x"}),
+    ("put", "/api/requirements/R1", {"project_id": 1, "title": "x"}),
+    ("delete", "/api/requirements/R1", None),
+])
+def test_catalog_writes_are_role_guarded(client, method, url, body):
+    send = getattr(client, method)
+    kwargs = {"json": body} if body else {}
+    assert send(url, **kwargs).status_code == 401
+    for username in ("tester", "developer"):
+        assert send(url, headers=as_user(username), **kwargs).status_code == 403
+
+
+def test_delete_with_dependents_is_rejected(client):
+    admin = as_user("admin")
+    assert client.delete("/api/projects/1", headers=admin).status_code == 409
+    assert client.delete("/api/requirements/R1", headers=admin).status_code == 409
+    assert client.get("/api/requirements/R1").json()["test_cases"] == ["TC-001", "TC-002"]
+
+
+def test_project_with_only_releases_cannot_be_deleted(client):
+    admin = as_user("admin")
+    project = client.post("/api/projects", json={"name": "P"}, headers=admin).json()
+    client.post("/api/releases", json={"project_id": project["id"], "version": "v1"}, headers=admin)
+    assert client.delete(f"/api/projects/{project['id']}", headers=admin).status_code == 409
+
+
+def test_seed_traceability_matches_test_case_requirement(client):
+    for case in client.get("/api/test-cases").json():
+        assert case["requirements"] == [case["requirement"]]
+    assert len(client.get("/api/requirements").json()) == 8
+
+
+def test_traceability_is_many_to_many_and_replaceable(client):
+    tester = as_user("tester")
+    url = "/api/requirements/R2/test-cases"
+    assert client.put(url, json={"test_cases": ["TC-001", "TC-003", "TC-001"]},
+                      headers=tester).json()["test_cases"] == ["TC-001", "TC-003"]
+    tc1 = next(c for c in client.get("/api/test-cases").json() if c["id"] == "TC-001")
+    assert tc1["requirements"] == ["R1", "R2"]
+    assert client.put(url, json={"test_cases": []}, headers=tester).json()["test_cases"] == []
+    assert client.delete("/api/requirements/R2", headers=as_user("admin")).status_code == 204
+
+
+def test_traceability_rejects_bad_input(client):
+    url = "/api/requirements/R1/test-cases"
+    body = {"test_cases": ["TC-999"]}
+    assert client.put(url, json=body, headers=as_user("tester")).status_code == 422
+    assert client.put("/api/requirements/R99/test-cases", json={"test_cases": []},
+                      headers=as_user("tester")).status_code == 404
+    links = {"test_cases": ["TC-001"]}
+    assert client.put(url, json=links).status_code == 401
+    assert client.put(url, json=links, headers=as_user("developer")).status_code == 403
+    assert client.get("/api/requirements/R1").json()["test_cases"] == ["TC-001", "TC-002"]
