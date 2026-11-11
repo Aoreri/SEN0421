@@ -6,6 +6,7 @@ from sqlalchemy.exc import DatabaseError
 from app.db import SessionLocal, engine
 from app.models import Defect
 from app.models import TestCase as CaseRecord
+from tests.conftest import as_user
 
 pytestmark = [pytest.mark.integration, pytest.mark.usefixtures("fresh_seed")]
 
@@ -16,11 +17,13 @@ STATES = ("Open", "In Progress", "Resolved", "Closed")
 
 
 def create_in_state(client, status):
-    response = client.post("/api/defects", json={"title": "Lifecycle check"})
+    headers = as_user("admin")
+    response = client.post("/api/defects", json={"title": "Lifecycle check"}, headers=headers)
     assert response.status_code == 201
     defect_id = response.json()["id"]
     for next_state in STATES[1:STATES.index(status) + 1]:
-        moved = client.post(f"/api/defects/{defect_id}/transition", json={"to": next_state})
+        moved = client.post(f"/api/defects/{defect_id}/transition",
+                            json={"to": next_state}, headers=headers)
         assert moved.status_code == 200
     return defect_id
 
@@ -31,7 +34,7 @@ def test_all_lifecycle_transitions_and_history(client, source, target):
     path = f"/api/defects/{defect_id}"
     before = client.get(path + "/history").json()
     before_defects = client.get("/api/defects").json()
-    response = client.post(path + "/transition", json={"to": target})
+    response = client.post(path + "/transition", json={"to": target}, headers=as_user("admin"))
     history = client.get(path + "/history").json()
     if (source, target) in LEGAL:
         assert response.status_code == 200
@@ -48,7 +51,8 @@ def test_all_lifecycle_transitions_and_history(client, source, target):
 
 def test_unknown_status_is_rejected_without_history_change(client):
     before = client.get("/api/defects/1/history").json()
-    response = client.post("/api/defects/1/transition", json={"to": "Unknown"})
+    response = client.post("/api/defects/1/transition", json={"to": "Unknown"},
+                           headers=as_user("admin"))
     assert response.status_code == 400
     assert client.get("/api/defects/1/history").json() == before
 
@@ -67,7 +71,7 @@ def test_test_cases_keep_requirement_traceability(client):
 def test_rejected_creation_has_no_database_side_effects(client, payload):
     before = client.get("/api/defects").json()
     history = client.get("/api/defects/1/history").json()
-    assert client.post("/api/defects", json=payload).status_code == 422
+    assert client.post("/api/defects", json=payload, headers=as_user("tester")).status_code == 422
     assert client.get("/api/defects").json() == before
     assert client.get("/api/defects/1/history").json() == history
 
@@ -75,7 +79,7 @@ def test_rejected_creation_has_no_database_side_effects(client, payload):
 def test_new_defect_is_persisted_with_initial_history(client):
     response = client.post("/api/defects", json={
         "title": "Traceable defect", "severity": "High", "test_case": "TC-003",
-    })
+    }, headers=as_user("tester"))
     assert response.status_code == 201
     defect = response.json()
     assert defect in client.get("/api/defects").json()
@@ -103,10 +107,13 @@ def test_metrics_handle_no_test_cases(client):
 
 
 def test_closing_and_reopening_changes_open_defect_metric(client):
+    headers = as_user("tester")
     initial = client.get("/api/metrics").json()["open_defects"]
-    assert client.post("/api/defects/3/transition", json={"to": "Closed"}).status_code == 200
+    assert client.post("/api/defects/3/transition", json={"to": "Closed"},
+                       headers=headers).status_code == 200
     assert client.get("/api/metrics").json()["open_defects"] == initial - 1
-    assert client.post("/api/defects/3/transition", json={"to": "Open"}).status_code == 200
+    assert client.post("/api/defects/3/transition", json={"to": "Open"},
+                       headers=headers).status_code == 200
     assert client.get("/api/metrics").json()["open_defects"] == initial
 
 

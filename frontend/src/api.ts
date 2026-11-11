@@ -79,10 +79,14 @@ export function formatErrorMessage(
 }
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const token = localStorage.getItem("token");
   let res: Response;
   try {
     res = await fetch("/api" + path, {
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
       ...options,
     });
   } catch {

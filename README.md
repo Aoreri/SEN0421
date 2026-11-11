@@ -1,7 +1,7 @@
 # SDS-06: Agile Test and Defect Tracking System
 
 > ⚠️ **Bu repo şu an bir DEMO / TEMPLATE'tir.** Proje iskeletini ve temel akışı göstermek için hazırlanmıştır;
-> veriler PostgreSQL'de tutulur ancak kimlik doğrulama henüz yoktur; üretim için uygun değildir.
+> veriler PostgreSQL'de tutulur; demo kullanıcılar ve parolaları herkese açıktır, üretim için uygun değildir.
 
 İstanbul Kültür Üniversitesi · Software Development with Standards dersi projesi.
 ISO/IEC/IEEE 12207 yaşam döngüsü süreç modeline dayalı; IEEE 829 ve ISO/IEC/IEEE 29119-2 / 29119-3 referans alınır.
@@ -52,7 +52,7 @@ docker compose up -d --wait          # mevcut imajlarla yeniden başlatır
 `pgdata` adlı mevcut volume kullanılır. `docker compose down -v` veritabanını
 siler; yalnızca atılabilir demo verisini sıfırlamak istediğinizde kullanın.
 5432, 8000 ve 5173 portları boş olmalı; yerelde çalışan aynı servisleri önce
-durdurun. Kimlik doğrulaması yoktur ve `sds06` şifresi yalnızca yerel demo içindir;
+durdurun. Demo kullanıcılar ve `sds06` veritabanı şifresi yalnızca yerel demo içindir;
 bu yapılandırma üretim dağıtımı için değildir.
 
 Bu çalışma PLN-12 / ISO/IEC/IEEE 12207 — Konfigürasyon Yönetimi kapsamındadır.
@@ -77,8 +77,18 @@ uvicorn app.main:app --reload
 pytest                        # testler (varsayılan: geçici SQLite)
 ```
 
+**Demo kullanıcılar** (hepsinin parolası `demo1234`; API sözleşmesi: [docs/api-auth.md](docs/api-auth.md))
+
+| Kullanıcı | Rol |
+| --- | --- |
+| `admin` | Admin |
+| `testlead` | Test Lead |
+| `tester` | Tester |
+| `developer` | Developer |
+
 Bağlantı adresi `DATABASE_URL` ortam değişkeninden okunur
 (varsayılan `postgresql+psycopg://sds06:sds06@localhost:5432/sds06`).
+JWT imza anahtarı `JWT_SECRET` ortam değişkeninden okunur; verilmezse her başlatmada rastgele üretilir.
 Yeni migrasyon: `alembic revision -m "açıklama"`.
 
 **Frontend** (http://localhost:5173, Node.js 18+ gerekir)
@@ -96,11 +106,11 @@ Vite geliştirme sunucusu `/api` isteklerini `http://localhost:8000` adresindeki
 - Test vakaları listesi (gereksinim eşlemesiyle, R1-R8)
 - Defect oluşturma ve yaşam döngüsü: `Open → In Progress → Resolved → Closed` (+ Reopen)
 - Geçersiz geçişlerin backend'de reddedilmesi ve değiştirilemez geçmiş kaydı (`/api/defects/{id}/history`)
+- JWT ile giriş ve rol tabanlı erişim (Admin, Test Lead, Tester, Developer)
 - Basit metrikler: koşum oranı, başarı oranı, açık defect sayısı
 
 ## Planlanan (template sonrası)
 
-- Kimlik doğrulama ve rol tabanlı erişim
 - IEEE 829 test planı / test özet raporu üretimi (Jinja2 + WeasyPrint)
 - JUnit / Cobertura sonuç içe aktarımı, CI/CD
 

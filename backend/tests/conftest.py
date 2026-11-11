@@ -1,6 +1,7 @@
 """Shared fixtures; DATABASE_URL must only identify a disposable test database."""
 import os
 import tempfile
+from functools import cache
 from pathlib import Path
 
 # Set the URL before importing app.db so unit tests never select the dev DB by accident.
@@ -16,6 +17,14 @@ from app.db import engine  # noqa: E402
 from app.main import app  # noqa: E402
 
 BACKEND = Path(__file__).resolve().parents[1]
+
+
+@cache
+def as_user(username: str) -> dict:
+    """Giriş yapıp Authorization başlığı döner (bcrypt yavaş olduğundan önbelleklenir)."""
+    with TestClient(app) as test_client:
+        res = test_client.post("/api/auth/login", json={"username": username, "password": "demo1234"})
+    return {"Authorization": f"Bearer {res.json()['access_token']}"}
 
 
 @pytest.fixture

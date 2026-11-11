@@ -1,20 +1,17 @@
 """SDS-06 Agile Test and Defect Tracking System - DEMO / TEMPLATE backend.
 
-Veriler PostgreSQL'de tutulur (SQLAlchemy + Alembic, PLN-04). Kimlik doğrulama henüz yoktur (PLN-05).
+Veriler PostgreSQL'de tutulur (SQLAlchemy + Alembic, PLN-04). Kimlik doğrulama: app/auth.py (PLN-05).
 """
-
-from typing import Annotated
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
 
-from .db import get_db
+from . import auth
+from .auth import ADMIN, TEST_LEAD, TESTER, CurrentUser, require_roles
+from .db import DB
 from .models import Defect, DefectHistory, TestCase
-
-DB = Annotated[Session, Depends(get_db)]
 
 app = FastAPI(title="SDS-06 Test & Defect Tracker (Template)", version="0.1.0")
 
@@ -24,6 +21,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.include_router(auth.router)
 
 # Defect yaşam döngüsü (WP-04): izin verilen geçişler
 TRANSITIONS = {
@@ -67,7 +65,8 @@ def list_defects(db: DB):
     return [defect_out(d) for d in db.scalars(select(Defect).order_by(Defect.id))]
 
 
-@app.post("/api/defects", status_code=201)
+@app.post("/api/defects", status_code=201,
+          dependencies=[Depends(require_roles(ADMIN, TEST_LEAD, TESTER))])
 def create_defect(body: DefectCreate, db: DB):
     if not body.title.strip():
         raise HTTPException(422, "Başlık boş olamaz")
@@ -82,7 +81,7 @@ def create_defect(body: DefectCreate, db: DB):
 
 
 @app.post("/api/defects/{defect_id}/transition")
-def transition_defect(defect_id: int, body: Transition, db: DB):
+def transition_defect(defect_id: int, body: Transition, db: DB, _: CurrentUser):
     defect = db.get(Defect, defect_id, with_for_update=True)
     if not defect:
         raise HTTPException(404, "Defect bulunamadı")
