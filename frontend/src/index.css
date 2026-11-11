@@ -1,39 +1,61 @@
 * { box-sizing: border-box; }
 body { margin: 0; font-family: system-ui, sans-serif; background: #f5f6f8; color: #222; }
 .banner { background: #fff3cd; color: #7a5a00; padding: 10px 16px; text-align: center; border-bottom: 1px solid #f0d58c; }
-header { background: #1f3a5f; color: #fff; padding: 20px 16px; }
+header { background: #1f3a5f; color: #fff; padding: 20px 16px 0; }
+.header-inner { max-width: 960px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding-bottom: 14px; }
 header h1 { margin: 0 0 4px; font-size: 1.4rem; }
 header p { margin: 0; opacity: .8; font-size: .9rem; }
+.auth-bar { display: flex; align-items: center; gap: 10px; font-size: .9rem; }
+.auth-user { display: inline-flex; align-items: center; gap: 6px; }
+.header-btn { background: rgba(255, 255, 255, .15); color: #fff; border: 1px solid rgba(255, 255, 255, .35); border-radius: 4px; padding: 6px 12px; font-size: .85rem; text-decoration: none; cursor: pointer; }
+.header-btn:hover { background: rgba(255, 255, 255, .25); }
+.top-nav { max-width: 960px; margin: 0 auto; display: flex; gap: 8px; border-top: 1px solid rgba(255, 255, 255, .15); padding-top: 10px; flex-wrap: wrap; }
+.nav-link { color: rgba(255, 255, 255, .82); text-decoration: none; padding: 8px 14px; border-radius: 6px 6px 0 0; font-size: .9rem; font-weight: 500; }
+.nav-link:hover { color: #fff; background: rgba(255, 255, 255, .1); }
+.nav-link.active { color: #1f3a5f; background: #f5f6f8; font-weight: 600; }
 main { max-width: 960px; margin: 0 auto; padding: 16px; }
 section { background: #fff; border-radius: 8px; padding: 16px; margin-bottom: 16px; overflow-x: auto; }
 h2 { margin-top: 0; font-size: 1.1rem; }
+.section-desc { margin-top: 0; color: #4b5563; font-size: .9rem; }
+.section-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.filter-group { display: flex; align-items: center; gap: 8px; font-size: .85rem; }
 .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; background: none; padding: 0; }
 .card { background: #fff; border-radius: 8px; padding: 14px; display: flex; flex-direction: column; gap: 4px; }
 .card span { font-size: .85rem; color: #666; }
 .card strong { font-size: 1.6rem; }
 table { width: 100%; border-collapse: collapse; font-size: .9rem; }
-th, td { text-align: left; padding: 8px; border-bottom: 1px solid #eee; }
+th, td { text-align: left; padding: 8px; border-bottom: 1px solid #eee; vertical-align: middle; }
 .table-empty { text-align: center; color: #666; padding: 16px; font-style: italic; }
 form { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; align-items: flex-start; }
 .form-field { display: flex; flex-direction: column; gap: 4px; min-width: 150px; }
-.form-field:first-child { flex: 1; min-width: 220px; }
+.form-field:first-child { flex: 1; min-width: 180px; }
 .form-field label { font-size: .8rem; font-weight: 600; color: #374151; }
 .required-mark { color: #b91c1c; }
 .form-field.has-error input, .form-field.has-error select { border-color: #dc2626; background: #fef2f2; }
 .field-error { font-size: .78rem; color: #b91c1c; }
-.form-actions { display: flex; align-items: flex-end; padding-top: 19px; }
+.form-actions { display: flex; align-items: flex-end; gap: 8px; padding-top: 19px; }
 input, select, button { padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; font: inherit; }
 button { background: #1f3a5f; color: #fff; border: none; cursor: pointer; }
 button:disabled { opacity: .6; cursor: not-allowed; }
+.secondary-btn { background: #e5e7eb; color: #1f2937; }
+.danger-btn { background: #fee2e2; color: #991b1b; }
+.btn-link { display: inline-block; background: #1f3a5f; color: #fff; padding: 6px 12px; border-radius: 4px; text-decoration: none; font-size: .85rem; }
 td button { font-size: .8rem; padding: 3px 8px; margin-right: 4px; }
+.row-actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.badge-list { display: flex; gap: 4px; flex-wrap: wrap; }
 .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: .8rem; background: #e5e7eb; color: #374151; }
-.passed, .closed, .low { background: #d1fae5; color: #065f46; }
-.failed, .open, .critical, .high { background: #fee2e2; color: #991b1b; }
-.blocked, .in-progress, .medium { background: #fef3c7; color: #92400e; }
-.resolved { background: #dbeafe; color: #1e40af; }
+.passed, .closed, .low, .tester { background: #d1fae5; color: #065f46; }
+.failed, .open, .critical, .high, .admin { background: #fee2e2; color: #991b1b; }
+.blocked, .in-progress, .medium, .test-lead { background: #fef3c7; color: #92400e; }
+.resolved, .developer { background: #dbeafe; color: #1e40af; }
 .not-run { background: #e5e7eb; color: #4b5563; }
 .hint { font-size: .8rem; color: #666; margin-bottom: 0; }
+.role-inline-hint { margin-top: 0; margin-bottom: 10px; }
+.role-notice, .session-card { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #eff6ff; color: #1e3a8a; border: 1px solid #bfdbfe; border-radius: 8px; padding: 12px 16px; font-size: .9rem; }
+.trace-panel { flex-direction: column; align-items: stretch; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 14px; margin-bottom: 16px; }
+.trace-panel-header { display: flex; flex-direction: column; gap: 4px; font-size: .9rem; }
+.trace-checkbox-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 8px; margin: 6px 0; }
+.trace-checkbox-item { display: flex; align-items: center; gap: 8px; background: #fff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 10px; font-size: .85rem; cursor: pointer; }
 .error-alert { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; border-radius: 8px; padding: 10px 14px; margin-bottom: 16px; font-size: .9rem; }
 .error-dismiss { background: transparent; color: #991b1b; border: 1px solid #fca5a5; padding: 3px 8px; font-size: .8rem; }
 footer { text-align: center; font-size: .8rem; color: #888; padding: 16px; }
-
