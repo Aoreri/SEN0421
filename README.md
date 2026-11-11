@@ -22,6 +22,44 @@ ve Pull Request gönderin; birleştirme için en az 1 onay gerekir. PR açıklam
 
 ## Çalıştırma
 
+### Docker Compose ile tek komut (PLN-12 — Esra Kaya)
+
+Docker Engine / Docker Desktop ve Docker Compose v2 gerekir. Proje kökünde:
+
+```bash
+docker compose up --build -d --wait
+```
+
+Bu komut PostgreSQL 16'yı, FastAPI backend'ini ve derlenmiş React arayüzünü
+birlikte başlatır. Veritabanı hazır olduktan sonra backend mevcut Alembic
+migrasyonlarını (`alembic upgrade head`) uygular; migrasyon başarısızsa API
+başlamaz. İlk migrasyon demo verisini yükler, sonraki başlangıçlar mevcut
+veriyi sıfırlamaz. Frontend backend sağlıklı olduktan sonra başlar.
+
+- Arayüz: http://localhost:5173 (Nginx ile sunulan derlenmiş sürüm; hot reload yok).
+- API / Swagger: http://localhost:8000/docs; sağlık kontrolü: http://localhost:8000/api/health.
+- Arayüzün `/api/` istekleri Nginx üzerinden `backend:8000` adresine gider.
+- Backend `DATABASE_URL` ile Compose ağındaki `db:5432` PostgreSQL servisine bağlanır.
+- Host üzerindeki PostgreSQL erişimi ve yerel geliştirme adresi değişmez: `localhost:5432`.
+
+```bash
+docker compose ps                   # servis ve sağlık durumları
+docker compose logs backend         # migrasyon ve API logları
+docker compose down                 # durdurur; pgdata verisini korur
+docker compose up -d --wait          # mevcut imajlarla yeniden başlatır
+```
+
+`pgdata` adlı mevcut volume kullanılır. `docker compose down -v` veritabanını
+siler; yalnızca atılabilir demo verisini sıfırlamak istediğinizde kullanın.
+5432, 8000 ve 5173 portları boş olmalı; yerelde çalışan aynı servisleri önce
+durdurun. Kimlik doğrulaması yoktur ve `sds06` şifresi yalnızca yerel demo içindir;
+bu yapılandırma üretim dağıtımı için değildir.
+
+Bu çalışma PLN-12 / ISO/IEC/IEEE 12207 — Konfigürasyon Yönetimi kapsamındadır.
+API, veri modeli, migrasyonlar ve mevcut frontend geliştirme akışı değiştirilmez.
+
+### Docker dışında yerel geliştirme
+
 **Veritabanı** (PostgreSQL 16, Docker gerekir)
 
 ```bash
@@ -64,7 +102,7 @@ Vite geliştirme sunucusu `/api` isteklerini `http://localhost:8000` adresindeki
 
 - Kimlik doğrulama ve rol tabanlı erişim
 - IEEE 829 test planı / test özet raporu üretimi (Jinja2 + WeasyPrint)
-- JUnit / Cobertura sonuç içe aktarımı, CI/CD, Docker Compose
+- JUnit / Cobertura sonuç içe aktarımı, CI/CD
 
 ## PLN-11 — Sürekli entegrasyon (Esra Kaya)
 
