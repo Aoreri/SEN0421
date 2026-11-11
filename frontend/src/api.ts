@@ -53,6 +53,13 @@ export type Defect = {
   allowed: string[];
 };
 
+export type DefectHistoryEntry = {
+  defect_id: number;
+  from: string | null;
+  to: string;
+  at: string;
+};
+
 export type Metrics = {
   total_tests: number;
   execution_rate: number;
@@ -173,6 +180,7 @@ export const api = {
   metrics: () => request<Metrics>("/metrics"),
   testCases: () => request<TestCase[]>("/test-cases"),
   defects: () => request<Defect[]>("/defects"),
+  defectHistory: (id: number) => request<DefectHistoryEntry[]>(`/defects/${id}/history`),
   createDefect: (title: string, severity: string, test_case: string | null = null) =>
     request<Defect>("/defects", {
       method: "POST",
