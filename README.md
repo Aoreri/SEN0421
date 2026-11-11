@@ -22,6 +22,44 @@ ve Pull Request gönderin; birleştirme için en az 1 onay gerekir. PR açıklam
 
 ## Çalıştırma
 
+### Docker Compose ile tek komut (PLN-12 — Esra Kaya)
+
+Docker Engine / Docker Desktop ve Docker Compose v2 gerekir. Proje kökünde:
+
+```bash
+docker compose up --build -d --wait
+```
+
+Bu komut PostgreSQL 16'yı, FastAPI backend'ini ve derlenmiş React arayüzünü
+birlikte başlatır. Veritabanı hazır olduktan sonra backend mevcut Alembic
+migrasyonlarını (`alembic upgrade head`) uygular; migrasyon başarısızsa API
+başlamaz. İlk migrasyon demo verisini yükler, sonraki başlangıçlar mevcut
+veriyi sıfırlamaz. Frontend backend sağlıklı olduktan sonra başlar.
+
+- Arayüz: http://localhost:5173 (Nginx ile sunulan derlenmiş sürüm; hot reload yok).
+- API / Swagger: http://localhost:8000/docs; sağlık kontrolü: http://localhost:8000/api/health.
+- Arayüzün `/api/` istekleri Nginx üzerinden `backend:8000` adresine gider.
+- Backend `DATABASE_URL` ile Compose ağındaki `db:5432` PostgreSQL servisine bağlanır.
+- Host üzerindeki PostgreSQL erişimi ve yerel geliştirme adresi değişmez: `localhost:5432`.
+
+```bash
+docker compose ps                   # servis ve sağlık durumları
+docker compose logs backend         # migrasyon ve API logları
+docker compose down                 # durdurur; pgdata verisini korur
+docker compose up -d --wait          # mevcut imajlarla yeniden başlatır
+```
+
+`pgdata` adlı mevcut volume kullanılır. `docker compose down -v` veritabanını
+siler; yalnızca atılabilir demo verisini sıfırlamak istediğinizde kullanın.
+5432, 8000 ve 5173 portları boş olmalı; yerelde çalışan aynı servisleri önce
+durdurun. Demo kullanıcılar ve `sds06` veritabanı şifresi yalnızca yerel demo içindir;
+bu yapılandırma üretim dağıtımı için değildir.
+
+Bu çalışma PLN-12 / ISO/IEC/IEEE 12207 — Konfigürasyon Yönetimi kapsamındadır.
+API, veri modeli, migrasyonlar ve mevcut frontend geliştirme akışı değiştirilmez.
+
+### Docker dışında yerel geliştirme
+
 **Veritabanı** (PostgreSQL 16, Docker gerekir)
 
 ```bash
@@ -75,7 +113,7 @@ Vite geliştirme sunucusu `/api` isteklerini `http://localhost:8000` adresindeki
 ## Planlanan (template sonrası)
 
 - IEEE 829 test planı / test özet raporu üretimi (Jinja2 + WeasyPrint)
-- JUnit / Cobertura sonuç içe aktarımı, CI/CD, Docker Compose
+- JUnit / Cobertura sonuç içe aktarımı, CI/CD
 
 ## PLN-11 — Sürekli entegrasyon (Esra Kaya)
 
@@ -95,7 +133,7 @@ source .venv/bin/activate
 python -m pip install -r requirements-dev.txt
 ruff check .
 mypy app
-python -m pytest -q
+python -m pytest -q --cov=app --cov-report=term-missing --cov-report=xml:coverage.xml
 ```
 
 Ayrı terminalde:
@@ -113,6 +151,43 @@ geçerli/geçersiz durum geçişlerini, geçmişin korunmasını, bulunamayan de
 ve örnek metrikleri kapsar. Testler varsayılan olarak geçici bir SQLite veritabanında çalışır (Alembic migrasyonlarıyla kurulur);
 `DATABASE_URL` verilirse o veritabanını kullanır.
 Bu aşamada frontend için lint, tip kontrolü ve derleme çalışır; frontend birim
-test altyapısı henüz eklenmemiştir. Genişletilmiş testler ve Cobertura raporu
-PLN-13 kapsamındadır. Sonuçlar GitHub → Actions → CI ekranından izlenebilir.
+test altyapısı henüz eklenmemiştir. Backend test kapsamı ve Cobertura çıktıları aşağıdaki PLN-13 bölümünde açıklanmıştır. Sonuçlar GitHub → Actions → CI ekranından izlenebilir.
 Bu hat branch koruma kurallarını kendiliğinden etkinleştirmez.
+
+
+## PLN-13 — Backend testleri ve Cobertura kapsam raporu (Esra Kaya)
+
+ISO/IEC/IEEE 29119-2 — Test Uygulama; ISO/IEC/IEEE 12207 — Doğrulama.
+Mevcut uygulama davranışları test edilir; yeni API veya veri modeli eklenmez.
+
+- `tests/test_unit.py`: veritabanına bağlanmadan defect yanıtı ve izin verilen
+  işlem sözleşmesi (R3/R4) için birim testleri.
+- `tests/test_api.py` ve `tests/test_integration.py`: migrasyonlarla kurulan
+  veritabanında API, R3 defect oluşturma, R4 yaşam döngüsü, geçmişin korunması,
+  test vakası/gereksinim izlenebilirliği ve metriklerin sınır durumları.
+- PostgreSQL'e özel testler geçmiş tablosunda UPDATE ve DELETE'in trigger
+  tarafından reddedildiğini doğrular. SQLite çalışmasında yalnızca bu testler atlanır.
+
+Backend klasöründe bağımlılıkları `python -m pip install -r requirements-dev.txt`
+ile yükleyip çalıştırın:
+
+```bash
+python -m pytest -q --cov=app --cov-report=term-missing --cov-report=xml:coverage.xml
+python -m pytest -q -m unit
+```
+
+İlk komut satır ve dal kapsamını ölçer, Cobertura biçiminde `backend/coverage.xml`
+üretir. Yüzde yalnızca `app/` kaynaklarını kapsar; frontend veya migrasyon kapsamı
+olarak yorumlanmamalıdır. Rapor dosyaları üretilen çıktılardır; Git'e eklenmez.
+
+Varsayılan çalıştırma geçici SQLite kullanır. PostgreSQL için yalnızca atılabilir,
+boş bir test veritabanını `DATABASE_URL` ile açıkça seçin. Her entegrasyon testi
+`alembic downgrade base` / `upgrade head` çalıştırır; geliştirme veya gerçek veri
+bulunan veritabanını seçmeyin. Salt birim testleri migrasyon çalıştırmaz.
+
+CI'da mevcut **Backend checks** işi SQLite ile çalışır; yeni
+**Backend PostgreSQL tests** işi kendine ait PostgreSQL 16 servisini kullanır.
+Her ikisi de testlerden sonra Cobertura XML dosyasını yükler (dosya oluşmuşsa,
+testler başarısız olduğunda da). GitHub → Actions → ilgili CI çalışması →
+**Artifacts** bölümünden `backend-coverage-sqlite` veya
+`backend-coverage-postgres` çıktısını indirin. Çıktılar 14 gün saklanır.

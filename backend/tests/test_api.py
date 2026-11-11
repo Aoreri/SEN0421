@@ -1,53 +1,26 @@
-"""API + migrasyon testi. Varsayılan olarak geçici SQLite kullanır; DATABASE_URL verilirse o veritabanında çalışır."""
-import os
-import tempfile
-from pathlib import Path
+"""API integration tests against the migrated, disposable test database."""
+from datetime import UTC, datetime, timedelta
 
-os.environ.setdefault("DATABASE_URL", f"sqlite:///{tempfile.mkdtemp()}/test.db")
+import bcrypt
+import jwt
+import pytest
 
-from datetime import UTC, datetime, timedelta  # noqa: E402
-from functools import cache  # noqa: E402
+from app.auth import JWT_ALGORITHM, JWT_SECRET
+from app.db import SessionLocal
+from app.models import DefectTransition, User
+from tests.conftest import as_user
 
-import bcrypt  # noqa: E402
-import jwt  # noqa: E402
-import pytest  # noqa: E402
-from fastapi.testclient import TestClient  # noqa: E402
-
-from alembic import command  # noqa: E402
-from alembic.config import Config  # noqa: E402
-from app.auth import JWT_ALGORITHM, JWT_SECRET  # noqa: E402
-from app.db import SessionLocal  # noqa: E402
-from app.main import app  # noqa: E402
-from app.models import DefectTransition, User  # noqa: E402
-
-BACKEND = Path(__file__).resolve().parents[1]
-cfg = Config(str(BACKEND / "alembic.ini"))
-cfg.set_main_option("script_location", str(BACKEND / "alembic"))
-client = TestClient(app)
+pytestmark = [pytest.mark.integration, pytest.mark.usefixtures("fresh_seed")]
 
 
-@pytest.fixture(autouse=True)
-def fresh_seed():
-    """Her testi temiz tohum durumuyla başlat; testler sıradan bağımsız olsun."""
-    command.downgrade(cfg, "base")
-    command.upgrade(cfg, "head")
-
-
-@cache
-def as_user(username: str) -> dict:
-    """Giriş yapıp Authorization başlığı döner (bcrypt yavaş olduğundan önbelleklenir)."""
-    res = client.post("/api/auth/login", json={"username": username, "password": "demo1234"})
-    return {"Authorization": f"Bearer {res.json()['access_token']}"}
-
-
-def test_seed_and_metrics():
+def test_seed_and_metrics(client):
     assert len(client.get("/api/test-cases").json()) == 6
     assert client.get("/api/metrics").json() == {
         "total_tests": 6, "execution_rate": 66.7, "pass_rate": 75.0, "open_defects": 3,
     }
 
 
-def test_defect_lifecycle_and_history():
+def test_defect_lifecycle_and_history(client):
     d = client.post("/api/defects", json={"title": "Yeni hata", "test_case": "TC-001"},
                     headers=as_user("tester")).json()
     assert d["id"] == 4 and d["status"] == "Open" and d["allowed"] == []
@@ -65,7 +38,7 @@ def test_defect_lifecycle_and_history():
     ]
 
 
-def test_validation():
+def test_validation(client):
     tester = as_user("tester")
     assert client.post("/api/defects", json={"title": "  "}, headers=tester).status_code == 422
     assert client.post("/api/defects", json={"title": "x", "test_case": "TC-999"},
@@ -74,11 +47,11 @@ def test_validation():
                        headers=tester).status_code == 404
 
 
-def test_health():
+def test_health(client):
     assert client.get("/api/health").json() == {"status": "ok", "template": True}
 
 
-def test_rejected_requests_leave_data_unchanged():
+def test_rejected_requests_leave_data_unchanged(client):
     before = client.get("/api/defects/1/history").json()
     count = len(client.get("/api/defects").json())
     tester = as_user("tester")
@@ -94,7 +67,7 @@ def test_rejected_requests_leave_data_unchanged():
 @pytest.mark.parametrize("username,role", [
     ("admin", "Admin"), ("testlead", "Test Lead"), ("tester", "Tester"), ("developer", "Developer"),
 ])
-def test_login_and_me(username, role):
+def test_login_and_me(client, username, role):
     body = client.post("/api/auth/login", json={"username": username, "password": "demo1234"}).json()
     assert body["token_type"] == "bearer"
     assert body["user"]["username"] == username and body["user"]["role"] == role
@@ -103,12 +76,12 @@ def test_login_and_me(username, role):
 
 
 @pytest.mark.parametrize("username,password", [("tester", "yanlis"), ("yok", "demo1234")])
-def test_login_rejects_bad_credentials(username, password):
+def test_login_rejects_bad_credentials(client, username, password):
     res = client.post("/api/auth/login", json={"username": username, "password": password})
     assert res.status_code == 401 and "access_token" not in res.json()
 
 
-def test_login_does_not_truncate_long_passwords():
+def test_login_does_not_truncate_long_passwords(client):
     password = "a" * 72
     with SessionLocal() as db:
         db.add(User(username="uzun", role="Tester",
@@ -132,11 +105,11 @@ def forged(secret=JWT_SECRET, expires_in=60, sub="1") -> dict:
     forged(sub="999"),
     forged(sub="abc"),
 ])
-def test_bad_tokens_are_rejected(headers):
+def test_bad_tokens_are_rejected(client, headers):
     assert client.get("/api/auth/me", headers=headers).status_code == 401
 
 
-def test_mutations_require_login_and_role():
+def test_mutations_require_login_and_role(client):
     before = len(client.get("/api/defects").json())
     assert client.post("/api/defects", json={"title": "x"}).status_code == 401
     assert client.post("/api/defects/1/transition", json={"to": "In Progress"}).status_code == 401
@@ -155,21 +128,21 @@ def test_mutations_require_login_and_role():
     (3, "Closed", "tester", "developer"),
     (3, "Open", "testlead", "developer"),
 ])
-def test_transition_roles(defect, to, allowed, denied):
+def test_transition_roles(client, defect, to, allowed, denied):
     url = f"/api/defects/{defect}/transition"
     assert client.post(url, json={"to": to}, headers=as_user(denied)).status_code == 403
     res = client.post(url, json={"to": to}, headers=as_user(allowed))
     assert res.status_code == 200 and res.json()["status"] == to
 
 
-def test_closed_defect_reopen_roles():
+def test_closed_defect_reopen_roles(client):
     url = "/api/defects/3/transition"
     client.post(url, json={"to": "Closed"}, headers=as_user("tester"))
     assert client.post(url, json={"to": "Open"}, headers=as_user("developer")).status_code == 403
     assert client.post(url, json={"to": "Open"}, headers=as_user("tester")).status_code == 200
 
 
-def test_allowed_depends_on_role():
+def test_allowed_depends_on_role(client):
     def allowed(headers):
         return {d["id"]: d["allowed"] for d in client.get("/api/defects", headers=headers).json()}
 
@@ -180,7 +153,7 @@ def test_allowed_depends_on_role():
     assert client.get("/api/defects", headers=forged(expires_in=-60)).status_code == 401
 
 
-def test_denied_transitions_write_no_history():
+def test_denied_transitions_write_no_history(client):
     before = client.get("/api/defects/1/history").json()
     url = "/api/defects/1/transition"
     assert client.post(url, json={"to": "In Progress"}, headers=as_user("tester")).status_code == 403
@@ -188,7 +161,7 @@ def test_denied_transitions_write_no_history():
     assert client.get("/api/defects/1/history").json() == before
 
 
-def test_transition_rules_come_from_the_database():
+def test_transition_rules_come_from_the_database(client):
     with SessionLocal() as db:
         db.get_one(DefectTransition, ("Open", "In Progress")).allowed_roles = ["Tester"]
         db.commit()
