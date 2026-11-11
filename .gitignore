@@ -18,3 +18,9 @@ dist/
 .claude/*
 !.claude/skills
 *.tsbuildinfo
+
+# Generated test coverage
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
