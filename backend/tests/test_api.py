@@ -7,7 +7,7 @@ import pytest
 
 from app.auth import JWT_ALGORITHM, JWT_SECRET
 from app.db import SessionLocal
-from app.models import User
+from app.models import DefectTransition, User
 from tests.conftest import as_user
 
 pytestmark = [pytest.mark.integration, pytest.mark.usefixtures("fresh_seed")]
@@ -23,13 +23,13 @@ def test_seed_and_metrics(client):
 def test_defect_lifecycle_and_history(client):
     d = client.post("/api/defects", json={"title": "Yeni hata", "test_case": "TC-001"},
                     headers=as_user("tester")).json()
-    assert d["id"] == 4 and d["status"] == "Open" and d["allowed"] == ["In Progress"]
+    assert d["id"] == 4 and d["status"] == "Open" and d["allowed"] == []
 
     url = f"/api/defects/{d['id']}/transition"
-    tester = as_user("tester")
-    assert client.post(url, json={"to": "Closed"}, headers=tester).status_code == 400
+    admin = as_user("admin")
+    assert client.post(url, json={"to": "Closed"}, headers=admin).status_code == 409
     for to in ("In Progress", "Resolved", "Closed", "Open"):
-        assert client.post(url, json={"to": to}, headers=tester).json()["status"] == to
+        assert client.post(url, json={"to": to}, headers=admin).json()["status"] == to
 
     hist = client.get(f"/api/defects/{d['id']}/history").json()
     assert [(h["from"], h["to"]) for h in hist] == [
@@ -56,7 +56,9 @@ def test_rejected_requests_leave_data_unchanged(client):
     count = len(client.get("/api/defects").json())
     tester = as_user("tester")
     assert client.post("/api/defects/1/transition", json={"to": "Closed"},
-                       headers=tester).status_code == 400
+                       headers=tester).status_code == 409
+    assert client.post("/api/defects/1/transition", json={"to": "In Progress"},
+                       headers=tester).status_code == 403
     assert client.post("/api/defects", json={"title": " "}, headers=tester).status_code == 422
     assert client.get("/api/defects/1/history").json() == before
     assert len(client.get("/api/defects").json()) == count
@@ -117,3 +119,52 @@ def test_mutations_require_login_and_role(client):
     for username in ("admin", "testlead", "tester"):
         assert client.post("/api/defects", json={"title": "x"},
                            headers=as_user(username)).status_code == 201
+
+
+# (defect id, tohum durumu): 1 Open, 2 In Progress, 3 Resolved
+@pytest.mark.parametrize("defect,to,allowed,denied", [
+    (1, "In Progress", "developer", "tester"),
+    (2, "Resolved", "developer", "testlead"),
+    (3, "Closed", "tester", "developer"),
+    (3, "Open", "testlead", "developer"),
+])
+def test_transition_roles(client, defect, to, allowed, denied):
+    url = f"/api/defects/{defect}/transition"
+    assert client.post(url, json={"to": to}, headers=as_user(denied)).status_code == 403
+    res = client.post(url, json={"to": to}, headers=as_user(allowed))
+    assert res.status_code == 200 and res.json()["status"] == to
+
+
+def test_closed_defect_reopen_roles(client):
+    url = "/api/defects/3/transition"
+    client.post(url, json={"to": "Closed"}, headers=as_user("tester"))
+    assert client.post(url, json={"to": "Open"}, headers=as_user("developer")).status_code == 403
+    assert client.post(url, json={"to": "Open"}, headers=as_user("tester")).status_code == 200
+
+
+def test_allowed_depends_on_role(client):
+    def allowed(headers):
+        return {d["id"]: d["allowed"] for d in client.get("/api/defects", headers=headers).json()}
+
+    assert allowed({}) == {1: [], 2: [], 3: []}
+    assert allowed(as_user("developer")) == {1: ["In Progress"], 2: ["Resolved"], 3: []}
+    assert allowed(as_user("tester")) == {1: [], 2: [], 3: ["Closed", "Open"]}
+    assert allowed(as_user("admin")) == {1: ["In Progress"], 2: ["Resolved"], 3: ["Closed", "Open"]}
+    assert client.get("/api/defects", headers=forged(expires_in=-60)).status_code == 401
+
+
+def test_denied_transitions_write_no_history(client):
+    before = client.get("/api/defects/1/history").json()
+    url = "/api/defects/1/transition"
+    assert client.post(url, json={"to": "In Progress"}, headers=as_user("tester")).status_code == 403
+    assert client.post(url, json={"to": "Nope"}, headers=as_user("admin")).status_code == 409
+    assert client.get("/api/defects/1/history").json() == before
+
+
+def test_transition_rules_come_from_the_database(client):
+    with SessionLocal() as db:
+        db.get_one(DefectTransition, ("Open", "In Progress")).allowed_roles = ["Tester"]
+        db.commit()
+    url = "/api/defects/1/transition"
+    assert client.post(url, json={"to": "In Progress"}, headers=as_user("developer")).status_code == 403
+    assert client.post(url, json={"to": "In Progress"}, headers=as_user("tester")).status_code == 200

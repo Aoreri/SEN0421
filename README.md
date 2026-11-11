@@ -105,6 +105,7 @@ Vite geliştirme sunucusu `/api` isteklerini `http://localhost:8000` adresindeki
 
 - Test vakaları listesi (gereksinim eşlemesiyle, R1-R8)
 - Defect oluşturma ve yaşam döngüsü: `Open → In Progress → Resolved → Closed` (+ Reopen)
+- Geçiş kuralları ve rol kısıtları veritabanında (`defect_transitions`): geçersiz geçiş 409, yetkisiz rol 403
 - Geçersiz geçişlerin backend'de reddedilmesi ve değiştirilemez geçmiş kaydı (`/api/defects/{id}/history`)
 - JWT ile giriş ve rol tabanlı erişim (Admin, Test Lead, Tester, Developer)
 - Basit metrikler: koşum oranı, başarı oranı, açık defect sayısı

@@ -44,7 +44,7 @@ def test_all_lifecycle_transitions_and_history(client, source, target):
         assert history[-1]["to"] == target
         assert history[-1]["at"]
     else:
-        assert response.status_code == 400
+        assert response.status_code == 409
         assert history == before
         assert client.get("/api/defects").json() == before_defects
 
@@ -53,7 +53,7 @@ def test_unknown_status_is_rejected_without_history_change(client):
     before = client.get("/api/defects/1/history").json()
     response = client.post("/api/defects/1/transition", json={"to": "Unknown"},
                            headers=as_user("admin"))
-    assert response.status_code == 400
+    assert response.status_code == 409
     assert client.get("/api/defects/1/history").json() == before
 
 
