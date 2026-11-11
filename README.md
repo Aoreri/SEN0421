@@ -122,7 +122,7 @@ source .venv/bin/activate
 python -m pip install -r requirements-dev.txt
 ruff check .
 mypy app
-python -m pytest -q
+python -m pytest -q --cov=app --cov-report=term-missing --cov-report=xml:coverage.xml
 ```
 
 Ayrı terminalde:
@@ -140,6 +140,43 @@ geçerli/geçersiz durum geçişlerini, geçmişin korunmasını, bulunamayan de
 ve örnek metrikleri kapsar. Testler varsayılan olarak geçici bir SQLite veritabanında çalışır (Alembic migrasyonlarıyla kurulur);
 `DATABASE_URL` verilirse o veritabanını kullanır.
 Bu aşamada frontend için lint, tip kontrolü ve derleme çalışır; frontend birim
-test altyapısı henüz eklenmemiştir. Genişletilmiş testler ve Cobertura raporu
-PLN-13 kapsamındadır. Sonuçlar GitHub → Actions → CI ekranından izlenebilir.
+test altyapısı henüz eklenmemiştir. Backend test kapsamı ve Cobertura çıktıları aşağıdaki PLN-13 bölümünde açıklanmıştır. Sonuçlar GitHub → Actions → CI ekranından izlenebilir.
 Bu hat branch koruma kurallarını kendiliğinden etkinleştirmez.
+
+
+## PLN-13 — Backend testleri ve Cobertura kapsam raporu (Esra Kaya)
+
+ISO/IEC/IEEE 29119-2 — Test Uygulama; ISO/IEC/IEEE 12207 — Doğrulama.
+Mevcut uygulama davranışları test edilir; yeni API veya veri modeli eklenmez.
+
+- `tests/test_unit.py`: veritabanına bağlanmadan defect yanıtı ve izin verilen
+  işlem sözleşmesi (R3/R4) için birim testleri.
+- `tests/test_api.py` ve `tests/test_integration.py`: migrasyonlarla kurulan
+  veritabanında API, R3 defect oluşturma, R4 yaşam döngüsü, geçmişin korunması,
+  test vakası/gereksinim izlenebilirliği ve metriklerin sınır durumları.
+- PostgreSQL'e özel testler geçmiş tablosunda UPDATE ve DELETE'in trigger
+  tarafından reddedildiğini doğrular. SQLite çalışmasında yalnızca bu testler atlanır.
+
+Backend klasöründe bağımlılıkları `python -m pip install -r requirements-dev.txt`
+ile yükleyip çalıştırın:
+
+```bash
+python -m pytest -q --cov=app --cov-report=term-missing --cov-report=xml:coverage.xml
+python -m pytest -q -m unit
+```
+
+İlk komut satır ve dal kapsamını ölçer, Cobertura biçiminde `backend/coverage.xml`
+üretir. Yüzde yalnızca `app/` kaynaklarını kapsar; frontend veya migrasyon kapsamı
+olarak yorumlanmamalıdır. Rapor dosyaları üretilen çıktılardır; Git'e eklenmez.
+
+Varsayılan çalıştırma geçici SQLite kullanır. PostgreSQL için yalnızca atılabilir,
+boş bir test veritabanını `DATABASE_URL` ile açıkça seçin. Her entegrasyon testi
+`alembic downgrade base` / `upgrade head` çalıştırır; geliştirme veya gerçek veri
+bulunan veritabanını seçmeyin. Salt birim testleri migrasyon çalıştırmaz.
+
+CI'da mevcut **Backend checks** işi SQLite ile çalışır; yeni
+**Backend PostgreSQL tests** işi kendine ait PostgreSQL 16 servisini kullanır.
+Her ikisi de testlerden sonra Cobertura XML dosyasını yükler (dosya oluşmuşsa,
+testler başarısız olduğunda da). GitHub → Actions → ilgili CI çalışması →
+**Artifacts** bölümünden `backend-coverage-sqlite` veya
+`backend-coverage-postgres` çıktısını indirin. Çıktılar 14 gün saklanır.

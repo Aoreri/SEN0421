@@ -1,38 +1,17 @@
-"""API + migrasyon testi. Varsayılan olarak geçici SQLite kullanır; DATABASE_URL verilirse o veritabanında çalışır."""
-import os
-import tempfile
-from pathlib import Path
+"""API integration tests against the migrated, disposable test database."""
+import pytest
 
-os.environ.setdefault("DATABASE_URL", f"sqlite:///{tempfile.mkdtemp()}/test.db")
-
-import pytest  # noqa: E402
-from fastapi.testclient import TestClient  # noqa: E402
-
-from alembic import command  # noqa: E402
-from alembic.config import Config  # noqa: E402
-from app.main import app  # noqa: E402
-
-BACKEND = Path(__file__).resolve().parents[1]
-cfg = Config(str(BACKEND / "alembic.ini"))
-cfg.set_main_option("script_location", str(BACKEND / "alembic"))
-client = TestClient(app)
+pytestmark = [pytest.mark.integration, pytest.mark.usefixtures("fresh_seed")]
 
 
-@pytest.fixture(autouse=True)
-def fresh_seed():
-    """Her testi temiz tohum durumuyla başlat; testler sıradan bağımsız olsun."""
-    command.downgrade(cfg, "base")
-    command.upgrade(cfg, "head")
-
-
-def test_seed_and_metrics():
+def test_seed_and_metrics(client):
     assert len(client.get("/api/test-cases").json()) == 6
     assert client.get("/api/metrics").json() == {
         "total_tests": 6, "execution_rate": 66.7, "pass_rate": 75.0, "open_defects": 3,
     }
 
 
-def test_defect_lifecycle_and_history():
+def test_defect_lifecycle_and_history(client):
     d = client.post("/api/defects", json={"title": "Yeni hata", "test_case": "TC-001"}).json()
     assert d["id"] == 4 and d["status"] == "Open" and d["allowed"] == ["In Progress"]
 
@@ -47,17 +26,17 @@ def test_defect_lifecycle_and_history():
     ]
 
 
-def test_validation():
+def test_validation(client):
     assert client.post("/api/defects", json={"title": "  "}).status_code == 422
     assert client.post("/api/defects", json={"title": "x", "test_case": "TC-999"}).status_code == 422
     assert client.post("/api/defects/999/transition", json={"to": "Open"}).status_code == 404
 
 
-def test_health():
+def test_health(client):
     assert client.get("/api/health").json() == {"status": "ok", "template": True}
 
 
-def test_rejected_requests_leave_data_unchanged():
+def test_rejected_requests_leave_data_unchanged(client):
     before = client.get("/api/defects/1/history").json()
     count = len(client.get("/api/defects").json())
     assert client.post("/api/defects/1/transition", json={"to": "Closed"}).status_code == 400
