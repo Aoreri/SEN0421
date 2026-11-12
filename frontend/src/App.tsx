@@ -2,6 +2,7 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import { Link, NavLink, Route, Routes, useNavigate } from "react-router-dom";
 import {
   api,
+  ApiError,
   AUTH_EXPIRED_EVENT,
   clearStoredToken,
   Defect,
@@ -185,72 +186,74 @@ function DashboardView({ user }: DashboardViewProps) {
           </p>
         )}
 
-        <form onSubmit={addDefect} noValidate>
-          <FormField id="defect-title" label="Başlık" required error={formErrors.title}>
-            <input
-              id="defect-title"
-              value={title}
-              onChange={(e) => {
-                setTitle(e.target.value);
-                if (formErrors.title) {
-                  setFormErrors((prev) => ({ ...prev, title: undefined }));
-                }
-              }}
-              placeholder="Yeni defect başlığı (en az 3 karakter)"
-              aria-invalid={Boolean(formErrors.title)}
-              aria-describedby={formErrors.title ? "defect-title-error" : undefined}
-            />
-          </FormField>
+        {canCreateDefect && (
+          <form onSubmit={addDefect} noValidate>
+            <FormField id="defect-title" label="Başlık" required error={formErrors.title}>
+              <input
+                id="defect-title"
+                value={title}
+                onChange={(e) => {
+                  setTitle(e.target.value);
+                  if (formErrors.title) {
+                    setFormErrors((prev) => ({ ...prev, title: undefined }));
+                  }
+                }}
+                placeholder="Yeni defect başlığı (en az 3 karakter)"
+                aria-invalid={Boolean(formErrors.title)}
+                aria-describedby={formErrors.title ? "defect-title-error" : undefined}
+              />
+            </FormField>
 
-          <FormField id="defect-severity" label="Önem" required error={formErrors.severity}>
-            <select
-              id="defect-severity"
-              value={severity}
-              onChange={(e) => {
-                setSeverity(e.target.value);
-                if (formErrors.severity) {
-                  setFormErrors((prev) => ({ ...prev, severity: undefined }));
-                }
-              }}
-              aria-invalid={Boolean(formErrors.severity)}
-              aria-describedby={formErrors.severity ? "defect-severity-error" : undefined}
-            >
-              {SEVERITIES.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
-          </FormField>
+            <FormField id="defect-severity" label="Önem" required error={formErrors.severity}>
+              <select
+                id="defect-severity"
+                value={severity}
+                onChange={(e) => {
+                  setSeverity(e.target.value);
+                  if (formErrors.severity) {
+                    setFormErrors((prev) => ({ ...prev, severity: undefined }));
+                  }
+                }}
+                aria-invalid={Boolean(formErrors.severity)}
+                aria-describedby={formErrors.severity ? "defect-severity-error" : undefined}
+              >
+                {SEVERITIES.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </FormField>
 
-          <FormField id="defect-test-case" label="Test Vakası" error={formErrors.testCase}>
-            <select
-              id="defect-test-case"
-              value={testCase}
-              onChange={(e) => {
-                setTestCase(e.target.value);
-                if (formErrors.testCase) {
-                  setFormErrors((prev) => ({ ...prev, testCase: undefined }));
-                }
-              }}
-              aria-invalid={Boolean(formErrors.testCase)}
-              aria-describedby={formErrors.testCase ? "defect-test-case-error" : undefined}
-            >
-              <option value="">Bağlı değil</option>
-              {tests.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.id} · {t.title}
-                </option>
-              ))}
-            </select>
-          </FormField>
+            <FormField id="defect-test-case" label="Test Vakası" error={formErrors.testCase}>
+              <select
+                id="defect-test-case"
+                value={testCase}
+                onChange={(e) => {
+                  setTestCase(e.target.value);
+                  if (formErrors.testCase) {
+                    setFormErrors((prev) => ({ ...prev, testCase: undefined }));
+                  }
+                }}
+                aria-invalid={Boolean(formErrors.testCase)}
+                aria-describedby={formErrors.testCase ? "defect-test-case-error" : undefined}
+              >
+                <option value="">Bağlı değil</option>
+                {tests.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.id} · {t.title}
+                  </option>
+                ))}
+              </select>
+            </FormField>
 
-          <div className="form-actions">
-            <button type="submit" disabled={submitting}>
-              {submitting ? "Ekleniyor..." : "Ekle"}
-            </button>
-          </div>
-        </form>
+            <div className="form-actions">
+              <button type="submit" disabled={submitting}>
+                {submitting ? "Ekleniyor..." : "Ekle"}
+              </button>
+            </div>
+          </form>
+        )}
 
         <DataTable
           columns={defectColumns}
@@ -275,8 +278,10 @@ export default function App() {
     api
       .me()
       .then((u) => setUser(u))
-      .catch(() => {
-        clearStoredToken();
+      .catch((err) => {
+        if (err instanceof ApiError && err.status === 401) {
+          clearStoredToken();
+        }
         setUser(null);
       });
   }, []);

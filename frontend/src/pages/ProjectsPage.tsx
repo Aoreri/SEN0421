@@ -145,6 +145,9 @@ export function ProjectsPage({ user }: ProjectsPageProps) {
   }
 
   async function removeProject(id: number) {
+    const project = projects.find((p) => p.id === id);
+    const label = project ? project.name : `#${id}`;
+    if (!window.confirm(`"${label}" projesi silinsin mi? Bu işlem geri alınamaz.`)) return;
     try {
       await api.deleteProject(id);
       if (editingProjectId === id) resetProjectForm();
@@ -198,6 +201,9 @@ export function ProjectsPage({ user }: ProjectsPageProps) {
   }
 
   async function removeRelease(id: number) {
+    const release = releases.find((r) => r.id === id);
+    const label = release ? release.version : `#${id}`;
+    if (!window.confirm(`"${label}" sürümü silinsin mi? Bu işlem geri alınamaz.`)) return;
     try {
       await api.deleteRelease(id);
       if (editingReleaseId === id) resetReleaseForm();
@@ -260,6 +266,9 @@ export function ProjectsPage({ user }: ProjectsPageProps) {
   }
 
   async function removeRequirement(id: string) {
+    const requirement = requirements.find((r) => r.id === id);
+    const label = requirement ? `${requirement.id} · ${requirement.title}` : id;
+    if (!window.confirm(`"${label}" gereksinimi silinsin mi? Bu işlem geri alınamaz.`)) return;
     try {
       await api.deleteRequirement(id);
       if (editingRequirementId === id) resetRequirementForm();
