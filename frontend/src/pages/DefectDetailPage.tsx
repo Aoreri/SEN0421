@@ -74,6 +74,13 @@ export function DefectDetailPage({ user }: DefectDetailPageProps) {
   }, [defectId, isValidId]);
 
   useEffect(() => {
+    setDefect(null);
+    setHistory([]);
+    setLinkedTestCase(null);
+    setError("");
+  }, [defectId]);
+
+  useEffect(() => {
     void loadDetail();
   }, [loadDetail, user]);
 
@@ -223,7 +230,7 @@ export function DefectDetailPage({ user }: DefectDetailPageProps) {
           {history.length === 0 ? (
             <p className="table-empty">Henüz geçmiş kaydı bulunamadı.</p>
           ) : (
-            <ol className="timeline" aria-label="Defect Değişiklik Geçmişi">
+            <ol className="timeline" role="list" aria-label="Defect Değişiklik Geçmişi">
               {history.map((entry, index) => {
                 const isInitial = entry.from === null;
                 const isReopen = entry.from !== null && entry.to === "Open";
