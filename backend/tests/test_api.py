@@ -48,7 +48,7 @@ def test_validation(client):
 
 
 def test_health(client):
-    assert client.get("/api/health").json() == {"status": "ok", "template": True}
+    assert client.get("/api/health").json() == {"status": "ok"}
 
 
 def test_rejected_requests_leave_data_unchanged(client):

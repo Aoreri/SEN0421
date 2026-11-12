@@ -1,4 +1,4 @@
-"""SDS-06 Agile Test and Defect Tracking System - DEMO / TEMPLATE backend.
+"""SDS-06 Agile Test and Defect Tracking System - backend.
 
 Veriler PostgreSQL'de tutulur (SQLAlchemy + Alembic, PLN-04). Kimlik doğrulama: app/auth.py (PLN-05).
 """
@@ -16,7 +16,7 @@ from .auth import ADMIN, TEST_LEAD, TESTER, CurrentUser, OptionalUser, require_r
 from .db import DB
 from .models import Defect, DefectHistory, DefectTransition, TestCase, User
 
-app = FastAPI(title="SDS-06 Test & Defect Tracker (Template)", version="0.1.0")
+app = FastAPI(title="SDS-06 Test & Defect Tracker", version="0.1.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -53,7 +53,7 @@ def defect_out(d: Defect, rules: list[DefectTransition], user: User | None) -> d
 
 @app.get("/api/health")
 def health():
-    return {"status": "ok", "template": True}
+    return {"status": "ok"}
 
 
 @app.get("/api/test-cases")

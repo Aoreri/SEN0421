@@ -1,6 +1,5 @@
 * { box-sizing: border-box; }
 body { margin: 0; font-family: system-ui, sans-serif; background: #f5f6f8; color: #222; }
-.banner { background: #fff3cd; color: #7a5a00; padding: 10px 16px; text-align: center; border-bottom: 1px solid #f0d58c; }
 header { background: #1f3a5f; color: #fff; padding: 20px 16px 0; }
 .header-inner { max-width: 960px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding-bottom: 14px; }
 header h1 { margin: 0 0 4px; font-size: 1.4rem; }
