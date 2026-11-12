@@ -1,83 +1,97 @@
 # SDS-06: Agile Test and Defect Tracking System
 
-> ⚠️ **Bu repo şu an bir DEMO / TEMPLATE'tir.** Proje iskeletini ve temel akışı göstermek için hazırlanmıştır;
-> veriler PostgreSQL'de tutulur; demo kullanıcılar ve parolaları herkese açıktır, üretim için uygun değildir.
+İstanbul Kültür Üniversitesi · Software Development with Standards dersi dönem projesi.
 
-İstanbul Kültür Üniversitesi · Software Development with Standards dersi projesi.
-ISO/IEC/IEEE 12207 yaşam döngüsü süreç modeline dayalı; IEEE 829 ve ISO/IEC/IEEE 29119-2 / 29119-3 referans alınır.
+ISO/IEC/IEEE 12207 yaşam döngüsü süreç modeline dayalı bir test yönetimi ve defect
+takip platformu. Test planlama, test vakası yazımı, defect yaşam döngüsü ve sürüm
+yayınlama adımlarını tek yerde yönetir; IEEE 829 dokümanlarını ISO/IEC/IEEE 29119-2
+(test süreçleri) ve 29119-3 (test dokümantasyonu) eşlemesiyle üretmeyi hedefler.
 
-## Yapı
+> ⚠️ Proje geliştirme aşamasındadır. Demo kullanıcıların parolaları herkese açıktır;
+> bu yapılandırma yalnızca yerel demo içindir, üretim için uygun değildir.
+
+## Ekran görüntüleri
+
+**Panel ve defect takibi:** metrik kartları, gereksinime bağlı test vakaları, defect
+oluşturma ve yalnızca API'nin izin verdiği durum geçişleri.
+
+![Panel ve defect takibi](docs/screenshots/dashboard.png)
+
+**Defect detayı (IEEE 829 Test Incident Report):** bağlı test vakası, izin verilen
+geçişler ve değiştirilemez geçmiş zaman çizelgesi.
+
+![Defect detay sayfası](docs/screenshots/defect-detail.png)
+
+**Projeler, sürümler ve gereksinimler:** test vakası ↔ gereksinim izlenebilirliği.
+
+![Projeler ve gereksinimler](docs/screenshots/projects.png)
+
+| Giriş ekranı | REST API (Swagger) |
+| --- | --- |
+| ![Giriş ekranı](docs/screenshots/login.png) | ![API dokümanı](docs/screenshots/api-docs.png) |
+
+## Özellikler
+
+| Özellik | Gereksinim | Standart |
+| --- | --- | --- |
+| Defect yaşam döngüsü `Open → In Progress → Resolved → Closed` (+ Reopen); geçiş kuralları ve rol kısıtları veritabanında (`defect_transitions`), geçersiz geçiş 409, yetkisiz rol 403 | R4 | 12207 Problem Çözümleme; 29119-2 Test Olay Raporlama |
+| Değiştirilemez defect geçmişi (`defect_history`, PostgreSQL trigger ile yalnızca ekleme) | R4, R8 | 12207 Konfigürasyon Yönetimi |
+| JWT ile giriş ve rol tabanlı erişim: Admin, Test Lead, Tester, Developer | R8 | 12207 Uygulama |
+| Proje, sürüm ve gereksinim yönetimi; test vakası ↔ gereksinim izlenebilirliği (çoka çok) | R2, R7 | 29119-2 Test Tasarımı ve Gerçekleştirme |
+| Test vakası listesi ve metrikler: koşum oranı, başarı oranı, açık defect sayısı | R2, R5 | 29119-2 Test İzleme ve Kontrol |
+
+**Planlanan:** test vakası / suite yönetimi, test koşumları, JUnit XML ve Cobertura
+içe aktarımı, grafikli metrik paneli, sürüm çıkış kriterleri ve IEEE 829 Test Plan /
+Test Summary Report / Test Incident Report üretimi (Jinja2 + WeasyPrint).
+
+## Mimari
 
 ```
-backend/    FastAPI REST API (test vakaları, defect'ler, yaşam döngüsü, metrikler)
-frontend/   React + TypeScript (Vite) arayüz
+frontend/   React + TypeScript (Vite); tüm API çağrıları src/api.ts üzerinden
+backend/    FastAPI REST API; SQLAlchemy modelleri app/models.py, Alembic migrasyonları alembic/versions/
+docs/       SRS, proje planı, Test Plan, SDD, risk kaydı, standart eşlemesi
+docker-compose.yml   PostgreSQL 16 + backend + frontend
 ```
-
-## Katkı süreci
-
-`main` korumalıdır: doğrudan push yapılamaz. Her iş için `feature/<plan-id>-kisa-ad` branch'i açın
-ve Pull Request gönderin; birleştirme için en az 1 onay gerekir. PR açıklaması
-`.github/pull_request_template.md` bölümlerini doldurmalı ve tüm bölümlerden sonra bir `Agent:` satırı içermelidir;
-`PR description` CI kontrolü bunu denetler. Ajan kuralları: [AGENTS.md](AGENTS.md).
 
 ## Çalıştırma
 
-### Docker Compose ile tek komut (PLN-12 — Esra Kaya)
+### Docker Compose (önerilen)
 
-Docker Engine / Docker Desktop ve Docker Compose v2 gerekir. Proje kökünde:
+Docker Desktop / Docker Engine ve Compose v2 gerekir. 5432, 8000 ve 5173 portları boş olmalıdır.
 
 ```bash
 docker compose up --build -d --wait
 ```
 
-Bu komut PostgreSQL 16'yı, FastAPI backend'ini ve derlenmiş React arayüzünü
-birlikte başlatır. Veritabanı hazır olduktan sonra backend mevcut Alembic
-migrasyonlarını (`alembic upgrade head`) uygular; migrasyon başarısızsa API
-başlamaz. İlk migrasyon demo verisini yükler, sonraki başlangıçlar mevcut
-veriyi sıfırlamaz. Frontend backend sağlıklı olduktan sonra başlar.
+- Arayüz: http://localhost:5173
+- API / Swagger: http://localhost:8000/docs · sağlık kontrolü: http://localhost:8000/api/health
 
-- Arayüz: http://localhost:5173 (Nginx ile sunulan derlenmiş sürüm; hot reload yok).
-- API / Swagger: http://localhost:8000/docs; sağlık kontrolü: http://localhost:8000/api/health.
-- Arayüzün `/api/` istekleri Nginx üzerinden `backend:8000` adresine gider.
-- Backend `DATABASE_URL` ile Compose ağındaki `db:5432` PostgreSQL servisine bağlanır.
-- Host üzerindeki PostgreSQL erişimi ve yerel geliştirme adresi değişmez: `localhost:5432`.
+Backend açılışta `alembic upgrade head` çalıştırır; ilk migrasyon demo verisini yükler.
+`docker compose down` veriyi korur, `docker compose down -v` demo veritabanını siler.
+
+### Yerel geliştirme
 
 ```bash
-docker compose ps                   # servis ve sağlık durumları
-docker compose logs backend         # migrasyon ve API logları
-docker compose down                 # durdurur; pgdata verisini korur
-docker compose up -d --wait          # mevcut imajlarla yeniden başlatır
-```
+docker compose up -d db                      # yalnızca PostgreSQL
 
-`pgdata` adlı mevcut volume kullanılır. `docker compose down -v` veritabanını
-siler; yalnızca atılabilir demo verisini sıfırlamak istediğinizde kullanın.
-5432, 8000 ve 5173 portları boş olmalı; yerelde çalışan aynı servisleri önce
-durdurun. Demo kullanıcılar ve `sds06` veritabanı şifresi yalnızca yerel demo içindir;
-bu yapılandırma üretim dağıtımı için değildir.
-
-Bu çalışma PLN-12 / ISO/IEC/IEEE 12207 — Konfigürasyon Yönetimi kapsamındadır.
-API, veri modeli, migrasyonlar ve mevcut frontend geliştirme akışı değiştirilmez.
-
-### Docker dışında yerel geliştirme
-
-**Veritabanı** (PostgreSQL 16, Docker gerekir)
-
-```bash
-docker compose up -d db
-```
-
-**Backend** (http://localhost:8000, API dokümanı: `/docs`)
-
-```bash
 cd backend
-python3 -m venv .venv && source .venv/bin/activate
+python -m venv .venv && source .venv/bin/activate
 pip install -r requirements-dev.txt
-alembic upgrade head          # şemayı oluşturur + demo tohum verisini yükler
-uvicorn app.main:app --reload
-pytest                        # testler (varsayılan: geçici SQLite)
+alembic upgrade head                         # şema + demo verisi
+uvicorn app.main:app --reload                # http://localhost:8000
+
+cd frontend
+npm install
+npm run dev                                  # http://localhost:5173, /api → :8000
 ```
 
-**Demo kullanıcılar** (hepsinin parolası `demo1234`; API sözleşmesi: [docs/api-auth.md](docs/api-auth.md))
+Ortam değişkenleri: `DATABASE_URL` (varsayılan
+`postgresql+psycopg://sds06:sds06@localhost:5432/sds06`), `JWT_SECRET` (verilmezse her
+başlatmada rastgele üretilir).
+
+### Demo kullanıcılar
+
+Hepsinin parolası `demo1234`. API sözleşmesi: [docs/api-auth.md](docs/api-auth.md).
 
 | Kullanıcı | Rol |
 | --- | --- |
@@ -86,109 +100,45 @@ pytest                        # testler (varsayılan: geçici SQLite)
 | `tester` | Tester |
 | `developer` | Developer |
 
-Bağlantı adresi `DATABASE_URL` ortam değişkeninden okunur
-(varsayılan `postgresql+psycopg://sds06:sds06@localhost:5432/sds06`).
-JWT imza anahtarı `JWT_SECRET` ortam değişkeninden okunur; verilmezse her başlatmada rastgele üretilir.
-Yeni migrasyon: `alembic revision -m "açıklama"`.
-
-**Frontend** (http://localhost:5173, Node.js 18+ gerekir)
+## Testler ve CI
 
 ```bash
-cd frontend
-npm install
-npm run dev
+cd backend && ruff check . && mypy app && python -m pytest -q --cov=app --cov-report=xml:coverage.xml
+cd frontend && npm run lint && npm run typecheck && npm run build
 ```
 
-Vite geliştirme sunucusu `/api` isteklerini `http://localhost:8000` adresindeki backend'e yönlendirir.
+Testler varsayılan olarak geçici bir SQLite veritabanında çalışır. PostgreSQL'e özgü
+testler (geçmiş tablosunda UPDATE/DELETE'in trigger ile reddi) için yalnızca atılabilir
+bir test veritabanını `DATABASE_URL` ile verin; entegrasyon testleri şemayı sıfırlar.
 
-## Demoda neler var
+GitHub Actions `CI` hattı her PR'da backend (SQLite ve PostgreSQL 16) ve frontend
+kontrollerini çalıştırır; Cobertura kapsam raporları Actions → **Artifacts** altında
+14 gün saklanır.
 
-- Test vakaları listesi (gereksinim eşlemesiyle, R1-R8)
-- Defect oluşturma ve yaşam döngüsü: `Open → In Progress → Resolved → Closed` (+ Reopen)
-- Geçiş kuralları ve rol kısıtları veritabanında (`defect_transitions`): geçersiz geçiş 409, yetkisiz rol 403
-- Geçersiz geçişlerin backend'de reddedilmesi ve değiştirilemez geçmiş kaydı (`/api/defects/{id}/history`)
-- JWT ile giriş ve rol tabanlı erişim (Admin, Test Lead, Tester, Developer)
-- Proje, sürüm ve gereksinim yönetimi; test vakası ↔ gereksinim izlenebilirliği (çoka çok)
-- Basit metrikler: koşum oranı, başarı oranı, açık defect sayısı
+## Dokümanlar
 
-## Planlanan (template sonrası)
+| Doküman | Dosya |
+| --- | --- |
+| Yazılım Gereksinim Spesifikasyonu (R1–R8) | [docs/srs.md](docs/srs.md) |
+| Proje Planı | [docs/project-plan.md](docs/project-plan.md) |
+| Test Plan (IEEE 829 / 29119-3) | [docs/test-plan.md](docs/test-plan.md) |
+| Yazılım Tasarım Tanımı (mimari ve veri modeli) | [docs/software-design-description.md](docs/software-design-description.md) |
+| Standart durumu ve IEEE 829 ↔ 29119 eşlemesi | [docs/standard-status-and-mapping.md](docs/standard-status-and-mapping.md) |
+| Risk kaydı · Definition of Done | [docs/risk-register.md](docs/risk-register.md) · [docs/definition-of-done.md](docs/definition-of-done.md) |
 
-- IEEE 829 test planı / test özet raporu üretimi (Jinja2 + WeasyPrint)
-- JUnit / Cobertura sonuç içe aktarımı, CI/CD
+## Katkı süreci
 
-## PLN-11 — Sürekli entegrasyon (Esra Kaya)
+`main` korumalıdır. Her iş plan maddesini taşıyan bir branch'te yapılır
+(`feature/pln-xx-kisa-ad`) ve en az bir onaylı Pull Request ile birleştirilir. PR
+açıklaması `.github/pull_request_template.md` bölümlerini ve bir `Agent:` satırını
+içermelidir; `PR description` CI kontrolü bunu denetler. Ajan kuralları:
+[AGENTS.md](AGENTS.md).
 
-GitHub Actions `CI` hattı, `main` dalına push yapıldığında,
-her pull request açılışında/güncellemesinde ve Actions ekranından elle çalışır.
-İki bağımsız iş bulunur; başarısız bir komut ilgili işi başarısız yapar:
+## Ekip
 
-- **Backend checks:** Python 3.12, Ruff lint, mypy tip denetimi ve pytest.
-- **Frontend checks:** Node.js 22, ESLint, TypeScript tip denetimi ve Vite üretim derlemesi.
-
-Yerelde aynı kontroller:
-
-```bash
-cd backend
-python -m venv .venv
-source .venv/bin/activate
-python -m pip install -r requirements-dev.txt
-ruff check .
-mypy app
-python -m pytest -q --cov=app --cov-report=term-missing --cov-report=xml:coverage.xml
-```
-
-Ayrı terminalde:
-
-```bash
-cd frontend
-npm ci
-npm run lint
-npm run typecheck
-npm run build
-```
-
-Başlangıç API testleri sağlık kontrolünü, defect oluşturmayı, boş başlık reddini,
-geçerli/geçersiz durum geçişlerini, geçmişin korunmasını, bulunamayan defect'i
-ve örnek metrikleri kapsar. Testler varsayılan olarak geçici bir SQLite veritabanında çalışır (Alembic migrasyonlarıyla kurulur);
-`DATABASE_URL` verilirse o veritabanını kullanır.
-Bu aşamada frontend için lint, tip kontrolü ve derleme çalışır; frontend birim
-test altyapısı henüz eklenmemiştir. Backend test kapsamı ve Cobertura çıktıları aşağıdaki PLN-13 bölümünde açıklanmıştır. Sonuçlar GitHub → Actions → CI ekranından izlenebilir.
-Bu hat branch koruma kurallarını kendiliğinden etkinleştirmez.
-
-
-## PLN-13 — Backend testleri ve Cobertura kapsam raporu (Esra Kaya)
-
-ISO/IEC/IEEE 29119-2 — Test Uygulama; ISO/IEC/IEEE 12207 — Doğrulama.
-Mevcut uygulama davranışları test edilir; yeni API veya veri modeli eklenmez.
-
-- `tests/test_unit.py`: veritabanına bağlanmadan defect yanıtı ve izin verilen
-  işlem sözleşmesi (R3/R4) için birim testleri.
-- `tests/test_api.py` ve `tests/test_integration.py`: migrasyonlarla kurulan
-  veritabanında API, R3 defect oluşturma, R4 yaşam döngüsü, geçmişin korunması,
-  test vakası/gereksinim izlenebilirliği ve metriklerin sınır durumları.
-- PostgreSQL'e özel testler geçmiş tablosunda UPDATE ve DELETE'in trigger
-  tarafından reddedildiğini doğrular. SQLite çalışmasında yalnızca bu testler atlanır.
-
-Backend klasöründe bağımlılıkları `python -m pip install -r requirements-dev.txt`
-ile yükleyip çalıştırın:
-
-```bash
-python -m pytest -q --cov=app --cov-report=term-missing --cov-report=xml:coverage.xml
-python -m pytest -q -m unit
-```
-
-İlk komut satır ve dal kapsamını ölçer, Cobertura biçiminde `backend/coverage.xml`
-üretir. Yüzde yalnızca `app/` kaynaklarını kapsar; frontend veya migrasyon kapsamı
-olarak yorumlanmamalıdır. Rapor dosyaları üretilen çıktılardır; Git'e eklenmez.
-
-Varsayılan çalıştırma geçici SQLite kullanır. PostgreSQL için yalnızca atılabilir,
-boş bir test veritabanını `DATABASE_URL` ile açıkça seçin. Her entegrasyon testi
-`alembic downgrade base` / `upgrade head` çalıştırır; geliştirme veya gerçek veri
-bulunan veritabanını seçmeyin. Salt birim testleri migrasyon çalıştırmaz.
-
-CI'da mevcut **Backend checks** işi SQLite ile çalışır; yeni
-**Backend PostgreSQL tests** işi kendine ait PostgreSQL 16 servisini kullanır.
-Her ikisi de testlerden sonra Cobertura XML dosyasını yükler (dosya oluşmuşsa,
-testler başarısız olduğunda da). GitHub → Actions → ilgili CI çalışması →
-**Artifacts** bölümünden `backend-coverage-sqlite` veya
-`backend-coverage-postgres` çıktısını indirin. Çıktılar 14 gün saklanır.
+| Üye | Rol |
+| --- | --- |
+| Caner Serbest | Backend lideri |
+| Emirhan Canarslan | Frontend lideri |
+| Esra Kaya | QA ve DevOps |
+| Emirhan Ulutürk | Ürün sahibi / gereksinim ve dokümantasyon |
