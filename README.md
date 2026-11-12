@@ -15,20 +15,20 @@ yayınlama adımlarını tek yerde yönetir; IEEE 829 dokümanlarını ISO/IEC/I
 **Panel ve defect takibi:** metrik kartları, gereksinime bağlı test vakaları, defect
 oluşturma ve yalnızca API'nin izin verdiği durum geçişleri.
 
-![Panel ve defect takibi](docs/screenshots/dashboard.png)
+![Panel ve defect takibi](docs/screenshots/dashboard-2x.png)
 
 **Defect detayı (IEEE 829 Test Incident Report):** bağlı test vakası, izin verilen
 geçişler ve değiştirilemez geçmiş zaman çizelgesi.
 
-![Defect detay sayfası](docs/screenshots/defect-detail.png)
+![Defect detay sayfası](docs/screenshots/defect-detail-2x.png)
 
 **Projeler, sürümler ve gereksinimler:** test vakası ↔ gereksinim izlenebilirliği.
 
-![Projeler ve gereksinimler](docs/screenshots/projects.png)
+![Projeler ve gereksinimler](docs/screenshots/projects-2x.png)
 
 | Giriş ekranı | REST API (Swagger) |
 | --- | --- |
-| ![Giriş ekranı](docs/screenshots/login.png) | ![API dokümanı](docs/screenshots/api-docs.png) |
+| ![Giriş ekranı](docs/screenshots/login-2x.png) | ![API dokümanı](docs/screenshots/api-docs-2x.png) |
 
 ## Özellikler
 
