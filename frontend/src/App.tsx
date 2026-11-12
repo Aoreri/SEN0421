@@ -328,11 +328,6 @@ export default function App() {
 
   return (
     <>
-      <div className="banner">
-        ⚠️ Bu bir <strong>DEMO / TEMPLATE</strong> sitesidir. Veriler örnektir ve geliştirme
-        ortamı içindir.
-      </div>
-
       <header>
         <div className="header-inner">
           <div>
@@ -394,7 +389,7 @@ export default function App() {
       </main>
 
       <footer>
-        İstanbul Kültür Üniversitesi · Software Development with Standards · Template v0.1
+        İstanbul Kültür Üniversitesi · Software Development with Standards · v0.1
       </footer>
     </>
   );

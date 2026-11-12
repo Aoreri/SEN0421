@@ -49,7 +49,7 @@ This plan defines the test scope, approach, environment, responsibilities, entry
 
 ## 4. Features to be tested
 
-1. Health endpoint returns a healthy template response.
+1. Health endpoint returns a healthy response.
 2. Valid and invalid login; valid, invalid, forged, and expired token handling.
 3. Server-side role restrictions on protected operations.
 4. Project, release, and requirement create/read/update/delete behavior, including duplicate and dependency conflicts.
