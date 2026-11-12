@@ -17,6 +17,7 @@ import { DataTable, DataTableColumn } from "./components/DataTable";
 import { ErrorAlert } from "./components/ErrorAlert";
 import { FormField } from "./components/FormField";
 import { StatusBadge } from "./components/StatusBadge";
+import { DefectDetailPage } from "./pages/DefectDetailPage";
 import { LoginPage } from "./pages/LoginPage";
 import { ProjectsPage } from "./pages/ProjectsPage";
 import { DefectFormErrors, hasFormErrors, validateDefectForm } from "./validation";
@@ -114,8 +115,24 @@ function DashboardView({ user }: DashboardViewProps) {
   }
 
   const defectColumns: DataTableColumn<Defect>[] = [
-    { key: "id", header: "#", render: (d) => d.id },
-    { key: "title", header: "Başlık", render: (d) => d.title },
+    {
+      key: "id",
+      header: "#",
+      render: (d) => (
+        <Link to={`/defects/${d.id}`} className="table-link">
+          #{d.id}
+        </Link>
+      ),
+    },
+    {
+      key: "title",
+      header: "Başlık",
+      render: (d) => (
+        <Link to={`/defects/${d.id}`} className="table-link">
+          {d.title}
+        </Link>
+      ),
+    },
     { key: "test_case", header: "Test Vakası", render: (d) => d.test_case ?? "—" },
     { key: "severity", header: "Önem", render: (d) => <StatusBadge text={d.severity} /> },
     { key: "status", header: "Durum", render: (d) => <StatusBadge text={d.status} /> },
@@ -137,6 +154,15 @@ function DashboardView({ user }: DashboardViewProps) {
         ) : (
           <span className="hint">—</span>
         ),
+    },
+    {
+      key: "detail",
+      header: "Geçmiş",
+      render: (d) => (
+        <Link to={`/defects/${d.id}`} className="detail-link">
+          Detay &amp; Zaman Çizelgesi
+        </Link>
+      ),
     },
   ];
 
@@ -358,6 +384,7 @@ export default function App() {
       <main>
         <Routes>
           <Route path="/" element={<DashboardView user={user} />} />
+          <Route path="/defects/:id" element={<DefectDetailPage user={user} />} />
           <Route path="/projects" element={<ProjectsPage user={user} />} />
           <Route
             path="/login"
