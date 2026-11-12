@@ -133,12 +133,3 @@ kontrollerini çalıştırır; Cobertura kapsam raporları Actions → **Artifac
 açıklaması `.github/pull_request_template.md` bölümlerini ve bir `Agent:` satırını
 içermelidir; `PR description` CI kontrolü bunu denetler. Ajan kuralları:
 [AGENTS.md](AGENTS.md).
-
-## Ekip
-
-| Üye | Rol |
-| --- | --- |
-| Caner Serbest | Backend lideri |
-| Emirhan Canarslan | Frontend lideri |
-| Esra Kaya | QA ve DevOps |
-| Emirhan Ulutürk | Ürün sahibi / gereksinim ve dokümantasyon |
