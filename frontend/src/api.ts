@@ -67,6 +67,37 @@ export type Metrics = {
   open_defects: number;
 };
 
+export type ImportedTestResult = {
+  position: number;
+  name: string;
+  classname: string;
+  suite: string;
+  reported_key: string;
+  test_case_id: string | null;
+  status: "Passed" | "Failed" | "Skipped";
+  duration_seconds: number | null;
+  message: string;
+  unmatched_reason: "unknown_test_case" | "not_linked_to_project" | null;
+};
+
+export type ImportedTestRun = {
+  id: number;
+  project_id: number;
+  imported_by: number;
+  commit: string | null;
+  branch: string | null;
+  created_at: string;
+  summary: {
+    total: number; matched: number; unmatched: number;
+    passed: number; failed: number; skipped: number;
+  };
+};
+
+export type JUnitImportReport = ImportedTestRun & {
+  results: ImportedTestResult[];
+  unmatched_results: ImportedTestResult[];
+};
+
 const TOKEN_STORAGE_KEY = "token";
 export const AUTH_EXPIRED_EVENT = "sds06:auth-expired";
 
@@ -144,11 +175,12 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   let res: Response;
   try {
     res = await fetch("/api" + path, {
+      ...options,
       headers: {
         "Content-Type": "application/json",
         ...(token && { Authorization: `Bearer ${token}` }),
+        ...options.headers,
       },
-      ...options,
     });
   } catch {
     throw new ApiError("Backend'e ulaşılamadı. Önce backend'i başlatın (README'ye bakın).", 0);
@@ -239,4 +271,16 @@ export const api = {
       method: "PUT",
       body: JSON.stringify({ test_cases }),
     }),
+  importJUnit: (projectId: number, xml: string, metadata: { commit?: string; branch?: string } = {}) => {
+    const query = new URLSearchParams(metadata).toString();
+    return request<JUnitImportReport>(`/projects/${projectId}/runs/import${query ? `?${query}` : ""}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/xml" },
+      body: xml,
+    });
+  },
+  junitImports: (projectId: number, limit = 50, offset = 0) =>
+    request<ImportedTestRun[]>(`/projects/${projectId}/runs/imports?limit=${limit}&offset=${offset}`),
+  junitImport: (projectId: number, importId: number) =>
+    request<JUnitImportReport>(`/projects/${projectId}/runs/imports/${importId}`),
 };

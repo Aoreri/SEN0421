@@ -39,8 +39,9 @@ geçişler ve değiştirilemez geçmiş zaman çizelgesi.
 | JWT ile giriş ve rol tabanlı erişim: Admin, Test Lead, Tester, Developer | R8 | 12207 Uygulama |
 | Proje, sürüm ve gereksinim yönetimi; test vakası ↔ gereksinim izlenebilirliği (çoka çok) | R2, R7 | 29119-2 Test Tasarımı ve Gerçekleştirme |
 | Test vakası listesi ve metrikler: koşum oranı, başarı oranı, açık defect sayısı | R2, R5 | 29119-2 Test İzleme ve Kontrol |
+| JUnit XML içe aktarımı; commit/branch üst verisi, projeye göre kararlı test vakası eşleme ve eşleşmeyen sonuç raporu | R6 | 29119-2 Test Yürütme; 12207 Doğrulama |
 
-**Planlanan:** test vakası / suite yönetimi, test koşumları, JUnit XML ve Cobertura
+**Planlanan:** test vakası / suite yönetimi, genel test koşumları, Cobertura
 içe aktarımı, grafikli metrik paneli, sürüm çıkış kriterleri ve IEEE 829 Test Plan /
 Test Summary Report / Test Incident Report üretimi (Jinja2 + WeasyPrint).
 
@@ -114,6 +115,18 @@ bir test veritabanını `DATABASE_URL` ile verin; entegrasyon testleri şemayı 
 GitHub Actions `CI` hattı her PR'da backend (SQLite ve PostgreSQL 16) ve frontend
 kontrollerini çalıştırır; Cobertura kapsam raporları Actions → **Artifacts** altında
 14 gün saklanır.
+
+## JUnit XML içe aktarımı (PLN-22 — Esra Kaya)
+
+`POST /api/projects/{id}/runs/import`, ham XML gövdesini `application/xml` olarak
+alır; Admin, Test Lead veya Tester token'ı gerekir. `commit` ve `branch` sorgu
+parametreleriyle üst veri saklanır. `test_case_id` özelliği (yoksa tam testcase adı),
+projenin gereksinimlerine bağlı test vakalarıyla eşlenir; eşleşmeyen sonuçlar da
+kaydedilip ayrı raporlanır. Sınır 1 MiB / 5000 sonuçtur.
+
+İçe aktarım anlık görüntüleri genel PLN-17 koşum yönetiminden ayrıdır; mevcut test
+vakası durumlarını veya metrikleri güncellemez. Okuma uçları, örnek XML, eşleme
+kuralları ve migrasyon ayrıntıları: [JUnit import sözleşmesi](docs/junit-import.md).
 
 ## Dokümanlar
 
