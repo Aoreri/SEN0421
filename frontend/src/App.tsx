@@ -6,22 +6,42 @@ import {
   AUTH_EXPIRED_EVENT,
   clearStoredToken,
   Defect,
+  DefectHistoryEntry,
+  ExitCriteriaConfig,
+  ExpandedMetrics,
   formatErrorMessage,
   getStoredToken,
+  isEndpointUnavailableError,
   Metrics,
+  Release,
+  ReleaseGateStatus,
+  ReleaseStatus,
   SEVERITIES,
   TestCase,
+  TestRun,
   User,
 } from "./api";
 import { DataTable, DataTableColumn } from "./components/DataTable";
 import { ErrorAlert } from "./components/ErrorAlert";
 import { FormField } from "./components/FormField";
+import { MetricsCharts } from "./components/MetricsCharts";
+import { ReleaseGateCard } from "./components/ReleaseGateCard";
 import { StatusBadge } from "./components/StatusBadge";
 import { DefectDetailPage } from "./pages/DefectDetailPage";
 import { LoginPage } from "./pages/LoginPage";
 import { ProjectsPage } from "./pages/ProjectsPage";
 import { TestCasesPage } from "./pages/TestCasesPage";
 import { TestRunsPage } from "./pages/TestRunsPage";
+import {
+  computePreviewExpandedMetrics,
+  createPreviewReleaseWaiver,
+  deletePreviewReleaseWaiver,
+  loadPreviewReleaseGate,
+  loadPreviewTestRuns,
+  mergeTestCasesWithPreview,
+  updatePreviewExitCriteria,
+  updatePreviewReleaseStatus,
+} from "./previewStore";
 import { DefectFormErrors, hasFormErrors, validateDefectForm } from "./validation";
 
 const TEST_CASE_COLUMNS: DataTableColumn<TestCase>[] = [
@@ -42,8 +62,15 @@ type DashboardViewProps = {
 
 function DashboardView({ user }: DashboardViewProps) {
   const [metrics, setMetrics] = useState<Metrics | null>(null);
+  const [expandedMetrics, setExpandedMetrics] = useState<ExpandedMetrics | null>(null);
   const [tests, setTests] = useState<TestCase[]>([]);
   const [defects, setDefects] = useState<Defect[]>([]);
+  const [releases, setReleases] = useState<Release[]>([]);
+  const [selectedReleaseId, setSelectedReleaseId] = useState<number | null>(null);
+  const [releaseGate, setReleaseGate] = useState<ReleaseGateStatus | null>(null);
+  const [analyticsPreviewMode, setAnalyticsPreviewMode] = useState(false);
+  const [gateSaving, setGateSaving] = useState(false);
+
   const [title, setTitle] = useState("");
   const [severity, setSeverity] = useState("Medium");
   const [testCase, setTestCase] = useState("");
@@ -51,6 +78,7 @@ function DashboardView({ user }: DashboardViewProps) {
   const [submitting, setSubmitting] = useState(false);
   const [transitioningId, setTransitioningId] = useState<number | null>(null);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
 
   const canCreateDefect =
     user !== null &&
@@ -58,10 +86,94 @@ function DashboardView({ user }: DashboardViewProps) {
 
   const load = useCallback(async () => {
     try {
-      const [m, t, d] = await Promise.all([api.metrics(), api.testCases(), api.defects()]);
-      setMetrics(m);
+      const [m, t, d, projs, rels, reqs] = await Promise.all([
+        api.metrics(),
+        api.testCases(),
+        api.defects(),
+        api.projects(),
+        api.releases(),
+        api.requirements(),
+      ]);
+
+      const projectsWithRequirements = new Set(reqs.map((req) => req.project_id));
+      const realReleases = rels.filter(
+        (r) =>
+          projectsWithRequirements.has(r.project_id) &&
+          !r.version.startsWith("Mevcut projeler:"),
+      );
+      const selectableReleases = realReleases.length > 0 ? realReleases : rels;
+
+      const activeReleaseId =
+        selectedReleaseId && selectableReleases.some((r) => r.id === selectedReleaseId)
+          ? selectedReleaseId
+          : (selectableReleases[0]?.id ?? null);
+      const activeRelease = selectableReleases.find((r) => r.id === activeReleaseId) ?? null;
+
+      let isAnalyticsPreview = false;
+      let loadedExpanded: ExpandedMetrics;
+      try {
+        loadedExpanded = await api.expandedMetrics(activeReleaseId);
+      } catch (err) {
+        if (isEndpointUnavailableError(err)) {
+          isAnalyticsPreview = true;
+          const mergedCases = mergeTestCasesWithPreview(t);
+          let runs: TestRun[];
+          try {
+            runs = await api.testRuns();
+          } catch (runErr) {
+            if (isEndpointUnavailableError(runErr)) {
+              runs = loadPreviewTestRuns(projs, selectableReleases, mergedCases, d);
+            } else {
+              throw runErr;
+            }
+          }
+          const historyEntries = await Promise.all(
+            d.map(async (def) => {
+              try {
+                return [def.id, await api.defectHistory(def.id)] as const;
+              } catch {
+                return [def.id, [] as DefectHistoryEntry[]] as const;
+              }
+            }),
+          );
+          const historiesByDefect = Object.fromEntries(historyEntries);
+          loadedExpanded = computePreviewExpandedMetrics(
+            m,
+            mergedCases,
+            reqs,
+            d,
+            historiesByDefect,
+            runs,
+            activeReleaseId,
+            activeRelease?.project_id ?? null,
+          );
+        } else {
+          throw err;
+        }
+      }
+
+      let loadedGate: ReleaseGateStatus | null = null;
+      if (activeRelease && !activeRelease.version.startsWith("Mevcut projeler:")) {
+        try {
+          loadedGate = await api.releaseGate(activeRelease.id);
+        } catch (err) {
+          if (isEndpointUnavailableError(err)) {
+            isAnalyticsPreview = true;
+            loadedGate = loadPreviewReleaseGate(activeRelease, loadedExpanded, d);
+          } else {
+            throw err;
+          }
+        }
+      }
+
+      setMetrics(loadedExpanded);
+      setExpandedMetrics(loadedExpanded);
       setTests(t);
       setDefects(d);
+      setReleases(selectableReleases);
+      setSelectedReleaseId(activeReleaseId);
+      setReleaseGate(loadedGate);
+      setAnalyticsPreviewMode(isAnalyticsPreview);
       setError("");
     } catch (err) {
       setError(
@@ -71,7 +183,7 @@ function DashboardView({ user }: DashboardViewProps) {
         ),
       );
     }
-  }, []);
+  }, [selectedReleaseId]);
 
   useEffect(() => {
     void load();
@@ -113,6 +225,125 @@ function DashboardView({ user }: DashboardViewProps) {
       setError(formatErrorMessage(err, "Durum geçişi sırasında bir hata oluştu."));
     } finally {
       setTransitioningId(null);
+    }
+  }
+
+  async function handleUpdateReleaseStatus(status: ReleaseStatus) {
+    const activeRelease = releases.find((r) => r.id === selectedReleaseId);
+    if (!activeRelease || !expandedMetrics) return;
+    setGateSaving(true);
+    try {
+      const updated = await api.updateReleaseStatus(activeRelease.id, status);
+      setReleaseGate(updated);
+      setNotice(`Sürüm durumu "${status}" olarak güncellendi.`);
+      setError("");
+    } catch (err) {
+      if (isEndpointUnavailableError(err)) {
+        const updated = updatePreviewReleaseStatus(
+          activeRelease,
+          status,
+          expandedMetrics,
+          defects,
+        );
+        setReleaseGate(updated);
+        setAnalyticsPreviewMode(true);
+        setNotice(`Sürüm durumu "${status}" olarak yerel önizleme deposuna kaydedildi.`);
+        setError("");
+      } else {
+        setError(formatErrorMessage(err, "Sürüm durumu güncellenemedi."));
+      }
+    } finally {
+      setGateSaving(false);
+    }
+  }
+
+  async function handleUpdateExitCriteria(criteria: ExitCriteriaConfig): Promise<boolean> {
+    const activeRelease = releases.find((r) => r.id === selectedReleaseId);
+    if (!activeRelease || !expandedMetrics) return false;
+    setGateSaving(true);
+    try {
+      const updated = await api.updateExitCriteria(activeRelease.id, criteria);
+      setReleaseGate(updated);
+      setNotice("Sürüm çıkış kriterleri güncellendi.");
+      setError("");
+      return true;
+    } catch (err) {
+      if (isEndpointUnavailableError(err)) {
+        const updated = updatePreviewExitCriteria(
+          activeRelease,
+          criteria,
+          expandedMetrics,
+          defects,
+        );
+        setReleaseGate(updated);
+        setAnalyticsPreviewMode(true);
+        setNotice("Sürüm çıkış kriterleri yerel önizleme deposunda güncellendi.");
+        setError("");
+        return true;
+      } else {
+        setError(formatErrorMessage(err, "Çıkış kriterleri güncellenemedi."));
+        return false;
+      }
+    } finally {
+      setGateSaving(false);
+    }
+  }
+
+  async function handleCreateWaiver(reason: string) {
+    const activeRelease = releases.find((r) => r.id === selectedReleaseId);
+    if (!activeRelease || !expandedMetrics || !user) return;
+    setGateSaving(true);
+    try {
+      const updated = await api.createReleaseWaiver(activeRelease.id, reason);
+      setReleaseGate(updated);
+      setNotice("Test Lead muafiyeti kaydedildi.");
+      setError("");
+    } catch (err) {
+      if (isEndpointUnavailableError(err)) {
+        const updated = createPreviewReleaseWaiver(
+          activeRelease,
+          reason,
+          user.username,
+          expandedMetrics,
+          defects,
+        );
+        setReleaseGate(updated);
+        setAnalyticsPreviewMode(true);
+        setNotice("Test Lead muafiyeti yerel önizleme deposuna kaydedildi.");
+        setError("");
+      } else {
+        setError(formatErrorMessage(err, "Muafiyet kaydedilemedi."));
+      }
+    } finally {
+      setGateSaving(false);
+    }
+  }
+
+  async function handleDeleteWaiver() {
+    const activeRelease = releases.find((r) => r.id === selectedReleaseId);
+    if (!activeRelease || !expandedMetrics) return;
+    setGateSaving(true);
+    try {
+      const updated = await api.deleteReleaseWaiver(activeRelease.id);
+      setReleaseGate(updated);
+      setNotice("Test Lead muafiyeti kaldırıldı.");
+      setError("");
+    } catch (err) {
+      if (isEndpointUnavailableError(err)) {
+        const updated = deletePreviewReleaseWaiver(
+          activeRelease,
+          expandedMetrics,
+          defects,
+        );
+        setReleaseGate(updated);
+        setAnalyticsPreviewMode(true);
+        setNotice("Test Lead muafiyeti yerel önizleme deposundan kaldırıldı.");
+        setError("");
+      } else {
+        setError(formatErrorMessage(err, "Muafiyet kaldırılamadı."));
+      }
+    } finally {
+      setGateSaving(false);
     }
   }
 
@@ -172,6 +403,15 @@ function DashboardView({ user }: DashboardViewProps) {
     <>
       <ErrorAlert message={error} onDismiss={() => setError("")} />
 
+      {notice && (
+        <section className="role-notice" role="status">
+          <span>{notice}</span>
+          <button type="button" className="secondary-btn" onClick={() => setNotice("")}>
+            Kapat
+          </button>
+        </section>
+      )}
+
       {metrics && (
         <section className="metrics">
           {[
@@ -187,6 +427,79 @@ function DashboardView({ user }: DashboardViewProps) {
           ))}
         </section>
       )}
+
+      {expandedMetrics && (
+        <section>
+          <div className="section-header">
+            <div>
+              <h2>Grafikli Metrik Paneli (R5)</h2>
+              <p className="section-desc">
+                ISO/IEC/IEEE 29119-2 · Test İzleme ve Kontrol · Koşum trendi, defect burn-up ve
+                önem dağılımı
+              </p>
+            </div>
+            {releases.length > 0 && (
+              <div className="filter-group">
+                <label htmlFor="dashboard-release-select">Sürüm:</label>
+                <select
+                  id="dashboard-release-select"
+                  value={selectedReleaseId ? String(selectedReleaseId) : ""}
+                  onChange={(e) =>
+                    setSelectedReleaseId(e.target.value ? Number(e.target.value) : null)
+                  }
+                >
+                  {releases.map((r) => (
+                    <option key={r.id} value={String(r.id)}>
+                      {r.version}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
+
+          {analyticsPreviewMode && (
+            <div className="info-banner" style={{ marginBottom: 12 }} role="note">
+              <strong>Önizleme Modu (PLN-18 / PLN-24 Backend Bekleniyor):</strong>{" "}
+              Genişletilmiş metrikler ve sürüm çıkış kapısı değerleri mevcut canlı{" "}
+              <code>/api/defects</code>, <code>/api/requirements</code>,{" "}
+              <code>/api/test-cases</code> verileri ile önizleme test koşumlarından
+              hesaplanır.
+            </div>
+          )}
+
+          <div className="sub-metrics">
+            <div className="sub-metric-item">
+              <span>Gereksinim Kapsamı</span>
+              <strong>{expandedMetrics.requirement_coverage}%</strong>
+            </div>
+            <div className="sub-metric-item">
+              <span>Yeniden Açılma Oranı</span>
+              <strong>{expandedMetrics.reopen_rate}%</strong>
+            </div>
+            <div className="sub-metric-item">
+              <span>Ort. Defect Yaşı</span>
+              <strong>{expandedMetrics.avg_defect_age_hours} sa</strong>
+            </div>
+            <div className="sub-metric-item">
+              <span>Ort. Çözüm Süresi</span>
+              <strong>{expandedMetrics.avg_resolution_hours} sa</strong>
+            </div>
+          </div>
+
+          <MetricsCharts metrics={expandedMetrics} />
+        </section>
+      )}
+
+      <ReleaseGateCard
+        gate={releaseGate}
+        user={user}
+        saving={gateSaving}
+        onUpdateStatus={handleUpdateReleaseStatus}
+        onUpdateCriteria={handleUpdateExitCriteria}
+        onCreateWaiver={handleCreateWaiver}
+        onDeleteWaiver={handleDeleteWaiver}
+      />
 
       <section>
         <div className="section-header">
@@ -371,7 +684,7 @@ export default function App() {
 
         <nav className="top-nav" aria-label="Ana Gezinme">
           <NavLink to="/" end className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}>
-            Panel &amp; Defect Takibi
+            Panel &amp; Metrikler
           </NavLink>
           <NavLink
             to="/test-cases"

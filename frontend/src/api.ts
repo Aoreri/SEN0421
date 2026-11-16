@@ -202,6 +202,42 @@ export type JUnitImportReport = ImportedTestRun & {
   unmatched_results: ImportedTestResult[];
 };
 
+export type RunMetricPoint = {
+  run_id: number;
+  run_name: string;
+  executed_at: string;
+  passed: number;
+  failed: number;
+  blocked: number;
+  skipped: number;
+  not_run: number;
+  pass_rate: number;
+};
+
+export type DefectBurnupPoint = {
+  date: string;
+  opened: number;
+  closed: number;
+  open_remaining: number;
+};
+
+export type SeverityDistributionItem = {
+  severity: Severity;
+  total: number;
+  open: number;
+  closed: number;
+};
+
+export type ExpandedMetrics = Metrics & {
+  requirement_coverage: number;
+  reopen_rate: number;
+  avg_defect_age_hours: number;
+  avg_resolution_hours: number;
+  run_series: RunMetricPoint[];
+  defect_burnup: DefectBurnupPoint[];
+  severity_distribution: SeverityDistributionItem[];
+};
+
 export type ExitCriteriaConfig = {
   min_pass_rate: number;
   max_open_critical: number;
@@ -411,6 +447,10 @@ export const api = {
     }),
   me: () => request<User>("/auth/me"),
   metrics: () => request<Metrics>("/metrics"),
+  expandedMetrics: (releaseId?: number | null) =>
+    request<ExpandedMetrics>(
+      releaseId ? `/metrics/expanded?release_id=${releaseId}` : "/metrics/expanded",
+    ),
   testSuites: () => request<TestSuite[]>("/test-suites"),
   getTestSuite: (id: number) => request<TestSuite>(`/test-suites/${id}`),
   createTestSuite: (project_id: number, name: string, description = "") =>
