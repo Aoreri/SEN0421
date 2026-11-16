@@ -1,6 +1,18 @@
 export const SEVERITIES = ["Low", "Medium", "High", "Critical"] as const;
 export type Severity = (typeof SEVERITIES)[number];
 
+export const PRIORITIES = ["Low", "Medium", "High", "Critical"] as const;
+export type Priority = (typeof PRIORITIES)[number];
+
+export const TEST_CASE_STATUSES = [
+  "Not Run",
+  "Passed",
+  "Failed",
+  "Blocked",
+  "Skipped",
+] as const;
+export type TestCaseStatus = (typeof TEST_CASE_STATUSES)[number];
+
 export const ROLES = ["Admin", "Test Lead", "Tester", "Developer"] as const;
 export type Role = (typeof ROLES)[number];
 
@@ -36,12 +48,40 @@ export type Requirement = {
   test_cases: string[];
 };
 
+export type TestSuite = {
+  id: number;
+  project_id: number;
+  name: string;
+  description: string;
+  test_cases: string[];
+};
+
 export type TestCase = {
   id: string;
+  suite_id: number | null;
   title: string;
   requirement: string;
   requirements: string[];
   status: string;
+  priority: Priority;
+  automated: boolean;
+  steps: string[];
+  expected_result: string;
+};
+
+export type TestCaseInput = {
+  title: string;
+  suite_id?: number | null;
+  priority?: Priority;
+  automated?: boolean;
+  steps?: string[];
+  expected_result?: string;
+  status?: TestCaseStatus;
+  requirements: string[];
+};
+
+export type TestCaseCreateInput = TestCaseInput & {
+  id: string;
 };
 
 export type Defect = {
@@ -210,7 +250,56 @@ export const api = {
     }),
   me: () => request<User>("/auth/me"),
   metrics: () => request<Metrics>("/metrics"),
+  testSuites: () => request<TestSuite[]>("/test-suites"),
+  getTestSuite: (id: number) => request<TestSuite>(`/test-suites/${id}`),
+  createTestSuite: (project_id: number, name: string, description = "") =>
+    request<TestSuite>("/test-suites", {
+      method: "POST",
+      body: JSON.stringify({
+        project_id,
+        name: name.trim(),
+        description: description.trim(),
+      }),
+    }),
+  updateTestSuite: (id: number, project_id: number, name: string, description = "") =>
+    request<TestSuite>(`/test-suites/${id}`, {
+      method: "PUT",
+      body: JSON.stringify({
+        project_id,
+        name: name.trim(),
+        description: description.trim(),
+      }),
+    }),
+  deleteTestSuite: (id: number) => request<void>(`/test-suites/${id}`, { method: "DELETE" }),
   testCases: () => request<TestCase[]>("/test-cases"),
+  getTestCase: (id: string) =>
+    request<TestCase>(`/test-cases/${encodeURIComponent(id)}`),
+  createTestCase: (input: TestCaseCreateInput) =>
+    request<TestCase>("/test-cases", {
+      method: "POST",
+      body: JSON.stringify({
+        ...input,
+        id: input.id.trim(),
+        title: input.title.trim(),
+        expected_result: (input.expected_result ?? "").trim(),
+      }),
+    }),
+  updateTestCase: (id: string, input: TestCaseInput) =>
+    request<TestCase>(`/test-cases/${encodeURIComponent(id)}`, {
+      method: "PUT",
+      body: JSON.stringify({
+        ...input,
+        title: input.title.trim(),
+        expected_result: (input.expected_result ?? "").trim(),
+      }),
+    }),
+  deleteTestCase: (id: string) =>
+    request<void>(`/test-cases/${encodeURIComponent(id)}`, { method: "DELETE" }),
+  setTestCaseRequirements: (id: string, requirements: string[]) =>
+    request<TestCase>(`/test-cases/${encodeURIComponent(id)}/requirements`, {
+      method: "PUT",
+      body: JSON.stringify({ requirements }),
+    }),
   defects: () => request<Defect[]>("/defects"),
   defectHistory: (id: number) => request<DefectHistoryEntry[]>(`/defects/${id}/history`),
   createDefect: (title: string, severity: string, test_case: string | null = null) =>

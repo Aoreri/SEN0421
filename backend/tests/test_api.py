@@ -289,3 +289,184 @@ def test_traceability_rejects_bad_input(client):
     assert client.put(url, json=links).status_code == 401
     assert client.put(url, json=links, headers=as_user("developer")).status_code == 403
     assert client.get("/api/requirements/R1").json()["test_cases"] == ["TC-001", "TC-002"]
+
+
+def test_test_suite_crud(client):
+    lead = as_user("testlead")
+    created = client.post("/api/test-suites",
+                          json={"project_id": 1, "name": " Auth Suite ", "description": "Giriş"},
+                          headers=lead)
+    assert created.status_code == 201
+    suite = created.json()
+    assert suite == {
+        "id": suite["id"], "project_id": 1, "name": "Auth Suite",
+        "description": "Giriş", "test_cases": [],
+    }
+    url = f"/api/test-suites/{suite['id']}"
+    assert client.get(url).json() == suite
+    updated = client.put(url, json={"project_id": 1, "name": "Auth v2", "description": "d"},
+                         headers=lead).json()
+    assert updated["name"] == "Auth v2" and updated["description"] == "d"
+    assert updated in client.get("/api/test-suites").json()
+    assert client.delete(url, headers=lead).status_code == 204
+    assert client.get(url).status_code == 404
+
+
+def test_test_case_crud_and_specification_fields(client):
+    lead = as_user("testlead")
+    tester = as_user("tester")
+    suite = client.post("/api/test-suites",
+                        json={"project_id": 1, "name": "Smoke"},
+                        headers=lead).json()
+    body = {
+        "id": " TC-007 ",
+        "suite_id": suite["id"],
+        "title": "  Suite oluşturma testi  ",
+        "priority": "High",
+        "automated": True,
+        "steps": ["  1. Giriş yap  ", "2. Suite oluştur"],
+        "expected_result": "  201 döner ve listede görünür  ",
+        "status": "Not Run",
+        "requirements": ["R2", "R1", "R2"],
+    }
+    created = client.post("/api/test-cases", json=body, headers=tester)
+    assert created.status_code == 201
+    tc = created.json()
+    assert tc == {
+        "id": "TC-007",
+        "suite_id": suite["id"],
+        "title": "Suite oluşturma testi",
+        "requirement": "R1",
+        "requirements": ["R1", "R2"],
+        "status": "Not Run",
+        "priority": "High",
+        "automated": True,
+        "steps": ["1. Giriş yap", "2. Suite oluştur"],
+        "expected_result": "201 döner ve listede görünür",
+    }
+    assert client.get("/api/test-cases/TC-007").json() == tc
+    assert client.get(f"/api/test-suites/{suite['id']}").json()["test_cases"] == ["TC-007"]
+    assert "TC-007" in client.get("/api/requirements/R2").json()["test_cases"]
+
+    updated = client.put("/api/test-cases/TC-007", json={
+        "title": "Güncel başlık",
+        "suite_id": None,
+        "priority": "Critical",
+        "automated": False,
+        "steps": ["Tek adım"],
+        "expected_result": "Başarılı",
+        "status": "Passed",
+        "requirements": ["R3"],
+    }, headers=tester).json()
+    assert updated["suite_id"] is None
+    assert updated["priority"] == "Critical"
+    assert updated["automated"] is False
+    assert updated["status"] == "Passed"
+    assert updated["requirement"] == "R3"
+    assert updated["requirements"] == ["R3"]
+    assert "TC-007" not in client.get("/api/requirements/R2").json()["test_cases"]
+
+    relinked = client.put("/api/test-cases/TC-007/requirements",
+                          json={"requirements": ["R5", "R2"]},
+                          headers=tester).json()
+    assert relinked["requirements"] == ["R2", "R5"]
+    assert relinked["requirement"] == "R2"
+
+    assert client.delete("/api/test-cases/TC-007", headers=tester).status_code == 204
+    assert client.get("/api/test-cases/TC-007").status_code == 404
+
+
+def test_test_case_and_suite_validation_and_conflicts(client):
+    admin = as_user("admin")
+    tester = as_user("tester")
+    p2 = client.post("/api/projects", json={"name": "P2"}, headers=admin).json()
+    s1 = client.post("/api/test-suites", json={"project_id": 1, "name": "S1"}, headers=admin).json()
+    s2 = client.post("/api/test-suites", json={"project_id": p2["id"], "name": "S1"},
+                     headers=admin).json()
+
+    # Duplicate suite name in same project -> 409; different project -> allowed
+    assert client.post("/api/test-suites", json={"project_id": 1, "name": "S1"},
+                       headers=admin).status_code == 409
+    assert client.post("/api/test-suites", json={"project_id": 999, "name": "S"},
+                       headers=admin).status_code == 422
+
+    # Duplicate test case id -> 409
+    assert client.post("/api/test-cases", json={
+        "id": "TC-001", "title": "Dup", "requirements": ["R1"],
+    }, headers=tester).status_code == 409
+
+    # Missing requirement links -> 422 (FR-REQ-01)
+    assert client.post("/api/test-cases", json={
+        "id": "TC-099", "title": "No req", "requirements": [],
+    }, headers=tester).status_code == 422
+    assert client.put("/api/test-cases/TC-001/requirements", json={"requirements": []},
+                      headers=tester).status_code == 422
+
+    # Unknown requirement or suite -> 422
+    assert client.post("/api/test-cases", json={
+        "id": "TC-099", "title": "Bad req", "requirements": ["R999"],
+    }, headers=tester).status_code == 422
+    assert client.post("/api/test-cases", json={
+        "id": "TC-099", "title": "Bad suite", "suite_id": 999, "requirements": ["R1"],
+    }, headers=tester).status_code == 422
+
+    # Suite project and requirement project mismatch -> 422
+    assert client.post("/api/test-cases", json={
+        "id": "TC-099", "title": "Cross project", "suite_id": s2["id"], "requirements": ["R1"],
+    }, headers=tester).status_code == 422
+
+    # Blank step or invalid priority -> 422
+    assert client.post("/api/test-cases", json={
+        "id": "TC-099", "title": "Bad step", "steps": ["   "], "requirements": ["R1"],
+    }, headers=tester).status_code == 422
+    assert client.post("/api/test-cases", json={
+        "id": "TC-099", "title": "Bad prio", "priority": "Urgent", "requirements": ["R1"],
+    }, headers=tester).status_code == 422
+
+    # Put TC-001 into s1; deleting s1 or moving s1 to P2 or deleting project P2 with s2 -> 409
+    assert client.put("/api/test-cases/TC-001", json={
+        "title": "Kullanıcı girişi başarılı", "suite_id": s1["id"], "status": "Passed",
+        "requirements": ["R1"],
+    }, headers=tester).status_code == 200
+    assert client.delete(f"/api/test-suites/{s1['id']}", headers=admin).status_code == 409
+    assert client.put(f"/api/test-suites/{s1['id']}",
+                      json={"project_id": p2["id"], "name": "S1"},
+                      headers=admin).status_code == 409
+    assert client.delete(f"/api/projects/{p2['id']}", headers=admin).status_code == 409
+
+    # Linking TC-001 (in project 1's suite s1) to a requirement in project 2 -> 422
+    r_p2 = client.post("/api/requirements",
+                       json={"id": "R-P2", "project_id": p2["id"], "title": "P2 req"},
+                       headers=admin).json()
+    assert client.put(f"/api/requirements/{r_p2['id']}/test-cases",
+                      json={"test_cases": ["TC-001"]},
+                      headers=tester).status_code == 422
+
+    # Deleting TC-003 (has linked defect #1) -> 409
+    assert client.delete("/api/test-cases/TC-003", headers=tester).status_code == 409
+
+
+@pytest.mark.parametrize("method,url,body", [
+    ("post", "/api/test-suites", {"project_id": 1, "name": "S"}),
+    ("put", "/api/test-suites/1", {"project_id": 1, "name": "S"}),
+    ("delete", "/api/test-suites/1", None),
+])
+def test_test_suite_writes_require_admin_or_lead(client, method, url, body):
+    send = getattr(client, method)
+    kwargs = {"json": body} if body else {}
+    assert send(url, **kwargs).status_code == 401
+    for username in ("tester", "developer"):
+        assert send(url, headers=as_user(username), **kwargs).status_code == 403
+
+
+@pytest.mark.parametrize("method,url,body", [
+    ("post", "/api/test-cases", {"id": "TC-99", "title": "x", "requirements": ["R1"]}),
+    ("put", "/api/test-cases/TC-001", {"title": "x", "requirements": ["R1"]}),
+    ("delete", "/api/test-cases/TC-001", None),
+    ("put", "/api/test-cases/TC-001/requirements", {"requirements": ["R1"]}),
+])
+def test_test_case_writes_reject_unauthenticated_and_developer(client, method, url, body):
+    send = getattr(client, method)
+    kwargs = {"json": body} if body else {}
+    assert send(url, **kwargs).status_code == 401
+    assert send(url, headers=as_user("developer"), **kwargs).status_code == 403

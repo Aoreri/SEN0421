@@ -9,7 +9,7 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import Session
 
 from . import auth, junit_imports, projects
 from .auth import ADMIN, TEST_LEAD, TESTER, CurrentUser, OptionalUser, require_roles
@@ -55,14 +55,6 @@ def defect_out(d: Defect, rules: list[DefectTransition], user: User | None) -> d
 @app.get("/api/health")
 def health():
     return {"status": "ok"}
-
-
-@app.get("/api/test-cases")
-def list_test_cases(db: DB):
-    rows = db.scalars(select(TestCase).options(selectinload(TestCase.requirements))
-                      .order_by(TestCase.id))
-    return [{"id": t.id, "title": t.title, "requirement": t.requirement, "status": t.status,
-             "requirements": sorted(r.id for r in t.requirements)} for t in rows]
 
 
 @app.get("/api/defects")
