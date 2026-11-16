@@ -57,6 +57,14 @@ export type TestSuiteFormValues = {
 
 export type TestSuiteFormErrors = Partial<Record<keyof TestSuiteFormValues, string>>;
 
+export type TestRunFormValues = {
+  name: string;
+  projectId: string;
+  testCaseIds: string[];
+};
+
+export type TestRunFormErrors = Partial<Record<keyof TestRunFormValues, string>>;
+
 const MIN_TITLE_LENGTH = 3;
 const MAX_TITLE_LENGTH = 120;
 const MAX_PROJECT_NAME_LENGTH = 100;
@@ -250,6 +258,30 @@ export function validateTestSuiteForm(values: TestSuiteFormValues): TestSuiteFor
 
   if (description.length > MAX_DESCRIPTION_LENGTH) {
     errors.description = `Açıklama en fazla ${MAX_DESCRIPTION_LENGTH} karakter olabilir.`;
+  }
+
+  return errors;
+}
+
+export function validateTestRunForm(values: TestRunFormValues): TestRunFormErrors {
+  const errors: TestRunFormErrors = {};
+  const projectId = Number(values.projectId);
+  const name = values.name.trim();
+
+  if (!name) {
+    errors.name = "Koşum adı boş olamaz.";
+  } else if (name.length < MIN_TITLE_LENGTH) {
+    errors.name = `Koşum adı en az ${MIN_TITLE_LENGTH} karakter olmalıdır.`;
+  } else if (name.length > MAX_TITLE_LENGTH) {
+    errors.name = `Koşum adı en fazla ${MAX_TITLE_LENGTH} karakter olabilir.`;
+  }
+
+  if (!values.projectId || !Number.isInteger(projectId) || projectId <= 0) {
+    errors.projectId = "Geçerli bir proje seçin.";
+  }
+
+  if (values.testCaseIds.length === 0) {
+    errors.testCaseIds = "Koşuma en az bir test vakası eklenmelidir.";
   }
 
   return errors;

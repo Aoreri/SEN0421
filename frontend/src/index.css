@@ -82,6 +82,18 @@ td button { font-size: .8rem; padding: 3px 8px; margin-right: 4px; }
 .matrix-cell { text-align: center; }
 .matrix-cell-btn { width: 34px; height: 28px; padding: 0; border-radius: 4px; background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1; font-weight: 700; }
 .matrix-cell-btn.linked { background: #d1fae5; color: #065f46; border-color: #6ee7b7; }
+.run-progress-bar { display: flex; width: 100%; height: 12px; border-radius: 999px; overflow: hidden; background: #e5e7eb; margin-bottom: 14px; }
+.run-progress-seg { height: 100%; }
+.run-progress-seg.passed { background: #10b981; }
+.run-progress-seg.failed { background: #ef4444; }
+.run-progress-seg.blocked { background: #f59e0b; }
+.run-progress-seg.skipped { background: #94a3b8; }
+.run-progress-seg.not-run { background: #e2e8f0; }
+.execution-list { display: flex; flex-direction: column; gap: 12px; }
+.execution-card { border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 14px; background: #f8fafc; }
+.execution-card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+.execution-controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-top: 8px; }
+.inline-defect-drawer { margin-top: 12px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 12px; flex-direction: column; align-items: stretch; }
 .detail-top-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid #eee; }
 .back-row { margin-top: 0; }
 .back-link { color: #1f3a5f; text-decoration: none; font-size: .9rem; font-weight: 600; }

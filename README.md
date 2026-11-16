@@ -40,6 +40,7 @@ geçişler ve değiştirilemez geçmiş zaman çizelgesi.
 | Proje, sürüm ve gereksinim yönetimi; test vakası ↔ gereksinim izlenebilirliği (çoka çok) | R2, R7 | 29119-2 Test Tasarımı ve Gerçekleştirme |
 | Test vakası (adımlar, beklenen sonuç, öncelik, otomasyon bayrağı, kararlı anahtar) ve test suite CRUD API'si | R2 | 29119-2 Test Tasarımı ve Gerçekleştirme; 29119-3 Test Case Specification |
 | Test vakası / suite yönetimi (`/test-cases`) ve etkileşimli gereksinim – test izlenebilirlik matrisi | R2 | 29119-2 Test Tasarımı ve Gerçekleştirme |
+| Test koşumu yürütme ekranı (`/test-runs`): `Passed`/`Failed`/`Blocked`/`Skipped` sonuç girme, başarısız yürütmeden defect açma ve koşum geçmişi | R2, R4 | 29119-2 Test Yürütme; Test Olay Raporlama |
 | Test vakası listesi ve metrikler: koşum oranı, başarı oranı, açık defect sayısı | R2, R5 | 29119-2 Test İzleme ve Kontrol |
 | JUnit XML içe aktarımı; commit/branch üst verisi, projeye göre kararlı test vakası eşleme ve eşleşmeyen sonuç raporu | R6 | 29119-2 Test Yürütme; 12207 Doğrulama |
 | Test koşumu (Test Run) ve test yürütme (Test Execution): Passed / Failed / Blocked / Skipped sonuçları, yürütme ↔ defect bağlantısı ve `Resolved → Closed` doğrulama şartı | R2, R4 | 29119-2 Test Yürütme; 12207 Doğrulama |
