@@ -38,9 +38,10 @@ geçişler ve değiştirilemez geçmiş zaman çizelgesi.
 | Değiştirilemez defect geçmişi (`defect_history`, PostgreSQL trigger ile yalnızca ekleme) | R4, R8 | 12207 Konfigürasyon Yönetimi |
 | JWT ile giriş ve rol tabanlı erişim: Admin, Test Lead, Tester, Developer | R8 | 12207 Uygulama |
 | Proje, sürüm ve gereksinim yönetimi; test vakası ↔ gereksinim izlenebilirliği (çoka çok) | R2, R7 | 29119-2 Test Tasarımı ve Gerçekleştirme |
+| Test vakası / suite yönetimi (`/test-cases`) ve etkileşimli gereksinim – test izlenebilirlik matrisi (PLN-16 backend CRUD uç noktaları birleşene kadar genişletilmiş alanlar yerel önizleme destekli) | R2 | 29119-2 Test Tasarımı ve Gerçekleştirme |
 | Test vakası listesi ve metrikler: koşum oranı, başarı oranı, açık defect sayısı | R2, R5 | 29119-2 Test İzleme ve Kontrol |
 
-**Planlanan:** test vakası / suite yönetimi, test koşumları, JUnit XML ve Cobertura
+**Planlanan:** test vakası / suite backend CRUD API'si (PLN-16), test koşumları, JUnit XML ve Cobertura
 içe aktarımı, grafikli metrik paneli, sürüm çıkış kriterleri ve IEEE 829 Test Plan /
 Test Summary Report / Test Incident Report üretimi (Jinja2 + WeasyPrint).
 

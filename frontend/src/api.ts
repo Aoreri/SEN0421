@@ -1,6 +1,9 @@
 export const SEVERITIES = ["Low", "Medium", "High", "Critical"] as const;
 export type Severity = (typeof SEVERITIES)[number];
 
+export const TEST_PRIORITIES = ["Low", "Medium", "High", "Critical"] as const;
+export type TestPriority = (typeof TEST_PRIORITIES)[number];
+
 export const ROLES = ["Admin", "Test Lead", "Tester", "Developer"] as const;
 export type Role = (typeof ROLES)[number];
 
@@ -42,6 +45,39 @@ export type TestCase = {
   requirement: string;
   requirements: string[];
   status: string;
+  stable_key?: string;
+  steps?: string[];
+  expected_result?: string;
+  priority?: TestPriority;
+  is_automated?: boolean;
+  suite_id?: number | null;
+};
+
+export type TestCasePayload = {
+  id?: string;
+  stable_key: string;
+  title: string;
+  steps: string[];
+  expected_result: string;
+  priority: TestPriority;
+  is_automated: boolean;
+  requirements: string[];
+  suite_id?: number | null;
+};
+
+export type TestSuite = {
+  id: number;
+  project_id: number;
+  name: string;
+  description: string;
+  test_case_ids: string[];
+};
+
+export type TestSuitePayload = {
+  project_id: number;
+  name: string;
+  description: string;
+  test_case_ids: string[];
 };
 
 export type Defect = {
@@ -102,6 +138,13 @@ export class ApiError extends Error {
     this.name = "ApiError";
     this.status = status;
   }
+}
+
+export function isEndpointUnavailableError(error: unknown): boolean {
+  return (
+    error instanceof ApiError &&
+    (error.status === 404 || error.status === 405 || error.status === 501)
+  );
 }
 
 function extractErrorDetail(payload: unknown, status: number, fallbackText: string): string {
@@ -179,6 +222,31 @@ export const api = {
   me: () => request<User>("/auth/me"),
   metrics: () => request<Metrics>("/metrics"),
   testCases: () => request<TestCase[]>("/test-cases"),
+  createTestCase: (payload: TestCasePayload) =>
+    request<TestCase>("/test-cases", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  updateTestCase: (id: string, payload: Partial<TestCasePayload>) =>
+    request<TestCase>(`/test-cases/${encodeURIComponent(id)}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
+  deleteTestCase: (id: string) =>
+    request<void>(`/test-cases/${encodeURIComponent(id)}`, { method: "DELETE" }),
+  testSuites: () => request<TestSuite[]>("/test-suites"),
+  createTestSuite: (payload: TestSuitePayload) =>
+    request<TestSuite>("/test-suites", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  updateTestSuite: (id: number, payload: TestSuitePayload) =>
+    request<TestSuite>(`/test-suites/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
+  deleteTestSuite: (id: number) =>
+    request<void>(`/test-suites/${id}`, { method: "DELETE" }),
   defects: () => request<Defect[]>("/defects"),
   defectHistory: (id: number) => request<DefectHistoryEntry[]>(`/defects/${id}/history`),
   createDefect: (title: string, severity: string, test_case: string | null = null) =>

@@ -1,4 +1,4 @@
-import { SEVERITIES } from "./api";
+import { SEVERITIES, TEST_PRIORITIES } from "./api";
 
 export type DefectFormValues = {
   title: string;
@@ -38,6 +38,25 @@ export type RequirementFormValues = {
 
 export type RequirementFormErrors = Partial<Record<keyof RequirementFormValues, string>>;
 
+export type TestCaseFormValues = {
+  stableKey: string;
+  title: string;
+  priority: string;
+  stepsText: string;
+  expectedResult: string;
+  requirements: string[];
+};
+
+export type TestCaseFormErrors = Partial<Record<keyof TestCaseFormValues, string>>;
+
+export type TestSuiteFormValues = {
+  projectId: string;
+  name: string;
+  description: string;
+};
+
+export type TestSuiteFormErrors = Partial<Record<keyof TestSuiteFormValues, string>>;
+
 const MIN_TITLE_LENGTH = 3;
 const MAX_TITLE_LENGTH = 120;
 const MAX_PROJECT_NAME_LENGTH = 100;
@@ -45,6 +64,9 @@ const MAX_DESCRIPTION_LENGTH = 1000;
 const MAX_VERSION_LENGTH = 50;
 const MAX_REQ_CODE_LENGTH = 20;
 const MAX_REQ_TITLE_LENGTH = 200;
+const MAX_TEST_KEY_LENGTH = 20;
+const MAX_TEST_TITLE_LENGTH = 200;
+const MAX_SUITE_NAME_LENGTH = 100;
 
 export function validateDefectForm(
   values: DefectFormValues,
@@ -152,6 +174,78 @@ export function validateRequirementForm(
     errors.title = "Gereksinim başlığı boş olamaz.";
   } else if (title.length > MAX_REQ_TITLE_LENGTH) {
     errors.title = `Başlık en fazla ${MAX_REQ_TITLE_LENGTH} karakter olabilir.`;
+  }
+
+  if (description.length > MAX_DESCRIPTION_LENGTH) {
+    errors.description = `Açıklama en fazla ${MAX_DESCRIPTION_LENGTH} karakter olabilir.`;
+  }
+
+  return errors;
+}
+
+export function validateTestCaseForm(values: TestCaseFormValues): TestCaseFormErrors {
+  const errors: TestCaseFormErrors = {};
+  const stableKey = values.stableKey.trim();
+  const title = values.title.trim();
+  const steps = values.stepsText
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const expectedResult = values.expectedResult.trim();
+
+  if (!stableKey) {
+    errors.stableKey = "Kararlı test anahtarı boş olamaz (örn. TC-007).";
+  } else if (stableKey.length > MAX_TEST_KEY_LENGTH) {
+    errors.stableKey = `Anahtar en fazla ${MAX_TEST_KEY_LENGTH} karakter olabilir.`;
+  } else if (!/^[A-Za-z0-9_-]+$/.test(stableKey)) {
+    errors.stableKey = "Anahtar yalnızca harf, rakam, '-' ve '_' içerebilir.";
+  }
+
+  if (!title) {
+    errors.title = "Test vakası başlığı boş olamaz.";
+  } else if (title.length < MIN_TITLE_LENGTH) {
+    errors.title = `Başlık en az ${MIN_TITLE_LENGTH} karakter olmalıdır.`;
+  } else if (title.length > MAX_TEST_TITLE_LENGTH) {
+    errors.title = `Başlık en fazla ${MAX_TEST_TITLE_LENGTH} karakter olabilir.`;
+  }
+
+  if (!TEST_PRIORITIES.includes(values.priority as (typeof TEST_PRIORITIES)[number])) {
+    errors.priority = "Geçerli bir öncelik seçin.";
+  }
+
+  if (steps.length === 0) {
+    errors.stepsText = "En az bir test adımı girin (satır başına bir adım).";
+  }
+
+  if (!expectedResult) {
+    errors.expectedResult = "Beklenen sonuç alanı boş olamaz.";
+  } else if (expectedResult.length > MAX_DESCRIPTION_LENGTH) {
+    errors.expectedResult = `Beklenen sonuç en fazla ${MAX_DESCRIPTION_LENGTH} karakter olabilir.`;
+  }
+
+  if (values.requirements.length === 0) {
+    errors.requirements = "FR-REQ-01 gereği en az bir gereksinim seçilmelidir.";
+  }
+
+  return errors;
+}
+
+export function validateTestSuiteForm(values: TestSuiteFormValues): TestSuiteFormErrors {
+  const errors: TestSuiteFormErrors = {};
+  const projectId = Number(values.projectId);
+  const name = values.name.trim();
+  const description = values.description.trim();
+
+  if (!values.projectId || !Number.isInteger(projectId) || projectId <= 0) {
+    errors.projectId = "Geçerli bir proje seçin.";
+  }
+
+  if (!name) {
+    errors.name = "Suite adı boş olamaz.";
+  } else if (name.length < 2) {
+    errors.name = "Suite adı en az 2 karakter olmalıdır.";
+  } else if (name.length > MAX_SUITE_NAME_LENGTH) {
+    errors.name = `Suite adı en fazla ${MAX_SUITE_NAME_LENGTH} karakter olabilir.`;
   }
 
   if (description.length > MAX_DESCRIPTION_LENGTH) {
