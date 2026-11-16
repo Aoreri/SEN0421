@@ -4,6 +4,9 @@ export type Severity = (typeof SEVERITIES)[number];
 export const PRIORITIES = ["Low", "Medium", "High", "Critical"] as const;
 export type Priority = (typeof PRIORITIES)[number];
 
+export const TEST_PRIORITIES = PRIORITIES;
+export type TestPriority = Priority;
+
 export const TEST_CASE_STATUSES = [
   "Not Run",
   "Passed",
@@ -82,6 +85,7 @@ export type TestCase = {
   automated: boolean;
   steps: string[];
   expected_result: string;
+  stable_key?: string;
 };
 
 export type TestCaseInput = {
@@ -97,6 +101,13 @@ export type TestCaseInput = {
 
 export type TestCaseCreateInput = TestCaseInput & {
   id: string;
+};
+
+export type TestSuitePayload = {
+  project_id: number;
+  name: string;
+  description: string;
+  test_cases?: string[];
 };
 
 export type TestExecution = {
@@ -302,6 +313,13 @@ export class ApiError extends Error {
     this.name = "ApiError";
     this.status = status;
   }
+}
+
+export function isEndpointUnavailableError(error: unknown): boolean {
+  return (
+    error instanceof ApiError &&
+    (error.status === 404 || error.status === 405 || error.status === 501)
+  );
 }
 
 function extractErrorDetail(payload: unknown, status: number, fallbackText: string): string {
