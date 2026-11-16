@@ -76,6 +76,8 @@ başarı/başarısızlık sayıları yalnızca eşleşenlerle sınırlı değild
    Aynı rapor tekrar gönderilirse yeni bir içe aktarım oluşur; idempotency yapılmaz.
 
 `testsuite` ve `testsuites` kökleri, iç içe suite'ler ve XML namespace'leri desteklenir.
+Desteklenmeyen sarmalayıcı öğeler altındaki suite/testcase kayıtları tüm raporun
+`422` ile reddedilmesine neden olur; sonuçlar sessizce atlanmaz.
 Dosyanın `tests`, `failures` gibi özet nitelikleri güvenilir kabul edilmez; sayılar gerçek
 `testcase` kayıtlarından hesaplanır. Negatif/NaN/sonsuz süre reddedilir; süre yoksa null'dır.
 DTD ve entity bildirimleri yasaktır; dış kaynak veya yerel dosya okunmaz.

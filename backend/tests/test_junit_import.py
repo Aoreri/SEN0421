@@ -83,7 +83,9 @@ def test_other_project_cases_are_reported_unmatched_and_reads_are_scoped(client)
     assert counts() == (1, 4)
 
 
-@pytest.mark.parametrize('xml', ['<bad/>', '<testsuite/>', '<testsuite>',
+@pytest.mark.parametrize('xml', [
+    '<testsuite><testcase name="TC-001"/><wrapper><testcase name="TC-002"/></wrapper></testsuite>',
+    '<bad/>', '<testsuite/>', '<testsuite>',
     '<testsuite><testcase name="TC-001"/><testcase name="TC-002" time="NaN"/></testsuite>',
     '<!DOCTYPE testsuite [<!ENTITY x "bad">]><testsuite><testcase name="&x;"/></testsuite>'])
 def test_bad_report_rejects_every_result_atomically(client, xml):

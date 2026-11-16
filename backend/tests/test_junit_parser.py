@@ -57,3 +57,22 @@ def test_name_and_result_count_limits():
         parse_junit(b'<testsuite>' + b'<testcase name="x"/>' * 5001 + b'</testsuite>')
     with pytest.raises(ValueError):
         parse_junit(b' ' * (MAX_XML_BYTES + 1))
+
+
+@pytest.mark.parametrize("hidden", [
+    '<wrapper><testcase name="TC-002"/></wrapper>',
+    '<wrapper><testsuite><testcase name="TC-002"/></testsuite></wrapper>',
+    '<testcase name="TC-002"><testcase name="TC-003"/></testcase>',
+])
+def test_hidden_results_reject_the_entire_report(hidden):
+    xml = f'<testsuite><testcase name="TC-001"/>{hidden}</testsuite>'
+    with pytest.raises(ValueError, match="desteklenmeyen"):
+        parse_junit(xml.encode())
+
+
+def test_namespaced_nested_suites_and_metadata_remain_supported():
+    results = parse_junit(b'''<testsuites xmlns="urn:junit"><testsuite name="outer">
+      <properties><property name="build" value="42"/></properties>
+      <testsuite name="inner"><testcase name="TC-001"/><system-out>log</system-out></testsuite>
+      </testsuite></testsuites>''')
+    assert len(results) == 1 and results[0].suite == "inner"

@@ -272,7 +272,9 @@ export const api = {
       body: JSON.stringify({ test_cases }),
     }),
   importJUnit: (projectId: number, xml: string, metadata: { commit?: string; branch?: string } = {}) => {
-    const query = new URLSearchParams(metadata).toString();
+    const query = new URLSearchParams(
+      Object.entries(metadata).filter((entry): entry is [string, string] => entry[1] !== undefined),
+    ).toString();
     return request<JUnitImportReport>(`/projects/${projectId}/runs/import${query ? `?${query}` : ""}`, {
       method: "POST",
       headers: { "Content-Type": "application/xml" },

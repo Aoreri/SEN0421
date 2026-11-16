@@ -63,7 +63,7 @@ flowchart LR
 
 ### 3.2 Logical / composition viewpoint
 
-The Logical Viewpoint separates presentation, API/application behavior, persistence access, and data storage. The backend currently groups authentication in `app/auth.py`, project/release/requirement operations in `app/projects.py`, shared database setup in `app/db.py`, and core records in `app/models.py`. Defect and metric routes are in `app/main.py`.
+The Logical Viewpoint separates presentation, API/application behavior, persistence access, and data storage. The backend currently groups authentication in `app/auth.py`, project/release/requirement operations in `app/projects.py`, shared database setup in `app/db.py`, and core records in `app/models.py`. Defect and metric routes are in `app/main.py`. PLN-22 adds bounded, entity-safe XML parsing in `app/junit.py` and authenticated import/report routes in `app/junit_imports.py`; see [the import contract](junit-import.md).
 
 ```mermaid
 flowchart TB
@@ -179,6 +179,29 @@ erDiagram
         datetime at
     }
 
+    IMPORTED_TEST_RUN {
+        int id PK
+        int project_id FK
+        int imported_by FK
+        string commit_sha
+        string branch
+        datetime created_at
+        json summary
+    }
+    IMPORTED_TEST_RESULT {
+        int id PK
+        int run_id FK
+        int position
+        string reported_key
+        string test_case_id FK
+        string status
+        string unmatched_reason
+    }
+
+    PROJECT ||--o{ IMPORTED_TEST_RUN : receives
+    USER ||--o{ IMPORTED_TEST_RUN : imports
+    IMPORTED_TEST_RUN ||--o{ IMPORTED_TEST_RESULT : contains
+    TEST_CASE o|--o{ IMPORTED_TEST_RESULT : matches
     PROJECT ||--o{ RELEASE : contains
     PROJECT ||--o{ REQUIREMENT : defines
     REQUIREMENT ||--o{ TEST_CASE_REQUIREMENTS : linked_by
@@ -187,13 +210,17 @@ erDiagram
     DEFECT ||--o{ DEFECT_HISTORY : records
 ```
 
-`USER` and `DEFECT_TRANSITION` are intentionally shown without relationship lines because the current schema does not store a user foreign key on defects/history and the transition table is a rule catalogue rather than a relationship to a specific user row.
+`USER` links to imported runs via `imported_by`; defects/history still have no user foreign key. `DEFECT_TRANSITION` remains a rule catalogue without a relationship to a specific user row.
+
+PLN-22 import snapshots are independent of future PLN-17 general test runs. Migration `0005_junit_imports` adds these tables without changing existing test-case states, metrics, or defect history.
 
 ### 4.2 Entity/table catalogue
 
 | Table | Key attributes | Purpose / constraints |
 |---|---|---|
 | `users` | `id` PK, `username` unique, `password_hash`, `role` | Login identity and application role. Password values are stored as bcrypt hashes. |
+| `imported_test_runs` | `id` PK, `project_id` FK, `imported_by` FK, optional `commit_sha`/`branch`, `created_at`, `summary` JSON | Persisted JUnit import snapshot and result totals. |
+| `imported_test_results` | `id` PK, `run_id` FK, `position`, nullable `test_case_id` FK, reported key/name/class/suite, status, duration, message, unmatched reason | Unique `(run_id, position)` preserves ordered results, including unmatched keys. Run and results are stored in one transaction. |
 | `projects` | `id` PK, `name` unique, `description` | Project catalogue. |
 | `releases` | `id` PK, `project_id` FK, `version` | Release catalogue; `(project_id, version)` is unique. |
 | `requirements` | `id` PK (string), `project_id` FK, `title`, `description` | Requirements belonging to a project. Initial IDs R1–R8 are seeded with placeholder descriptions. |
@@ -215,6 +242,7 @@ The current implementation has both a legacy single-value `test_cases.requiremen
 | `backend/app/main.py` | Health, test-case list, defect workflow/history, metrics | FastAPI routes under `/api`. |
 | `backend/app/auth.py` | Login, JWT validation, role dependencies | `/api/auth/login`, `/api/auth/me`, dependency helpers. |
 | `backend/app/projects.py` | Project, release, requirement CRUD and traceability | `/api/projects`, `/api/releases`, `/api/requirements`. |
+| `backend/app/junit.py` / `backend/app/junit_imports.py` | Safe JUnit parsing, authenticated project-scoped mapping and atomic import snapshots | POST import and GET list/detail under `/api/projects/{project_id}/runs`; see `junit-import.md`. |
 | `backend/app/models.py` | SQLAlchemy entity definitions and association table | ORM model layer. |
 | `backend/app/db.py` | Database engine and session dependency | SQLAlchemy engine/session. |
 | `backend/alembic/` | Versioned schema evolution and seed rules | `alembic upgrade head`. |
@@ -287,7 +315,7 @@ This provides evidence that the current CI pipeline has completed successfully. 
 1. Confirm with the instructor whether course documentation should explicitly baseline ISO/IEC/IEEE 12207:2026 or retain a previously expected edition.
 2. Obtain and validate the original full R1–R8 wording. The current database has placeholder requirement descriptions.
 3. Decide whether to deprecate the legacy `test_cases.requirement` column after verifying compatibility with all current data and API consumers.
-4. Implement and design the application-level JUnit/Cobertura importer, stable test-case key mapping, and unmatched-result report before documenting them as available.
+4. Implement Cobertura ingestion and decide how PLN-22 JUnit snapshots integrate with future PLN-17 general test runs. JUnit XML import, project-scoped key mapping, and unmatched-result reporting are available; see `junit-import.md`.
 5. Implement document generation and verify PDF/HTML output inside the container before marking report generation complete.
 6. Review CORS, JWT secret configuration, demo credentials, and database credentials before any production-like deployment.
 

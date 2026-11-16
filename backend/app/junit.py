@@ -72,6 +72,13 @@ def parse_junit(data: bytes) -> list[JUnitResult]:
         raise ValueError("Geçersiz veya güvenli olmayan JUnit XML") from None
     if tag(root) not in ("testsuite", "testsuites"):
         raise ValueError("JUnit kökü testsuite veya testsuites olmalı")
+    # Reject hidden results instead of accepting only a partial report.
+    for parent in root.iter():
+        for child in parent:
+            if tag(child) in ("testsuite", "testsuites", "testcase") and tag(parent) not in (
+                "testsuite", "testsuites",
+            ):
+                raise ValueError("JUnit suite/testcase desteklenmeyen bir öğe içinde")
     results = []
     stack = [(root, "")]
     while stack:
