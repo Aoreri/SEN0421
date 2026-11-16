@@ -21,6 +21,7 @@ import { DefectDetailPage } from "./pages/DefectDetailPage";
 import { LoginPage } from "./pages/LoginPage";
 import { ProjectsPage } from "./pages/ProjectsPage";
 import { TestCasesPage } from "./pages/TestCasesPage";
+import { TestRunsPage } from "./pages/TestRunsPage";
 import { DefectFormErrors, hasFormErrors, validateDefectForm } from "./validation";
 
 const TEST_CASE_COLUMNS: DataTableColumn<TestCase>[] = [
@@ -190,9 +191,14 @@ function DashboardView({ user }: DashboardViewProps) {
       <section>
         <div className="section-header">
           <h2>Test Vakaları</h2>
-          <Link to="/test-cases" className="detail-link">
-            Test Vakası / Suite &amp; Matris Yönetimi →
-          </Link>
+          <div className="row-actions">
+            <Link to="/test-cases" className="detail-link">
+              Test Vakası / Suite &amp; Matris Yönetimi →
+            </Link>
+            <Link to="/test-runs" className="detail-link">
+              Test Koşumu Başlat / Yürüt →
+            </Link>
+          </div>
         </div>
         <DataTable
           columns={TEST_CASE_COLUMNS}
@@ -374,6 +380,12 @@ export default function App() {
             Test Vakaları &amp; Matris
           </NavLink>
           <NavLink
+            to="/test-runs"
+            className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
+          >
+            Test Koşumları
+          </NavLink>
+          <NavLink
             to="/projects"
             className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
           >
@@ -392,6 +404,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<DashboardView user={user} />} />
           <Route path="/test-cases" element={<TestCasesPage user={user} />} />
+          <Route path="/test-runs" element={<TestRunsPage user={user} />} />
           <Route path="/defects/:id" element={<DefectDetailPage user={user} />} />
           <Route path="/projects" element={<ProjectsPage user={user} />} />
           <Route

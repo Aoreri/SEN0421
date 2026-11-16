@@ -4,6 +4,12 @@ export type Severity = (typeof SEVERITIES)[number];
 export const TEST_PRIORITIES = ["Low", "Medium", "High", "Critical"] as const;
 export type TestPriority = (typeof TEST_PRIORITIES)[number];
 
+export const EXECUTION_STATUSES = ["Not Run", "Passed", "Failed", "Blocked", "Skipped"] as const;
+export type ExecutionStatus = (typeof EXECUTION_STATUSES)[number];
+
+export const RECORDABLE_EXECUTION_STATUSES = ["Passed", "Failed", "Blocked", "Skipped"] as const;
+export type RecordableExecutionStatus = (typeof RECORDABLE_EXECUTION_STATUSES)[number];
+
 export const ROLES = ["Admin", "Test Lead", "Tester", "Developer"] as const;
 export type Role = (typeof ROLES)[number];
 
@@ -78,6 +84,43 @@ export type TestSuitePayload = {
   name: string;
   description: string;
   test_case_ids: string[];
+};
+
+export type TestExecution = {
+  id: number;
+  run_id: number;
+  test_case_id: string;
+  status: ExecutionStatus;
+  actual_result: string;
+  notes: string;
+  executed_by: string | null;
+  executed_at: string | null;
+  defect_ids: number[];
+};
+
+export type TestRun = {
+  id: number;
+  name: string;
+  project_id: number;
+  release_id: number | null;
+  suite_id: number | null;
+  created_by: string;
+  created_at: string;
+  executions: TestExecution[];
+};
+
+export type CreateTestRunPayload = {
+  name: string;
+  project_id: number;
+  release_id: number | null;
+  suite_id: number | null;
+  test_case_ids: string[];
+};
+
+export type RecordExecutionPayload = {
+  status: RecordableExecutionStatus;
+  actual_result: string;
+  notes: string;
 };
 
 export type Defect = {
@@ -247,6 +290,26 @@ export const api = {
     }),
   deleteTestSuite: (id: number) =>
     request<void>(`/test-suites/${id}`, { method: "DELETE" }),
+  testRuns: () => request<TestRun[]>("/test-runs"),
+  createTestRun: (payload: CreateTestRunPayload) =>
+    request<TestRun>("/test-runs", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  recordExecution: (runId: number, executionId: number, payload: RecordExecutionPayload) =>
+    request<TestExecution>(`/test-runs/${runId}/executions/${executionId}`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  createDefectFromExecution: (
+    runId: number,
+    executionId: number,
+    payload: { title: string; severity: string },
+  ) =>
+    request<Defect>(`/test-runs/${runId}/executions/${executionId}/defects`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
   defects: () => request<Defect[]>("/defects"),
   defectHistory: (id: number) => request<DefectHistoryEntry[]>(`/defects/${id}/history`),
   createDefect: (title: string, severity: string, test_case: string | null = null) =>
