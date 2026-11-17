@@ -1,6 +1,16 @@
 from datetime import datetime
 
-from sqlalchemy import JSON, Column, DateTime, ForeignKey, String, Table, UniqueConstraint, func
+from sqlalchemy import (
+    JSON,
+    Column,
+    DateTime,
+    ForeignKey,
+    String,
+    Table,
+    Text,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .db import Base
@@ -90,3 +100,35 @@ class DefectHistory(Base):
     from_status: Mapped[str | None] = mapped_column(String(20))
     to_status: Mapped[str] = mapped_column(String(20))
     at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class ImportedTestRun(Base):
+    """PLN-22 import snapshot, independent of future PLN-17 interactive runs."""
+
+    __tablename__ = "imported_test_runs"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    imported_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    commit_sha: Mapped[str | None] = mapped_column(String(64))
+    branch: Mapped[str | None] = mapped_column(String(255))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    summary: Mapped[dict[str, int]] = mapped_column(JSON)
+
+
+class ImportedTestResult(Base):
+    __tablename__ = "imported_test_results"
+    __table_args__ = (UniqueConstraint("run_id", "position"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    run_id: Mapped[int] = mapped_column(ForeignKey("imported_test_runs.id"), index=True)
+    position: Mapped[int]
+    name: Mapped[str] = mapped_column(String(512))
+    classname: Mapped[str] = mapped_column(String(512))
+    suite: Mapped[str] = mapped_column(String(512))
+    reported_key: Mapped[str] = mapped_column(String(512))
+    test_case_id: Mapped[str | None] = mapped_column(ForeignKey("test_cases.id"))
+    unmatched_reason: Mapped[str | None] = mapped_column(String(40))
+    status: Mapped[str] = mapped_column(String(20))
+    duration_seconds: Mapped[float | None]
+    message: Mapped[str] = mapped_column(Text)

@@ -15,7 +15,7 @@ This Software Requirements Specification defines the intended behavior, external
 
 ### 1.2 Product scope
 
-SDS-06 is a web-based Agile Test and Defect Tracking System. It brings project/release/requirement information, test-case traceability, defect management, role-based access, and basic test metrics into one system. The project is an academic demo/template, not a production service. PDF/HTML test-document generation and automated JUnit/Cobertura result import are planned capabilities and are not represented as completed features in the current implementation.
+SDS-06 is a web-based Agile Test and Defect Tracking System. It brings project/release/requirement information, test-case traceability, defect management, role-based access, and basic test metrics into one system. The project is an academic demo/template, not a production service. JUnit XML import, project-scoped stable-key mapping, and unmatched-result reports are implemented in PLN-22; see [the import contract](junit-import.md). PDF/HTML test-document generation and Cobertura import remain planned.
 
 ### 1.3 Intended audience
 
@@ -104,7 +104,7 @@ The IDs below preserve the midterm identifiers where they were explicitly define
 | FR-DEF-03 | The system shall expose the ordered history of a defect, including the previous status, new status, and timestamp for each recorded event. | High | Implemented. |
 | FR-MET-01 | The system shall report total test cases, execution rate, pass rate among executed cases, and the count of defects not in `Closed` status. | Medium | Implemented (`GET /api/metrics`). |
 | FR-DOC-01 | The system should provide a Test Plan and Test Summary Report generation capability in a documented output format (PDF or HTML). | Medium | Planned; not implemented in the current baseline. |
-| FR-IMP-01 | The system should support importing JUnit test results and Cobertura coverage results and associating imported results with stable test-case identifiers. Unmatched results should be reported rather than silently discarded. | Medium | Planned; not implemented in the current baseline. |
+| FR-IMP-01 | The system should support importing JUnit test results and Cobertura coverage results and associating imported results with stable test-case identifiers. Unmatched results should be reported rather than silently discarded. | Medium | JUnit XML import, stable-key mapping, and unmatched-result reporting implemented (PLN-22); Cobertura ingestion remains planned. |
 
 ### 3.2 Original R1–R8 baseline traceability note
 
@@ -120,7 +120,7 @@ Therefore, the team must cross-check the original R1–R8 definition set before 
 | Application interface | JSON REST endpoints provided by FastAPI under `/api`. |
 | Authentication interface | `POST /api/auth/login` returns a bearer token; protected endpoints accept `Authorization: Bearer <token>`. |
 | Database interface | SQLAlchemy sessions access PostgreSQL; Alembic migrations define schema evolution. |
-| CI interface | GitHub Actions checks repository changes and reports workflow status in the repository. JUnit/Cobertura import into the application remains planned. |
+| CI interface | GitHub Actions checks repository changes and reports workflow status in the repository. JUnit XML import is available through the authenticated API (PLN-22); Cobertura ingestion remains planned. |
 
 ### 3.4 External API surface in the current baseline
 
@@ -130,6 +130,7 @@ Therefore, the team must cross-check the original R1–R8 definition set before 
 | Authentication | `POST /api/auth/login`, `GET /api/auth/me` |
 | Test cases / defects | `GET /api/test-cases`, `GET/POST /api/defects`, `POST /api/defects/{id}/transition`, `GET /api/defects/{id}/history` |
 | Metrics | `GET /api/metrics` |
+| JUnit imports | `POST /api/projects/{project_id}/runs/import`, `GET /api/projects/{project_id}/runs/imports`, `GET /api/projects/{project_id}/runs/imports/{import_id}`; raw XML upload, JSON reports. |
 | Projects | `GET/POST /api/projects`, `GET/PUT/DELETE /api/projects/{project_id}` |
 | Releases | `GET/POST /api/releases`, `GET/PUT/DELETE /api/releases/{release_id}` |
 | Requirements | `GET/POST /api/requirements`, `GET/PUT/DELETE /api/requirements/{requirement_id}`, `PUT /api/requirements/{requirement_id}/test-cases` |
@@ -149,7 +150,7 @@ The functional traceability requirements FR-REQ-01/02 and the performance/portab
 
 ## 5. Data requirements
 
-The current relational model includes users, projects, releases, requirements, test cases, the test-case/requirement association table, defects, defect transition rules, and defect history. The exact attributes, primary keys, foreign keys, and the legacy `TestCase.requirement` field are described in `docs/software-design-description.md`.
+The current relational model includes users, projects, releases, requirements, test cases, the test-case/requirement association table, defects, defect transition rules, defect history, and PLN-22 imported test runs/results. The exact attributes, primary keys, foreign keys, and the legacy `TestCase.requirement` field are described in `docs/software-design-description.md`.
 
 ## 6. Verification and acceptance
 
@@ -157,7 +158,7 @@ The current relational model includes users, projects, releases, requirements, t
 - PostgreSQL-specific history immutability is verified against a disposable PostgreSQL 16 database, not inferred from SQLite behavior.
 - Frontend maintainability checks are verified using ESLint, TypeScript type checking, and the Vite production build.
 - Performance and clean-machine portability targets require separate measurement evidence.
-- Planned report generation and JUnit/Cobertura import requirements remain open until the corresponding features are implemented and tested.
+- Report generation and Cobertura ingestion remain open. The JUnit portion of FR-IMP-01 is implemented and tested in PLN-22; import snapshots do not update existing test-case states or metrics.
 
 ## 7. References
 

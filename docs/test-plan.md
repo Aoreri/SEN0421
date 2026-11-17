@@ -45,7 +45,8 @@ This plan defines the test scope, approach, environment, responsibilities, entry
 | Frontend | React + TypeScript source, ESLint, TypeScript type checking, and Vite production build. |
 | Container environment | PostgreSQL 16, backend, and frontend services in Docker Compose; health dependencies and startup order. |
 | CI workflow | Backend SQLite checks, PostgreSQL integration tests, frontend checks, and uploaded coverage artifacts. |
-| Planned report/import functions | Test Plan/summary PDF or HTML generation and application-level JUnit/Cobertura import are recorded as future test items; they are not testable in the current baseline until implemented. |
+| JUnit import (PLN-22) | Parser and API tests verify safe XML, project-scoped stable keys, matched/unmatched reports, metadata, authorization, and atomic persistence. See `backend/tests/test_junit_parser.py` and `backend/tests/test_junit_import.py`. |
+| Planned report/import functions | Test Plan/summary PDF or HTML generation and Cobertura ingestion remain future test items until implemented. |
 
 ## 4. Features to be tested
 
@@ -64,7 +65,7 @@ This plan defines the test scope, approach, environment, responsibilities, entry
 ## 5. Features not tested in the current implementation baseline
 
 - PDF/HTML creation of IEEE 829-style Test Plan and Test Summary Report: planned, not yet implemented.
-- JUnit result import and Cobertura ingestion/mapping to test-case IDs: planned, not yet implemented.
+- Cobertura ingestion/mapping: planned, not yet implemented. JUnit result import and project-scoped test-case mapping are implemented and covered by PLN-22 tests; snapshots do not change test-case states or metrics.
 - Production deployment, production credentials, and real-user operational behavior: out of scope for this academic demo.
 - Performance acceptance under the midterm workload is a target requiring a dedicated benchmark; it is not inferred from ordinary unit/integration test success. The midterm FR-REQ-01 minimum-link rule and FR-REQ-02 release-specific traceability report are not fully implemented in the current baseline and cannot yet pass their acceptance tests.
 

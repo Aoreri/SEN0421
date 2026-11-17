@@ -34,6 +34,7 @@ Success for the current delivery period is demonstrated by the PLN-02 planning p
 - User authentication and role-based authorization.
 - Defect creation, allowed state transitions, and append-only history.
 - Basic execution/pass metrics.
+- JUnit XML import with project-scoped stable-key mapping and persisted unmatched-result reports (PLN-22); see [the import contract](junit-import.md).
 - Test Plan and design documentation.
 - Backend/frontend quality checks and PostgreSQL-backed CI verification.
 - Docker Compose local development environment.
@@ -44,7 +45,7 @@ Success for the current delivery period is demonstrated by the PLN-02 planning p
 - Commercial service-level commitments or operational support.
 - A separate independent verification organization; the four-person academic team uses peer review and a QA/DevOps role.
 - Complete implementation of PDF/HTML Test Plan and Test Summary Report generation.
-- Application-level JUnit/Cobertura result import and automatic mapping of imported results.
+- Cobertura coverage import and integration with future general test-run management; PLN-22 JUnit snapshots are implemented separately and do not update test-case states or metrics.
 - Any standard conformance claim that requires clause-level validation against licensed full standard texts not reviewed by the team.
 
 ## 4. Delivery approach and life-cycle tailoring
