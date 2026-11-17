@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from .auth import ADMIN, TEST_LEAD, TESTER, require_roles
 from .db import DB
-from .models import ImportedTestRun, Project, Release, Requirement, TestCase
+from .models import ImportedTestRun, Project, Release, Requirement, TestCase, TestRun
 
 router = APIRouter(prefix="/api", tags=["projects"])
 WRITE = [Depends(require_roles(ADMIN, TEST_LEAD))]
@@ -117,9 +117,12 @@ def update_project(project_id: int, body: ProjectIn, db: DB):
 @router.delete("/projects/{project_id}", status_code=204, dependencies=WRITE)
 def delete_project(project_id: int, db: DB):
     project = get_or_404(db, Project, project_id)
-    for model in (Release, Requirement, ImportedTestRun):
+    for model in (Release, Requirement, TestRun, ImportedTestRun):
         if db.scalar(select(model.id).where(model.project_id == project_id).limit(1)) is not None:
-            raise HTTPException(409, "Projeye bağlı sürüm, gereksinim veya içe aktarım kayıtları var")
+            raise HTTPException(
+                409,
+                "Projeye bağlı sürüm, gereksinim, test koşumları veya içe aktarım kayıtları var",
+            )
     remove(db, project)
 
 
@@ -149,7 +152,10 @@ def update_release(release_id: int, body: ReleaseIn, db: DB):
 
 @router.delete("/releases/{release_id}", status_code=204, dependencies=WRITE)
 def delete_release(release_id: int, db: DB):
-    remove(db, get_or_404(db, Release, release_id))
+    release = get_or_404(db, Release, release_id)
+    if db.scalar(select(TestRun.id).where(TestRun.release_id == release_id).limit(1)) is not None:
+        raise HTTPException(409, "Sürüme bağlı test koşumları var")
+    remove(db, release)
 
 
 # --- Gereksinimler ------------------------------------------------------------
