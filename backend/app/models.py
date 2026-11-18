@@ -248,3 +248,19 @@ class TestPlanSnapshot(Base):
         DateTime(timezone=True), server_default=func.now()
     )
     test_plan: Mapped[TestPlan] = relationship(back_populates="snapshots")
+
+
+class CoverageImport(Base):
+    """PLN-23 Cobertura snapshot; source paths are labels, never filesystem reads."""
+
+    __tablename__ = "coverage_imports"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    imported_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    junit_import_id: Mapped[int | None] = mapped_column(ForeignKey("imported_test_runs.id"))
+    commit_sha: Mapped[str | None] = mapped_column(String(64))
+    branch: Mapped[str | None] = mapped_column(String(255))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    summary: Mapped[dict] = mapped_column(JSON)
+    files: Mapped[list[dict]] = mapped_column(JSON)
