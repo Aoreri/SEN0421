@@ -2,8 +2,8 @@
 
 **Legacy document name:** Test Plan (IEEE 829-style course deliverable)  
 **Work package:** PLN-03  
-**Version:** 0.1 — Draft for team review  
-**Prepared:** 11 November 2026  
+**Version:** 0.2 — Draft for team review  
+**Prepared:** 18 November 2026  
 **Project:** Agile Test and Defect Tracking System  
 **Repository:** [Aoreri/SEN0421](https://github.com/Aoreri/SEN0421)
 
@@ -206,3 +206,64 @@ The full register is `docs/risk-register.md`.
 4. ISO/IEC/IEEE 29119-4:2021 — test design technique reference.
 5. ISO/IEC/IEEE 12207:2026 — software life-cycle process context, subject to instructor confirmation of the course baseline edition.
 6. `docs/standard-status-and-mapping.md` — project-level standard status and mapping note.
+
+## 16. Version 0.2 update — PLN-25 (18 November 2026)
+
+This update extends the PLN-03 Test Plan to include the second bi-weekly plan items. The existing scope and test approach remain valid. New implementation in an open PR is included as a test item but is not labelled integrated until the PR is merged and the migration chain is reconciled.
+
+### 16.1 Expanded test items
+
+| Test item | Coverage added in version 0.2 | Delivery status |
+|---|---|---|
+| Test Suite and Test Case API | Suite CRUD; case specification fields; required requirement links; project consistency and deletion constraints. | PLN-16, PR #21 in review. |
+| Test Case / Suite UI and RTM view | Suite grouping, test-case authoring, requirement-to-test matrix and coverage gaps. | PLN-19, PR #22 in review. |
+| Test Run / Execution API | Run creation, default `Not Run` records, result entry, executor/time, actual result, notes, execution-defect links. | PLN-17, PR #25 in review. |
+| Test Run UI | Run execution workbench, outcomes, run history and failed-execution defect flow. | PLN-20, PR #23 in review. |
+| Release lifecycle / exit gate | Release statuses, criteria evaluation, role-protected waiver and status rejection when gate fails. | PLN-18, PR #27 in review. |
+| Metrics dashboard | Outcome trends, defect burn-up, severity distribution and release-gate card. | PLN-21, PR #24 in review; metrics API aggregation is separate planned PLN-24 work. |
+| Test Plan service | Versioned Test Plan records, status workflow, snapshots and HTML/PDF export. | PLN-26, PR #26 in review; shared assignment with Caner Serbest. |
+| JUnit result import | Parser, stable-key mapping, matched/unmatched result persistence and report. | PLN-22 is present on the current baseline; see `docs/junit-import.md`. |
+
+### 16.2 Additional features and verification approach
+
+The following behavior is added to the planned verification scope:
+
+1. **Suite / case authoring:** verify project-scoped suite names, stable test-case IDs, `Low / Medium / High / Critical` priorities, automation flag, ordered steps, expected result, and one-or-more requirement links. Verify that invalid references, empty requirement links, duplicate IDs, and unsafe suite deletion are rejected.
+2. **Test runs:** verify that a run is project/release scoped and creates one `Not Run` execution record per selected case. Verify duplicate selection behavior and project/release consistency.
+3. **Execution outcomes:** verify `Passed`, `Failed`, `Blocked`, and `Skipped`, actual result, notes, executor, timestamp, optional defect associations, and synchronization with the case-level status and metrics.
+4. **Defect verification gate:** for a case-linked defect, verify the `Resolved → Closed` transition is rejected with HTTP 409 when the relevant latest execution is absent or not `Passed`; verify it succeeds after a `Passed` verification execution. Continue to verify invalid transitions (409), role-denied transitions (403), and append-only history.
+5. **Release gate:** verify each configured criterion independently, the combined gate result, protected criteria/waiver changes, waiver audit fields, and rejection of `Ready` / `Released` without a passed gate or active waiver.
+6. **Test Plan lifecycle:** verify unique version per project, legal status transitions, role restrictions, snapshot creation, stored HTML/payload consistency, and HTML/PDF export behavior.
+7. **Metric correctness:** use the formal definitions and fixtures in [`metric-definitions.md`](metric-definitions.md). Show counts and denominators beside percentages, and do not combine JUnit import snapshots with interactive Test Run metrics.
+
+Detailed procedure-level cases are being delivered separately under PLN-27 in `docs/test-case-specification-workflow.md`. The requirements-to-test relationship is in [`requirements-traceability-matrix-v1.md`](requirements-traceability-matrix-v1.md).
+
+### 16.3 Test data and roles
+
+Use only disposable test databases and the repository's documented local demo identities. The main role set is Admin, Test Lead, Tester, and Developer. The API is the authority for authorization; frontend hiding of controls is not an authorization test.
+
+Suggested fixture data for the release-gate tests is the repository seed dataset: eight requirement rows, five requirements linked to at least one test case, six seeded test cases, four cases in `Passed` or `Failed` status (three Passed and one Failed), and three non-Closed defects. This produces the known baseline values in the PLN-18 PR test description: 75.0% pass rate, 62.5% requirement coverage, and zero open Critical defects. The fixture is test-only and must not be treated as a production performance result.
+
+### 16.4 Entry criteria
+
+- The target PR branch has the required predecessor branches or their approved merges.
+- Alembic migrations are on one linear revision chain; no duplicate revision IDs remain.
+- The disposable PostgreSQL schema upgrades successfully to head.
+- Backend and frontend dependencies install from pinned requirement / lock files.
+- Demo identities and seed rows are available in the test environment.
+- The test case specifications, RTM, and metric definitions identify the requirement / outcome expected for each test.
+
+### 16.5 Exit criteria
+
+- All critical workflow cases in the approved demo scope pass, or any remaining failure is documented as an accepted limitation with owner and risk.
+- Required CI jobs for backend, PostgreSQL and frontend pass on the reviewed pull requests.
+- PostgreSQL-specific data integrity checks are run against PostgreSQL, not inferred from SQLite-only results.
+- Release-gate tests show each criterion's pass/fail result separately and verify waiver authorization.
+- Test Plan snapshot and export tests verify both stored content and returned output format; PDF validation is performed inside the supported container/runtime.
+- The RTM links each approved requirement to a design component and a verification case. Unknown R1–R8 wording remains explicitly flagged rather than guessed.
+
+### 16.6 Reporting and standard alignment
+
+Every execution record should retain the test ID, run ID, result, executor, timestamp, actual result, notes, and related defect where relevant. The Test Summary Report should identify the baseline commit, scope, counts of Passed / Failed / Blocked / Skipped / Not Run, requirement coverage, open Critical defects, release-gate result, unresolved incidents, and known limitations.
+
+The document retains IEEE 829 Test Plan / Test Case Specification names as course-facing artefact labels. Test process and documentation rationale is mapped by purpose to ISO/IEC/IEEE 29119-2 and 29119-3. This does not claim clause-level conformance or one-to-one equivalence.
