@@ -12,6 +12,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from . import auth, junit_imports, projects, runs
+from . import metrics as expanded_metrics
 from .auth import ADMIN, TEST_LEAD, TESTER, CurrentUser, OptionalUser, require_roles
 from .db import DB
 from .models import Defect, DefectHistory, DefectTransition, TestCase, TestExecution, User
@@ -28,6 +29,7 @@ app.include_router(auth.router)
 app.include_router(projects.router)
 app.include_router(junit_imports.router)
 app.include_router(runs.router)
+app.include_router(expanded_metrics.router)
 
 # --- Şemalar ------------------------------------------------------------------
 class DefectCreate(BaseModel):

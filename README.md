@@ -129,6 +129,15 @@ kaydedilip ayrı raporlanır. Sınır 1 MiB / 5000 sonuçtur.
 vakası durumlarını veya metrikleri güncellemez. Okuma uçları, örnek XML, eşleme
 kuralları ve migrasyon ayrıntıları: [JUnit import sözleşmesi](docs/junit-import.md).
 
+## SQL metrikleri (PLN-24 — Esra Kaya)
+
+`GET /api/metrics/expanded`: proje/sürüm ve UTC tarih aralığına göre koşum
+başarı oranı, gereksinim kapsamı, yeniden açılma oranı, defect yaşı ve ilk çözüm
+süresi. Eski `/api/metrics` sözleşmesi korunur. Sprint modeli bulunmadığından
+sprint kimliğiyle filtreleme mevcut değildir; bilinen sprint tarih aralığı
+kullanılabilir. PLN-17 koşum altyapısına bağlıdır.
+Formüller ve kapsam: [Metrik API sözleşmesi](docs/metrics-api.md).
+
 ## Dokümanlar
 
 | Doküman | Dosya |

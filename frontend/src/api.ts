@@ -246,6 +246,31 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   return res.json();
 }
 
+export type RunMetricPoint = {
+  run_id: number; run_name: string; executed_at: string;
+  passed: number; failed: number; blocked: number; skipped: number; not_run: number;
+  pass_rate: number;
+};
+export type ExpandedMetrics = Metrics & {
+  requirement_coverage: number; reopen_rate: number;
+  avg_defect_age_hours: number | null; avg_resolution_hours: number | null;
+  run_series: RunMetricPoint[];
+  defect_burnup: { date: string; opened: number; resolved: number; closed: number; open_remaining: number }[];
+  severity_distribution: { severity: string; total: number; open: number; closed: number }[];
+  scope: {
+    project_id: number | null; release_id: number | null; start_at: string | null; end_at: string | null;
+    as_of: string; execution_source: string; sprint_available: boolean; requirement_scope: string;
+    run_count: number; run_series_truncated: boolean;
+  };
+  denominators: {
+    decisive_executions: number; planned_executions: number;
+    requirements: number; covered_requirements: number; defects_created: number;
+    reopened_defects: number; open_defects_with_age: number; resolved_defects: number;
+    defects_missing_creation_history: number;
+  };
+};
+export type MetricScope = { project_id?: number; release_id?: number; start_at?: string; end_at?: string };
+
 export const api = {
   login: (username: string, password: string) =>
     request<LoginResponse>("/auth/login", {
@@ -254,6 +279,12 @@ export const api = {
     }),
   me: () => request<User>("/auth/me"),
   metrics: () => request<Metrics>("/metrics"),
+  expandedMetrics: (releaseId?: number | null, scope: MetricScope = {}) => {
+    const params = new URLSearchParams();
+    Object.entries({ ...scope, ...(releaseId != null ? { release_id: releaseId } : {}) })
+      .forEach(([key, value]) => { if (value !== undefined) params.set(key, String(value)); });
+    return request<ExpandedMetrics>(`/metrics/expanded${params.size ? `?${params}` : ""}`);
+  },
   testCases: () => request<TestCase[]>("/test-cases"),
   testRuns: () => request<TestRun[]>("/test-runs"),
   getTestRun: (id: number) => request<TestRun>(`/test-runs/${id}`),
