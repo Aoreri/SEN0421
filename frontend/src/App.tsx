@@ -479,11 +479,11 @@ function DashboardView({ user }: DashboardViewProps) {
             </div>
             <div className="sub-metric-item">
               <span>Ort. Defect Yaşı</span>
-              <strong>{expandedMetrics.avg_defect_age_hours} sa</strong>
+              <strong>{expandedMetrics.avg_defect_age_hours ?? "—"} sa</strong>
             </div>
             <div className="sub-metric-item">
               <span>Ort. Çözüm Süresi</span>
-              <strong>{expandedMetrics.avg_resolution_hours} sa</strong>
+              <strong>{expandedMetrics.avg_resolution_hours ?? "—"} sa</strong>
             </div>
           </div>
 

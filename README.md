@@ -164,6 +164,14 @@ Cobertura raporlarını geçici bir SDS-06 örneğine aktarır; sonuçlar **Arti
 ci-import-evidence** altında 14 gün saklanır. Canlı proje veritabanına yazılmaz.
 Sınırlar, doğrulama, API ve migrasyon: [Cobertura sözleşmesi](docs/cobertura-import.md).
 
+## SQL metrikleri (PLN-24 — Esra Kaya)
+
+`GET /api/metrics/expanded`: proje/sürüm ve UTC tarih aralığına göre koşum
+başarı oranı, gereksinim kapsamı, yeniden açılma oranı, defect yaşı ve ilk çözüm
+süresi. Eski `/api/metrics` sözleşmesi korunur. Sprint modeli bulunmadığından
+sprint kimliğiyle filtreleme mevcut değildir; bilinen sprint tarih aralığı
+kullanılabilir. Formüller ve kapsam: [Metrik API sözleşmesi](docs/metrics-api.md).
+
 ## Dokümanlar
 
 | Doküman | Dosya |

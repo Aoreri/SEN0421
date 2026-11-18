@@ -231,8 +231,8 @@ export type SeverityDistributionItem = {
 export type ExpandedMetrics = Metrics & {
   requirement_coverage: number;
   reopen_rate: number;
-  avg_defect_age_hours: number;
-  avg_resolution_hours: number;
+  avg_defect_age_hours: number | null;
+  avg_resolution_hours: number | null;
   run_series: RunMetricPoint[];
   defect_burnup: DefectBurnupPoint[];
   severity_distribution: SeverityDistributionItem[];
