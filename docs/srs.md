@@ -3,8 +3,8 @@
 **Project:** Agile Test and Defect Tracking System  
 **Project ID:** SDS-06  
 **Work package:** PLN-02  
-**Version:** 0.1 — Draft for team review  
-**Prepared:** 11 November 2026  
+**Version:** 0.2 — Draft for team review  
+**Prepared:** 18 November 2026  
 **Repository:** [Aoreri/SEN0421](https://github.com/Aoreri/SEN0421)
 
 ## 1. Introduction
@@ -166,3 +166,61 @@ The current relational model includes users, projects, releases, requirements, t
 2. SDS-06 Midterm Questions and Evaluation Guide (role definitions, requirement traceability examples, performance and portability targets, and design viewpoints).
 3. `README.md`, `AGENTS.md`, `backend/app/`, `backend/alembic/versions/`, `backend/tests/`, `docker-compose.yml`, and `.github/workflows/ci.yml` in the project repository (implementation baseline checked 11 November 2026).
 4. `docs/standard-status-and-mapping.md` (PLN-01 standards status and project-level mapping).
+
+## 8. Version 0.2 update — PLN-25 (18 November 2026)
+
+This section extends the PLN-02 SRS draft to cover the plan items scheduled for 16 and 19 November. The original sections remain in place. New behavior described by an open pull request is labelled **PR in review**, not as an integrated `main` feature.
+
+### 8.1 Additional functional requirements
+
+| SRS ID | Requirement | Priority | Status at 18 November 2026 |
+|---|---|---|---|
+| FR-TC-01 | The system shall provide project-scoped Test Suite create, read, update, and delete operations. A suite name shall be unique within its project; a suite with attached test cases shall not be deleted. | High | PR #21 in review (PLN-16). |
+| FR-TC-02 | The system shall provide Test Case create, read, update, and delete operations with a stable case ID, title, ordered steps, expected result, priority, automation flag, optional suite, status, and one or more requirement links. | High | PR #21 in review (PLN-16). |
+| FR-TC-03 | The system shall reject a test case with an empty requirement list and reject links to nonexistent requirements or test cases. | High | Required by midterm FR-REQ-01; validation proposed in PR #21. |
+| FR-RUN-01 | The system shall create and list project/release-scoped Test Runs. When a run is created, the system shall create one `Not Run` execution record for each selected test case. | High | PR #25 in review (PLN-17). |
+| FR-RUN-02 | The system shall record an execution result as `Passed`, `Failed`, `Blocked`, or `Skipped`, together with actual result, notes, executor, execution time, and optional linked defect IDs. | High | PR #25 in review (PLN-17). |
+| FR-RUN-03 | The system shall allow a defect in `Resolved` state to move to `Closed` only when the latest relevant verification execution for its linked test case is `Passed`; otherwise the API shall reject the transition with HTTP 409. | High | PR #25 in review (PLN-17). |
+| FR-REL-01 | The system shall manage release states `Planned`, `In Test`, `Ready`, and `Released`. | High | PR #27 in review (PLN-18). |
+| FR-REL-02 | The system shall evaluate configurable release exit criteria: minimum pass rate, maximum open Critical defects, and minimum requirement coverage. A transition to `Ready` or `Released` shall be rejected with HTTP 409 when the gate fails and no active waiver exists. | High | PR #27 in review (PLN-18). |
+| FR-REL-03 | An Admin or Test Lead shall be able to record a release-gate waiver with a non-empty reason and later remove it. The waiver metadata shall identify the user and timestamp; the measured criteria shall remain visible. | Medium | PR #27 in review (PLN-18). |
+| FR-PLAN-01 | The system shall provide versioned Test Plan records with `Draft`, `In Review`, and `Approved` states. A project shall not contain duplicate Test Plan version values. | High | PR #26 in review (PLN-26, shared assignment). |
+| FR-PLAN-02 | The system shall enforce valid Test Plan status transitions and prevent editing or deleting an Approved plan except through the explicitly supported revision path. | High | PR #26 in review (PLN-26). |
+| FR-PLAN-03 | The system shall create point-in-time Test Plan snapshots containing the rendered HTML and structured payload, and shall support HTML and PDF export of a live plan or stored snapshot. | Medium | PR #26 in review (PLN-26). |
+| FR-MET-02 | The system shall define and report test-run outcome counts, execution completion rate, run pass rate, requirement coverage, open Critical defects, and release-gate result using the formulas in `docs/metric-definitions.md`. | High | Definitions delivered by PLN-25; expanded aggregation/API work remains subject to the PLN-24 implementation and integration review. |
+
+### 8.2 Metrics as measurable requirements
+
+The metric names, formulas, denominators, zero-denominator behavior, scope, and example checks are defined in [`metric-definitions.md`](metric-definitions.md). The current `/api/metrics` values remain distinct from the proposed run-level values:
+
+- Current `execution_rate` counts only `Passed` and `Failed` cases as executed.
+- Current `pass_rate` is `Passed / (Passed + Failed)`.
+- The new Test Run completion rate counts `Passed`, `Failed`, `Blocked`, and `Skipped` as completed attempts; `Not Run` remains in the denominator.
+- Run pass rate continues to use `Passed / (Passed + Failed)` and shows blocked/skipped counts separately.
+
+The formulas are definitions and acceptance criteria. They do not imply that every expanded metric is already calculated in the current `main` branch.
+
+### 8.3 Requirements Traceability Matrix
+
+`docs/requirements-traceability-matrix-v1.md` is the companion RTM v1. It maps R1–R7 provisionally from the plan-item references and seed-case links, preserves the explicit FR-REQ-01/02 and NFR-REQ-01/02 statements from the midterm, and marks R8 as requiring its original source wording. The matrix must be updated when the approved R1–R8 baseline is supplied and when WFT test specifications become automated CI tests.
+
+### 8.4 API surface planned in the November plan items
+
+The following routes are described by the corresponding open PRs and must be treated as pending integration until those PRs pass review and merge:
+
+| Area | Planned API surface | Plan item / evidence |
+|---|---|---|
+| Test Suites | `GET/POST /api/test-suites`, `GET/PUT/DELETE /api/test-suites/{id}` | PLN-16, PR #21 |
+| Test Cases | `GET/POST /api/test-cases`, `GET/PUT/DELETE /api/test-cases/{id}`, `PUT /api/test-cases/{id}/requirements` | PLN-16, PR #21 |
+| Test Runs | `GET/POST /api/test-runs`, `GET /api/test-runs/{id}` | PLN-17, PR #25 |
+| Executions | `POST/PUT /api/test-runs/{run_id}/executions/{execution_id}`, `POST /api/test-runs/{run_id}/executions/{execution_id}/defects` | PLN-17, PR #25 |
+| Release Gate | `GET /api/releases/{id}/gate`, `PUT /api/releases/{id}/criteria`, `PUT /api/releases/{id}/status`, `POST/DELETE /api/releases/{id}/waiver` | PLN-18, PR #27 |
+| Test Plans | `GET/POST /api/test-plans`, `GET/PUT/DELETE /api/test-plans/{id}`, `PUT /api/test-plans/{id}/status`, snapshot and export routes | PLN-26, PR #26 |
+
+### 8.5 Baseline and integration limitations
+
+1. The original R1–R8 wording remains a source-confirmation item; placeholder rows must not be treated as full requirement statements.
+2. FR-REQ-02's release-specific requirement coverage report and the p95 performance target still need implementation / measurement evidence.
+3. The JUnit XML import snapshot path remains separate from interactive PLN-17 Test Runs; imported records do not automatically change test-case status or run-level metrics.
+4. The PRs adding suites/cases, runs/executions, Test Plans, and release criteria currently use overlapping Alembic revision identifiers in their separate branches. The integration owner must sequence and renumber migrations after the current `0005_junit_imports` baseline before the combined stack can be safely migrated.
+5. Test Plan snapshots and exports must be verified on the supported container environment; a successful HTML response alone is not proof that PDF rendering works on the target runtime.
