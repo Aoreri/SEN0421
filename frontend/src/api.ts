@@ -27,6 +27,9 @@ export type RecordableExecutionStatus = (typeof RECORDABLE_EXECUTION_STATUSES)[n
 export const ROLES = ["Admin", "Test Lead", "Tester", "Developer"] as const;
 export type Role = (typeof ROLES)[number];
 
+export const RELEASE_STATUSES = ["Planned", "In Test", "Ready", "Released"] as const;
+export type ReleaseStatus = (typeof RELEASE_STATUSES)[number];
+
 export type User = {
   id: number;
   username: string;
@@ -49,6 +52,7 @@ export type Release = {
   id: number;
   project_id: number;
   version: string;
+  status: ReleaseStatus;
 };
 
 export type Requirement = {
@@ -185,6 +189,35 @@ export type ImportedTestRun = {
 export type JUnitImportReport = ImportedTestRun & {
   results: ImportedTestResult[];
   unmatched_results: ImportedTestResult[];
+};
+
+export type ExitCriteriaConfig = {
+  min_pass_rate: number;
+  max_open_critical: number;
+  min_req_coverage: number;
+};
+
+export type ReleaseWaiver = {
+  waived_by: string;
+  reason: string;
+  waived_at: string;
+};
+
+export type ReleaseGateStatus = {
+  release_id: number;
+  release_version: string;
+  status: ReleaseStatus;
+  criteria: ExitCriteriaConfig;
+  actual_pass_rate: number;
+  actual_open_critical: number;
+  actual_req_coverage: number;
+  passed_criteria: {
+    pass_rate: boolean;
+    open_critical: boolean;
+    req_coverage: boolean;
+  };
+  gate_passed: boolean;
+  waiver: ReleaseWaiver | null;
 };
 
 const TOKEN_STORAGE_KEY = "token";
@@ -403,6 +436,26 @@ export const api = {
       body: JSON.stringify({ project_id, version: version.trim() }),
     }),
   deleteRelease: (id: number) => request<void>(`/releases/${id}`, { method: "DELETE" }),
+  releaseGate: (releaseId: number) => request<ReleaseGateStatus>(`/releases/${releaseId}/gate`),
+  updateReleaseStatus: (releaseId: number, status: ReleaseStatus) =>
+    request<ReleaseGateStatus>(`/releases/${releaseId}/status`, {
+      method: "PUT",
+      body: JSON.stringify({ status }),
+    }),
+  updateExitCriteria: (releaseId: number, criteria: ExitCriteriaConfig) =>
+    request<ReleaseGateStatus>(`/releases/${releaseId}/criteria`, {
+      method: "PUT",
+      body: JSON.stringify(criteria),
+    }),
+  createReleaseWaiver: (releaseId: number, reason: string) =>
+    request<ReleaseGateStatus>(`/releases/${releaseId}/waiver`, {
+      method: "POST",
+      body: JSON.stringify({ reason: reason.trim() }),
+    }),
+  deleteReleaseWaiver: (releaseId: number) =>
+    request<ReleaseGateStatus>(`/releases/${releaseId}/waiver`, {
+      method: "DELETE",
+    }),
   requirements: () => request<Requirement[]>("/requirements"),
   createRequirement: (id: string, project_id: number, title: string, description = "") =>
     request<Requirement>("/requirements", {

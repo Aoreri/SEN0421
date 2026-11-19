@@ -5,7 +5,9 @@ from sqlalchemy import (
     Boolean,
     Column,
     DateTime,
+    Float,
     ForeignKey,
+    Integer,
     String,
     Table,
     Text,
@@ -56,6 +58,21 @@ class Release(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
     version: Mapped[str] = mapped_column(String(50))
+    status: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="Planned", server_default="Planned"
+    )
+    min_pass_rate: Mapped[float] = mapped_column(
+        Float, nullable=False, default=80.0, server_default="80.0"
+    )
+    max_open_critical: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    min_req_coverage: Mapped[float] = mapped_column(
+        Float, nullable=False, default=80.0, server_default="80.0"
+    )
+    waived_by: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    waiver_reason: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    waived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class Requirement(Base):
