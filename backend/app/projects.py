@@ -1,9 +1,10 @@
-"""Proje, sürüm, gereksinim, test suite ve test vakası CRUD uçları + izlenebilirlik (PLN-06, PLN-16)."""
+"""Proje, sürüm, gereksinim, test suite ve test vakası CRUD uçları, izlenebilirlik ve sürüm çıkış kapısı (PLN-06, PLN-16, PLN-18)."""
+from datetime import UTC, datetime
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, StringConstraints
-from sqlalchemy import select
+from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
@@ -19,11 +20,16 @@ from .models import (
     TestExecution,
     TestRun,
     TestSuite,
+    User,
+    execution_defects,
 )
 
 router = APIRouter(prefix="/api", tags=["projects"])
 WRITE = [Depends(require_roles(ADMIN, TEST_LEAD))]
 TRACE = [Depends(require_roles(ADMIN, TEST_LEAD, TESTER))]
+GateManager = Annotated[User, Depends(require_roles(ADMIN, TEST_LEAD))]
+
+ReleaseStatus = Literal["Planned", "In Test", "Ready", "Released"]
 
 
 Title = StringConstraints(strip_whitespace=True, min_length=1, max_length=200)
@@ -31,6 +37,7 @@ Short = StringConstraints(strip_whitespace=True, min_length=1, max_length=100)
 Version = StringConstraints(strip_whitespace=True, min_length=1, max_length=50)
 Code = StringConstraints(strip_whitespace=True, min_length=1, max_length=20)
 Description = Annotated[str, StringConstraints(strip_whitespace=True, max_length=1000)]
+Reason = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=1000)]
 Step = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)]
 Priority = Literal["Low", "Medium", "High", "Critical"]
 CaseStatus = Literal["Not Run", "Passed", "Failed", "Blocked", "Skipped"]
@@ -44,6 +51,20 @@ class ProjectIn(BaseModel):
 class ReleaseIn(BaseModel):
     project_id: int
     version: Annotated[str, Version]
+
+
+class ExitCriteriaIn(BaseModel):
+    min_pass_rate: float = Field(ge=0, le=100)
+    max_open_critical: int = Field(ge=0)
+    min_req_coverage: float = Field(ge=0, le=100)
+
+
+class ReleaseWaiverIn(BaseModel):
+    reason: Reason
+
+
+class ReleaseStatusIn(BaseModel):
+    status: ReleaseStatus
 
 
 class RequirementIn(BaseModel):
@@ -123,7 +144,99 @@ def project_out(p: Project) -> dict:
 
 
 def release_out(r: Release) -> dict:
-    return {"id": r.id, "project_id": r.project_id, "version": r.version}
+    return {"id": r.id, "project_id": r.project_id, "version": r.version, "status": r.status}
+
+
+def release_gate_out(db: Session, r: Release) -> dict:
+    project_case_filter = or_(
+        TestCase.requirements.any(Requirement.project_id == r.project_id),
+        TestCase.suite.has(TestSuite.project_id == r.project_id),
+    )
+    other_project_case_ids = select(TestCase.id).where(
+        ~project_case_filter,
+        or_(
+            TestCase.requirements.any(Requirement.project_id != r.project_id),
+            TestCase.suite.has(TestSuite.project_id != r.project_id),
+        ),
+    )
+    other_project_exec_defect_ids = (
+        select(execution_defects.c.defect_id)
+        .join(TestExecution, TestExecution.id == execution_defects.c.execution_id)
+        .join(TestRun, TestRun.id == TestExecution.run_id)
+        .where(TestRun.project_id != r.project_id)
+    )
+    project_exec_defect_ids = (
+        select(execution_defects.c.defect_id)
+        .join(TestExecution, TestExecution.id == execution_defects.c.execution_id)
+        .join(TestRun, TestRun.id == TestExecution.run_id)
+        .where(TestRun.project_id == r.project_id)
+    )
+
+    statuses = list(db.scalars(select(TestCase.status).where(project_case_filter)))
+    executed = sum(s in ("Passed", "Failed") for s in statuses)
+    passed = statuses.count("Passed")
+    actual_pass_rate = round(passed / executed * 100, 1) if executed else 0.0
+
+    actual_open_critical = int(
+        db.scalar(
+            select(func.count()).where(
+                Defect.severity == "Critical",
+                Defect.status != "Closed",
+                or_(
+                    Defect.test_case.in_(select(TestCase.id).where(project_case_filter)),
+                    Defect.id.in_(project_exec_defect_ids),
+                    (
+                        Defect.test_case.is_(None)
+                        & ~Defect.id.in_(other_project_exec_defect_ids)
+                    ),
+                ),
+                or_(Defect.test_case.is_(None), ~Defect.test_case.in_(other_project_case_ids)),
+            )
+        )
+        or 0
+    )
+
+    reqs = list(
+        db.scalars(
+            select(Requirement)
+            .where(Requirement.project_id == r.project_id)
+            .options(selectinload(Requirement.test_cases))
+        )
+    )
+    covered_reqs = sum(1 for req in reqs if req.test_cases)
+    actual_req_coverage = round(covered_reqs / len(reqs) * 100, 1) if reqs else 0.0
+
+    pass_rate_ok = actual_pass_rate >= r.min_pass_rate
+    open_critical_ok = actual_open_critical <= r.max_open_critical
+    req_coverage_ok = actual_req_coverage >= r.min_req_coverage
+
+    waiver = (
+        {"waived_by": r.waived_by, "reason": r.waiver_reason, "waived_at": r.waived_at}
+        if r.waived_by and r.waiver_reason and r.waived_at
+        else None
+    )
+    gate_passed = (pass_rate_ok and open_critical_ok and req_coverage_ok) or waiver is not None
+
+    return {
+        "release_id": r.id,
+        "release_version": r.version,
+        "status": r.status,
+        "criteria": {
+            "min_pass_rate": r.min_pass_rate,
+            "max_open_critical": r.max_open_critical,
+            "min_req_coverage": r.min_req_coverage,
+        },
+        "actual_pass_rate": actual_pass_rate,
+        "actual_open_critical": actual_open_critical,
+        "actual_req_coverage": actual_req_coverage,
+        "passed_criteria": {
+            "pass_rate": pass_rate_ok,
+            "open_critical": open_critical_ok,
+            "req_coverage": req_coverage_ok,
+        },
+        "gate_passed": gate_passed,
+        "waiver": waiver,
+    }
 
 
 def requirement_out(r: Requirement) -> dict:
@@ -231,6 +344,56 @@ def delete_release(release_id: int, db: DB):
     if db.scalar(select(TestRun.id).where(TestRun.release_id == release_id).limit(1)) is not None:
         raise HTTPException(409, "Sürüme bağlı test koşumları var")
     remove(db, release)
+
+
+@router.get("/releases/{release_id}/gate")
+def get_release_gate(release_id: int, db: DB):
+    release = get_or_404(db, Release, release_id)
+    return release_gate_out(db, release)
+
+
+@router.put("/releases/{release_id}/criteria", dependencies=WRITE)
+def update_release_criteria(release_id: int, body: ExitCriteriaIn, db: DB):
+    release = get_or_404(db, Release, release_id)
+    save(db, release, body)
+    return release_gate_out(db, release)
+
+
+@router.post("/releases/{release_id}/waiver")
+def create_release_waiver(release_id: int, body: ReleaseWaiverIn, db: DB, user: GateManager):
+    release = get_or_404(db, Release, release_id)
+    release.waived_by = user.username
+    release.waiver_reason = body.reason
+    release.waived_at = datetime.now(UTC)
+    db.add(release)
+    commit_or_409(db)
+    return release_gate_out(db, release)
+
+
+@router.delete("/releases/{release_id}/waiver", dependencies=WRITE)
+def delete_release_waiver(release_id: int, db: DB):
+    release = get_or_404(db, Release, release_id)
+    release.waived_by = None
+    release.waiver_reason = None
+    release.waived_at = None
+    db.add(release)
+    commit_or_409(db)
+    return release_gate_out(db, release)
+
+
+@router.put("/releases/{release_id}/status", dependencies=WRITE)
+def update_release_status(release_id: int, body: ReleaseStatusIn, db: DB):
+    release = get_or_404(db, Release, release_id)
+    gate = release_gate_out(db, release)
+    if body.status in ("Ready", "Released") and not gate["gate_passed"]:
+        raise HTTPException(
+            409,
+            "Çıkış kriterleri karşılanmadan veya muafiyet girilmeden Ready/Released yapılamaz",
+        )
+    release.status = body.status
+    db.add(release)
+    commit_or_409(db)
+    return release_gate_out(db, release)
 
 
 # --- Gereksinimler ------------------------------------------------------------

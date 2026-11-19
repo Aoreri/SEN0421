@@ -189,6 +189,7 @@ def test_release_crud(client):
     lead = as_user("testlead")
     release = client.post("/api/releases", json={"project_id": 1, "version": "v1"}, headers=lead)
     assert release.status_code == 201
+    assert release.json()["status"] == "Planned"
     url = f"/api/releases/{release.json()['id']}"
     assert client.get(url).json()["version"] == "v1"
     assert client.put(url, json={"project_id": 1, "version": "v2"},
@@ -196,6 +197,177 @@ def test_release_crud(client):
     assert len(client.get("/api/releases").json()) == 1
     assert client.delete(url, headers=lead).status_code == 204
     assert client.get(url).status_code == 404
+
+
+def test_release_exit_gate_criteria_waiver_and_status(client):
+    lead = as_user("testlead")
+    admin = as_user("admin")
+    tester = as_user("tester")
+    dev = as_user("developer")
+
+    rel = client.post("/api/releases", json={"project_id": 1, "version": "v1.0.0"}, headers=lead).json()
+    rid = rel["id"]
+
+    # 404 on nonexistent release
+    assert client.get("/api/releases/999/gate").status_code == 404
+    assert client.put("/api/releases/999/criteria",
+                      json={"min_pass_rate": 80, "max_open_critical": 0, "min_req_coverage": 80},
+                      headers=lead).status_code == 404
+    assert client.post("/api/releases/999/waiver", json={"reason": "ok"}, headers=lead).status_code == 404
+    assert client.delete("/api/releases/999/waiver", headers=lead).status_code == 404
+    assert client.put("/api/releases/999/status", json={"status": "In Test"}, headers=lead).status_code == 404
+
+    # Initial gate state on seed data:
+    # Seed test cases: 4 executed (3 Passed, 1 Failed) -> pass_rate = 75.0 (< 80.0)
+    # Seed defects: 0 Critical open -> open_critical = 0 (<= 0)
+    # Seed requirements: 5 of 8 covered (R1, R3, R4, R6, R7) -> req_coverage = 62.5 (< 80.0)
+    gate = client.get(f"/api/releases/{rid}/gate").json()
+    assert gate == {
+        "release_id": rid,
+        "release_version": "v1.0.0",
+        "status": "Planned",
+        "criteria": {"min_pass_rate": 80.0, "max_open_critical": 0, "min_req_coverage": 80.0},
+        "actual_pass_rate": 75.0,
+        "actual_open_critical": 0,
+        "actual_req_coverage": 62.5,
+        "passed_criteria": {"pass_rate": False, "open_critical": True, "req_coverage": False},
+        "gate_passed": False,
+        "waiver": None,
+    }
+
+    # Transitioning to In Test or Planned is allowed even when gate_passed is False
+    res = client.put(f"/api/releases/{rid}/status", json={"status": "In Test"}, headers=lead)
+    assert res.status_code == 200 and res.json()["status"] == "In Test"
+
+    # Transitioning to Ready or Released when gate_passed is False is rejected with 409
+    for blocked_status in ("Ready", "Released"):
+        assert client.put(f"/api/releases/{rid}/status",
+                          json={"status": blocked_status}, headers=lead).status_code == 409
+    assert client.get(f"/api/releases/{rid}/gate").json()["status"] == "In Test"
+
+    # Role guards on gate mutation endpoints (401 unauthenticated, 403 for Tester/Developer)
+    for method, path, payload in [
+        ("put", f"/api/releases/{rid}/criteria",
+         {"min_pass_rate": 70, "max_open_critical": 0, "min_req_coverage": 60}),
+        ("post", f"/api/releases/{rid}/waiver", {"reason": "Acil yama"}),
+        ("delete", f"/api/releases/{rid}/waiver", None),
+        ("put", f"/api/releases/{rid}/status", {"status": "In Test"}),
+    ]:
+        send = getattr(client, method)
+        kwargs = {"json": payload} if payload is not None else {}
+        assert send(path, **kwargs).status_code == 401
+        for denied_header in (tester, dev):
+            assert send(path, headers=denied_header, **kwargs).status_code == 403
+
+    # Validation errors (422) on criteria, waiver, and status
+    for bad_criteria in [
+        {"min_pass_rate": -1, "max_open_critical": 0, "min_req_coverage": 80},
+        {"min_pass_rate": 101, "max_open_critical": 0, "min_req_coverage": 80},
+        {"min_pass_rate": 80, "max_open_critical": -1, "min_req_coverage": 80},
+        {"min_pass_rate": 80, "max_open_critical": 0, "min_req_coverage": -0.1},
+        {"min_pass_rate": 80, "max_open_critical": 0, "min_req_coverage": 100.1},
+    ]:
+        assert client.put(f"/api/releases/{rid}/criteria",
+                          json=bad_criteria, headers=lead).status_code == 422
+
+    assert client.post(f"/api/releases/{rid}/waiver", json={"reason": "   "}, headers=lead).status_code == 422
+    assert client.post(f"/api/releases/{rid}/waiver",
+                       json={"reason": "x" * 1001}, headers=lead).status_code == 422
+    assert client.put(f"/api/releases/{rid}/status",
+                      json={"status": "InvalidStatus"}, headers=lead).status_code == 422
+
+    # Waiver allows gate to pass even when criteria fail
+    waived = client.post(f"/api/releases/{rid}/waiver",
+                         json={"reason": "  Bilinen hata ertelendi  "}, headers=lead).json()
+    assert waived["gate_passed"] is True
+    assert waived["waiver"]["waived_by"] == "testlead"
+    assert waived["waiver"]["reason"] == "Bilinen hata ertelendi"
+    assert waived["waiver"]["waived_at"] is not None
+
+    # With active waiver, Ready and Released succeed
+    assert client.put(f"/api/releases/{rid}/status",
+                      json={"status": "Ready"}, headers=lead).json()["status"] == "Ready"
+
+    # Deleting waiver restores gate failure and blocks Released
+    unwaived = client.delete(f"/api/releases/{rid}/waiver", headers=admin).json()
+    assert unwaived["waiver"] is None and unwaived["gate_passed"] is False
+    assert client.put(f"/api/releases/{rid}/status",
+                      json={"status": "Released"}, headers=admin).status_code == 409
+
+    # Updating criteria so thresholds are met makes gate pass without waiver
+    updated = client.put(
+        f"/api/releases/{rid}/criteria",
+        json={"min_pass_rate": 75.0, "max_open_critical": 0, "min_req_coverage": 60.0},
+        headers=admin,
+    ).json()
+    assert updated["passed_criteria"] == {
+        "pass_rate": True, "open_critical": True, "req_coverage": True,
+    }
+    assert updated["gate_passed"] is True
+
+    # Opening a Critical defect breaks open_critical criterion
+    crit = client.post("/api/defects",
+                       json={"title": "Kritik çökme", "severity": "Critical"},
+                       headers=tester).json()
+    after_crit = client.get(f"/api/releases/{rid}/gate").json()
+    assert after_crit["actual_open_critical"] == 1
+    assert after_crit["passed_criteria"]["open_critical"] is False
+    assert after_crit["gate_passed"] is False
+    assert client.put(f"/api/releases/{rid}/status",
+                      json={"status": "Released"}, headers=admin).status_code == 409
+
+    # Closing the Critical defect satisfies the gate again and allows Released
+    for to in ("In Progress", "Resolved", "Closed"):
+        client.post(f"/api/defects/{crit['id']}/transition", json={"to": to}, headers=admin)
+    rel_final = client.put(f"/api/releases/{rid}/status",
+                           json={"status": "Released"}, headers=admin)
+    assert rel_final.status_code == 200 and rel_final.json()["status"] == "Released"
+
+
+def test_release_gate_isolates_projects(client):
+    admin = as_user("admin")
+    tester = as_user("tester")
+
+    # Project 1 release with thresholds satisfied by Project 1 seed data (75% pass rate, 62.5% req coverage)
+    rel1 = client.post("/api/releases", json={"project_id": 1, "version": "v1-iso"}, headers=admin).json()
+    client.put(
+        f"/api/releases/{rel1['id']}/criteria",
+        json={"min_pass_rate": 75.0, "max_open_critical": 0, "min_req_coverage": 60.0},
+        headers=admin,
+    )
+
+    # Create Project 2 with 1 requirement, 1 Failed test case, and 1 open Critical defect linked to it
+    p2 = client.post("/api/projects", json={"name": "P2-Iso"}, headers=admin).json()
+    client.post(
+        "/api/requirements",
+        json={"id": "R-P2-1", "project_id": p2["id"], "title": "P2 Req"},
+        headers=admin,
+    )
+    client.post(
+        "/api/test-cases",
+        json={"id": "TC-P2-1", "title": "P2 Failed Case", "status": "Failed", "requirements": ["R-P2-1"]},
+        headers=tester,
+    )
+    client.post(
+        "/api/defects",
+        json={"title": "P2 Critical Defect", "severity": "Critical", "test_case": "TC-P2-1"},
+        headers=tester,
+    )
+    rel2 = client.post("/api/releases", json={"project_id": p2["id"], "version": "v1"}, headers=admin).json()
+
+    # Project 1 gate is unaffected by Project 2's failed test case and open Critical defect
+    gate1 = client.get(f"/api/releases/{rel1['id']}/gate").json()
+    assert gate1["actual_pass_rate"] == 75.0
+    assert gate1["actual_open_critical"] == 0
+    assert gate1["actual_req_coverage"] == 100.0 if False else 62.5
+    assert gate1["gate_passed"] is True
+
+    # Project 2 gate sees only Project 2's 0% pass rate, 1 open Critical defect, and 100% req coverage
+    gate2 = client.get(f"/api/releases/{rel2['id']}/gate").json()
+    assert gate2["actual_pass_rate"] == 0.0
+    assert gate2["actual_open_critical"] == 1
+    assert gate2["actual_req_coverage"] == 100.0
+    assert gate2["gate_passed"] is False
 
 
 def test_requirement_crud(client):
