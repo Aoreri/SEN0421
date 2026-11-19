@@ -88,6 +88,11 @@ def expanded_metrics(db: DB,
     for row in db.execute(select(counts).order_by(counts.c.executed_at.desc(), counts.c.run_id.desc())
                           .limit(1000)).mappings():
         point = dict(row)
+        # SQLite drops DateTime timezone information; stored run times are UTC.
+        timestamp = point["executed_at"]
+        if timestamp.tzinfo is None:
+            timestamp = timestamp.replace(tzinfo=UTC)
+        point["executed_at"] = timestamp.astimezone(UTC)
         point["pass_rate"] = percent(point["passed"], point["passed"] + point["failed"])
         series.append(point)
     series.reverse()
@@ -173,9 +178,12 @@ def expanded_metrics(db: DB,
         select(event_day(db, c.closed), c.id, cast(0, Float), cast(0, Float), cast(1, Float), cast(0, Float))
             .where(c.closed >= c.opened),
         select(event_day(db, e.at), e.defect_id, cast(0, Float), cast(0, Float), cast(0, Float),
-               case((e.to_status == "Closed", -1), else_=1))
+               # Resolved is already active (not Closed): its reopen adds a day,
+               # but must not increase active inventory a second time.
+               case((e.to_status == "Closed", -1), (e.from_status == "Closed", 1), else_=0))
             .where(e.defect_id.in_(select(c.id)),
-                   or_(e.to_status == "Closed", (e.from_status == "Closed") & (e.to_status == "Open"))),
+                   or_(e.to_status == "Closed",
+                       e.from_status.in_(["Resolved", "Closed"]) & (e.to_status == "Open"))),
     ).cte("day_events")
     daily = select(day_events.c.date,
         func.sum(day_events.c.opened).label("opened"),

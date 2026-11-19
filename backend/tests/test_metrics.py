@@ -147,3 +147,39 @@ def test_all_not_run_and_missing_creation_history_are_explicit(client, populatio
     assert result['total_tests'] == 7 and result['execution_rate'] == result['pass_rate'] == 0
     assert result['denominators']['defects_missing_creation_history'] == 1
     assert result['denominators']['defects_created'] == 3
+
+
+def test_run_timestamp_has_utc_offset_and_can_be_reused_as_filter(client, population):
+    report = get(client, population)
+    timestamp = report['run_series'][0]['executed_at']
+    assert datetime.fromisoformat(timestamp) == at(1)
+    assert timestamp.endswith('+00:00') or timestamp.endswith('Z')
+    assert client.get('/api/metrics/expanded', params={
+        'release_id': population['release_id'], 'start_at': timestamp,
+    }).status_code == 200
+
+
+@pytest.mark.parametrize('reopen_from', ['Resolved', 'Closed'])
+def test_reopen_day_is_visible_without_double_counting_active_defects(client, population, reopen_from):
+    with SessionLocal() as db:
+        from sqlalchemy import select
+        execution = db.scalar(select(ExecutionModel).join(RunModel).where(
+            RunModel.release_id == population['other_release']))
+        defect = Defect(title='Reopen regression', test_case='T24-0', severity='High', status='Open')
+        db.add(defect)
+        db.flush()
+        history = [(None, 'Open', 1), ('Open', 'In Progress', 1), ('In Progress', 'Resolved', 2)]
+        if reopen_from == 'Closed':
+            history.append(('Resolved', 'Closed', 2))
+        history.append((reopen_from, 'Open', 3))
+        for previous, new, day in history:
+            db.add(DefectHistory(defect_id=defect.id, from_status=previous, to_status=new, at=at(day)))
+        db.execute(execution_defects.insert().values(execution_id=execution.id, defect_id=defect.id))
+        db.commit()
+    report = get(client, population, release_id=population['other_release'])
+    points = {point['date']: point for point in report['defect_burnup']}
+    assert '2026-11-03' in points
+    assert points['2026-11-02']['open_remaining'] == (0 if reopen_from == 'Closed' else 1)
+    assert points['2026-11-03']['open_remaining'] == report['open_defects'] == 1
+    assert points['2026-11-03']['opened'] == points['2026-11-03']['resolved'] == 1
+    assert report['reopen_rate'] == 100.0
