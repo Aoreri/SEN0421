@@ -77,8 +77,8 @@ proof that every requirement was successfully executed.
 | `reopen_rate` | Distinct cohort defects with Resolved/Closed → Open / created cohort × 100. |
 | `avg_defect_age_hours` | Mean hours from initial creation to as-of, for non-Closed cohort defects. |
 | `avg_resolution_hours` | Mean hours from initial creation to first Resolved, excluding missing or invalid negative durations. |
-| `run_series` | Per-run five-status counts and decisive pass rate, ordered by creation time then ID. `executed_at` is the legacy dashboard field name for run creation time. |
-| `defect_burnup` | UTC event-day cumulative first-created (`opened`), first-resolved (`resolved`), first-closed (`closed`) totals. `open_remaining` additionally accounts for subsequent close/reopen transitions and reflects active cohort inventory. Days without events are omitted. |
+| `run_series` | Per-run five-status counts and decisive pass rate, ordered by creation time then ID. `executed_at` is the legacy dashboard field name for run creation time, serialized with an explicit UTC offset on SQLite and PostgreSQL. |
+| `defect_burnup` | UTC event-day cumulative first-created (`opened`), first-resolved (`resolved`), first-closed (`closed`) totals. `open_remaining` additionally accounts for subsequent close/reopen transitions and reflects active cohort inventory. Both Resolved → Open and Closed → Open add their event day. Resolved is already active, so its reopen adds zero to active inventory; reopening Closed adds one. First-resolution totals remain cumulative. Days without events are omitted. |
 | `severity_distribution` | Cohort count per severity, including separate open/closed counts. |
 | `scope` | Effective filters, as-of, data sources, run count, and truncation/sprint-availability flags. |
 | `denominators` | Raw planned/decisive executions, total/covered requirements, created/reopened defects and age/resolution sample counts, plus missing-creation-history count. |

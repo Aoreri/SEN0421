@@ -205,7 +205,7 @@ export type JUnitImportReport = ImportedTestRun & {
 export type RunMetricPoint = {
   run_id: number;
   run_name: string;
-  executed_at: string;
+  executed_at: string; // ISO-8601 with an explicit UTC offset on both database backends.
   passed: number;
   failed: number;
   blocked: number;
