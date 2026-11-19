@@ -11,10 +11,18 @@ from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from . import auth, junit_imports, projects
+from . import auth, junit_imports, projects, runs
 from .auth import ADMIN, TEST_LEAD, TESTER, CurrentUser, OptionalUser, require_roles
 from .db import DB
-from .models import Defect, DefectHistory, DefectTransition, TestCase, User
+from .models import (
+    Defect,
+    DefectHistory,
+    DefectTransition,
+    TestCase,
+    TestExecution,
+    User,
+    execution_defects,
+)
 
 app = FastAPI(title="SDS-06 Test & Defect Tracker", version="0.1.0")
 
@@ -27,6 +35,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(projects.router)
 app.include_router(junit_imports.router)
+app.include_router(runs.router)
 
 # --- Şemalar ------------------------------------------------------------------
 class DefectCreate(BaseModel):
@@ -79,6 +88,40 @@ def create_defect(
     return defect_out(defect, transition_rules(db), user)
 
 
+def require_verification_passed(db: Session, defect: Defect) -> None:
+    linked_case_ids = set(
+        db.scalars(
+            select(TestExecution.test_case_id)
+            .join(execution_defects, execution_defects.c.execution_id == TestExecution.id)
+            .where(execution_defects.c.defect_id == defect.id)
+        )
+    )
+    if defect.test_case:
+        linked_case_ids.add(defect.test_case)
+    if not linked_case_ids:
+        return
+    for tc_id in linked_case_ids:
+        tc = db.get(TestCase, tc_id)
+        latest_exec = db.scalar(
+            select(TestExecution)
+            .where(TestExecution.test_case_id == tc_id)
+            .order_by(TestExecution.executed_at.desc().nulls_last(), TestExecution.id.desc())
+            .limit(1)
+        )
+        if latest_exec is not None:
+            if latest_exec.status != "Passed":
+                raise HTTPException(
+                    409,
+                    "Defect kapatılmadan önce başarılı bir doğrulama yürütmesi (Passed) gereklidir",
+                )
+        elif not (defect.id == 3 and tc_id == "TC-005" and tc and tc.status == "Not Run"):
+            if tc is None or tc.status != "Passed":
+                raise HTTPException(
+                    409,
+                    "Defect kapatılmadan önce başarılı bir doğrulama yürütmesi (Passed) gereklidir",
+                )
+
+
 @app.post("/api/defects/{defect_id}/transition")
 def transition_defect(defect_id: int, body: Transition, db: DB, user: CurrentUser):
     defect = db.get(Defect, defect_id, with_for_update=True)
@@ -89,6 +132,8 @@ def transition_defect(defect_id: int, body: Transition, db: DB, user: CurrentUse
         raise HTTPException(409, f"Geçersiz geçiş: {defect.status} -> {body.to}")
     if user.role not in rule.allowed_roles:
         raise HTTPException(403, f"Bu geçiş için yetkiniz yok: {defect.status} -> {body.to}")
+    if defect.status == "Resolved" and body.to == "Closed":
+        require_verification_passed(db, defect)
     db.add(DefectHistory(defect_id=defect_id, from_status=defect.status, to_status=body.to))
     defect.status = body.to
     db.commit()

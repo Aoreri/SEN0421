@@ -41,8 +41,9 @@ geçişler ve değiştirilemez geçmiş zaman çizelgesi.
 | Test vakası (adımlar, beklenen sonuç, öncelik, otomasyon bayrağı, kararlı anahtar) ve test suite CRUD API'si | R2 | 29119-2 Test Tasarımı ve Gerçekleştirme; 29119-3 Test Case Specification |
 | Test vakası listesi ve metrikler: koşum oranı, başarı oranı, açık defect sayısı | R2, R5 | 29119-2 Test İzleme ve Kontrol |
 | JUnit XML içe aktarımı; commit/branch üst verisi, projeye göre kararlı test vakası eşleme ve eşleşmeyen sonuç raporu | R6 | 29119-2 Test Yürütme; 12207 Doğrulama |
+| Test koşumu (Test Run) ve test yürütme (Test Execution): Passed / Failed / Blocked / Skipped sonuçları, yürütme ↔ defect bağlantısı ve `Resolved → Closed` doğrulama şartı | R2, R4 | 29119-2 Test Yürütme; 12207 Doğrulama |
 
-**Planlanan:** test vakası / suite yönetim ekranları, genel test koşumları, Cobertura
+**Planlanan:** test vakası / suite yönetim ekranları, Cobertura
 içe aktarımı, grafikli metrik paneli, sürüm çıkış kriterleri ve IEEE 829 Test Plan /
 Test Summary Report / Test Incident Report üretimi (Jinja2 + WeasyPrint).
 

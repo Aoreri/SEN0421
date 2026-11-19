@@ -33,6 +33,13 @@ test_case_requirements = Table(
     Column("requirement_id", ForeignKey("requirements.id"), primary_key=True),
 )
 
+execution_defects = Table(
+    "execution_defects",
+    Base.metadata,
+    Column("execution_id", ForeignKey("test_executions.id"), primary_key=True),
+    Column("defect_id", ForeignKey("defects.id"), primary_key=True),
+)
+
 
 class Project(Base):
     __tablename__ = "projects"
@@ -150,3 +157,34 @@ class ImportedTestResult(Base):
     status: Mapped[str] = mapped_column(String(20))
     duration_seconds: Mapped[float | None]
     message: Mapped[str] = mapped_column(Text)
+
+
+class TestRun(Base):
+    __tablename__ = "test_runs"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(200))
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    release_id: Mapped[int | None] = mapped_column(ForeignKey("releases.id"), index=True)
+    suite_id: Mapped[int | None] = mapped_column(ForeignKey("test_suites.id"), index=True)
+    created_by: Mapped[str] = mapped_column(String(50))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    executions: Mapped[list["TestExecution"]] = relationship(
+        back_populates="run", order_by="TestExecution.id"
+    )
+
+
+class TestExecution(Base):
+    __tablename__ = "test_executions"
+    __table_args__ = (UniqueConstraint("run_id", "test_case_id"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    run_id: Mapped[int] = mapped_column(ForeignKey("test_runs.id"), index=True)
+    test_case_id: Mapped[str] = mapped_column(ForeignKey("test_cases.id"), index=True)
+    status: Mapped[str] = mapped_column(String(20), default="Not Run")
+    actual_result: Mapped[str] = mapped_column(String(1000), default="")
+    notes: Mapped[str] = mapped_column(String(1000), default="")
+    executed_by: Mapped[str | None] = mapped_column(String(50))
+    executed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    run: Mapped[TestRun] = relationship(back_populates="executions")
+    defects: Mapped[list[Defect]] = relationship(secondary=execution_defects, order_by="Defect.id")
