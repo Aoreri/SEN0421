@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Any
 
 from sqlalchemy import (
     JSON,
@@ -205,3 +206,45 @@ class TestExecution(Base):
     executed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     run: Mapped[TestRun] = relationship(back_populates="executions")
     defects: Mapped[list[Defect]] = relationship(secondary=execution_defects, order_by="Defect.id")
+
+
+class TestPlan(Base):
+    __tablename__ = "test_plans"
+    __table_args__ = (UniqueConstraint("project_id", "version"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    release_id: Mapped[int | None] = mapped_column(ForeignKey("releases.id"), index=True)
+    version: Mapped[str] = mapped_column(String(50))
+    title: Mapped[str] = mapped_column(String(200))
+    status: Mapped[str] = mapped_column(String(20), default="Draft")
+    scope: Mapped[str] = mapped_column(String(2000), default="")
+    approach: Mapped[str] = mapped_column(String(2000), default="")
+    pass_fail_criteria: Mapped[str] = mapped_column(String(2000), default="")
+    environment: Mapped[str] = mapped_column(String(2000), default="")
+    schedule_risks: Mapped[str] = mapped_column(String(2000), default="")
+    created_by: Mapped[str] = mapped_column(String(50))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    snapshots: Mapped[list["TestPlanSnapshot"]] = relationship(
+        back_populates="test_plan",
+        cascade="all, delete-orphan",
+        order_by="TestPlanSnapshot.id",
+    )
+
+
+class TestPlanSnapshot(Base):
+    __tablename__ = "test_plan_snapshots"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    test_plan_id: Mapped[int] = mapped_column(ForeignKey("test_plans.id"), index=True)
+    version: Mapped[str] = mapped_column(String(50))
+    status: Mapped[str] = mapped_column(String(20))
+    html_content: Mapped[str] = mapped_column(Text)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSON)
+    generated_by: Mapped[str] = mapped_column(String(50))
+    generated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    test_plan: Mapped[TestPlan] = relationship(back_populates="snapshots")

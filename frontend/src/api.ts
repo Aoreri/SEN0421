@@ -220,6 +220,53 @@ export type ReleaseGateStatus = {
   waiver: ReleaseWaiver | null;
 };
 
+export const TEST_PLAN_STATUSES = ["Draft", "In Review", "Approved"] as const;
+export type TestPlanStatus = (typeof TEST_PLAN_STATUSES)[number];
+
+export type TestPlanSnapshotSummary = {
+  id: number;
+  test_plan_id: number;
+  version: string;
+  status: TestPlanStatus;
+  generated_by: string;
+  generated_at: string;
+};
+
+export type TestPlanSnapshot = TestPlanSnapshotSummary & {
+  html_content: string;
+  payload: Record<string, unknown>;
+};
+
+export type TestPlan = {
+  id: number;
+  project_id: number;
+  release_id: number | null;
+  version: string;
+  title: string;
+  status: TestPlanStatus;
+  scope: string;
+  approach: string;
+  pass_fail_criteria: string;
+  environment: string;
+  schedule_risks: string;
+  created_by: string;
+  created_at: string;
+  snapshot_count: number;
+  snapshots?: TestPlanSnapshotSummary[];
+};
+
+export type TestPlanInput = {
+  project_id: number;
+  release_id?: number | null;
+  version: string;
+  title: string;
+  scope?: string;
+  approach?: string;
+  pass_fail_criteria?: string;
+  environment?: string;
+  schedule_risks?: string;
+};
+
 const TOKEN_STORAGE_KEY = "token";
 export const AUTH_EXPIRED_EVENT = "sds06:auth-expired";
 
@@ -497,4 +544,35 @@ export const api = {
     request<ImportedTestRun[]>(`/projects/${projectId}/runs/imports?limit=${limit}&offset=${offset}`),
   junitImport: (projectId: number, importId: number) =>
     request<JUnitImportReport>(`/projects/${projectId}/runs/imports/${importId}`),
+  testPlans: () => request<TestPlan[]>("/test-plans"),
+  getTestPlan: (id: number) => request<TestPlan>(`/test-plans/${id}`),
+  createTestPlan: (input: TestPlanInput) =>
+    request<TestPlan>("/test-plans", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  updateTestPlan: (id: number, input: TestPlanInput) =>
+    request<TestPlan>(`/test-plans/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(input),
+    }),
+  updateTestPlanStatus: (id: number, status: TestPlanStatus) =>
+    request<TestPlan>(`/test-plans/${id}/status`, {
+      method: "PUT",
+      body: JSON.stringify({ status }),
+    }),
+  deleteTestPlan: (id: number) =>
+    request<void>(`/test-plans/${id}`, { method: "DELETE" }),
+  createTestPlanSnapshot: (id: number) =>
+    request<TestPlanSnapshot>(`/test-plans/${id}/snapshots`, { method: "POST" }),
+  getTestPlanSnapshot: (planId: number, snapshotId: number) =>
+    request<TestPlanSnapshot>(`/test-plans/${planId}/snapshots/${snapshotId}`),
+  exportTestPlanUrl: (
+    planId: number,
+    format: "html" | "pdf" = "html",
+    snapshotId?: number,
+  ) =>
+    `/api/test-plans/${planId}/export?format=${format}${
+      snapshotId !== undefined ? `&snapshot_id=${snapshotId}` : ""
+    }`,
 };

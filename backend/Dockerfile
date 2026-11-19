@@ -9,6 +9,17 @@ COPY requirements.txt ./
 # Optional CA bundle for builds behind a TLS-inspecting development proxy.
 RUN --mount=type=secret,id=proxy_ca \
     if [ -f /run/secrets/proxy_ca ]; then export PIP_CERT=/run/secrets/proxy_ca; fi; \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+        libpango-1.0-0 \
+        libpangocairo-1.0-0 \
+        libpangoft2-1.0-0 \
+        libcairo2 \
+        libgdk-pixbuf-2.0-0 \
+        libffi8 \
+        shared-mime-info \
+        fonts-dejavu-core && \
+    rm -rf /var/lib/apt/lists/* && \
     python -m pip install --no-cache-dir -r requirements.txt && \
     useradd --create-home --uid 10001 app
 
