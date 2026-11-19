@@ -209,20 +209,20 @@ The full register is `docs/risk-register.md`.
 
 ## 16. Version 0.2 update — PLN-25 (18 November 2026)
 
-This update extends the PLN-03 Test Plan to include the second bi-weekly plan items. The existing scope and test approach remain valid. New implementation in an open PR is included as a test item but is not labelled integrated until the PR is merged and the migration chain is reconciled.
+This update extends the PLN-03 Test Plan to include the second bi-weekly plan items. The existing scope and test approach remain valid. Work merged into `main` is labelled integrated on `main`, while work still in an open PR or pending implementation is labelled accordingly.
 
 ### 16.1 Expanded test items
 
 | Test item | Coverage added in version 0.2 | Delivery status |
 |---|---|---|
-| Test Suite and Test Case API | Suite CRUD; case specification fields; required requirement links; project consistency and deletion constraints. | PLN-16, PR #21 in review. |
-| Test Case / Suite UI and RTM view | Suite grouping, test-case authoring, requirement-to-test matrix and coverage gaps. | PLN-19, PR #22 in review. |
-| Test Run / Execution API | Run creation, default `Not Run` records, result entry, executor/time, actual result, notes, execution-defect links. | PLN-17, PR #25 in review. |
-| Test Run UI | Run execution workbench, outcomes, run history and failed-execution defect flow. | PLN-20, PR #23 in review. |
-| Release lifecycle / exit gate | Release statuses, criteria evaluation, role-protected waiver and status rejection when gate fails. | PLN-18, PR #27 in review. |
-| Metrics dashboard | Outcome trends, defect burn-up, severity distribution and release-gate card. | PLN-21, PR #24 in review; metrics API aggregation is separate planned PLN-24 work. |
-| Test Plan service | Versioned Test Plan records, status workflow, snapshots and HTML/PDF export. | PLN-26, PR #26 in review; shared assignment with Caner Serbest. |
-| JUnit result import | Parser, stable-key mapping, matched/unmatched result persistence and report. | PLN-22 is present on the current baseline; see `docs/junit-import.md`. |
+| Test Suite and Test Case API | Suite CRUD; case specification fields; required requirement links; project consistency and deletion constraints. | PLN-16, PR #21 merged on `main`. |
+| Test Case / Suite UI and RTM view | Suite grouping, test-case authoring, requirement-to-test matrix and coverage gaps. | PLN-19, PR #22 merged on `main`. |
+| Test Run / Execution API | Run creation, default `Not Run` records, result entry, executor/time, actual result, notes, execution-defect links. | PLN-17, PR #25 merged on `main`. |
+| Test Run UI | Run execution workbench, outcomes, run history and failed-execution defect flow. | PLN-20, PR #23 merged on `main`. |
+| Release lifecycle / exit gate | Release statuses, criteria evaluation, role-protected waiver and status rejection when gate fails. | PLN-18, PR #27 merged on `main`. |
+| Metrics dashboard | Outcome trends, defect burn-up, severity distribution and release-gate card. | PLN-21, PR #24 in review; metrics API SQL aggregation is separate planned PLN-24 work. |
+| Test Plan service | Versioned Test Plan records, status workflow, snapshots and HTML/PDF export. | PLN-26, PR #26 merged on `main`; assigned to Caner Serbest (#26 also carries work shared with the Test Plan owner). |
+| JUnit and Cobertura result import | Parser, stable-key mapping, matched/unmatched result persistence, Cobertura line/branch coverage and CI dogfooding report. | PLN-22 (#20) and PLN-23 (#30) are present on the current `main` baseline; see `docs/junit-import.md` and `docs/cobertura-import.md`. |
 
 ### 16.2 Additional features and verification approach
 
@@ -236,7 +236,7 @@ The following behavior is added to the planned verification scope:
 6. **Test Plan lifecycle:** verify unique version per project, legal status transitions, role restrictions, snapshot creation, stored HTML/payload consistency, and HTML/PDF export behavior.
 7. **Metric correctness:** use the formal definitions and fixtures in [`metric-definitions.md`](metric-definitions.md). Show counts and denominators beside percentages, and do not combine JUnit import snapshots with interactive Test Run metrics.
 
-Detailed procedure-level cases are being delivered separately under PLN-27 in `docs/test-case-specification-workflow.md`. The requirements-to-test relationship is in [`requirements-traceability-matrix-v1.md`](requirements-traceability-matrix-v1.md).
+Detailed procedure-level cases are delivered under PLN-27 (PR #29, merged on `main`) in [`test-case-specification-workflow.md`](test-case-specification-workflow.md). The requirements-to-test relationship is in [`requirements-traceability-matrix-v1.md`](requirements-traceability-matrix-v1.md).
 
 ### 16.3 Test data and roles
 

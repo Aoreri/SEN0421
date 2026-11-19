@@ -21,10 +21,10 @@ Unless a report says otherwise:
 
 | Metric / API key | Formal definition | Formula | Included / excluded records | Current status |
 |---|---|---|---|---|
-| Total test cases (`total_tests`) | Number of test-case records in the current project scope. | `COUNT(test_cases)` | Includes every stored test case regardless of status, including `Not Run`. | Current |
+| Total test cases (`total_tests`) | Number of test-case records in the database (`main.py:155-156` in `@app.get("/api/metrics")` applies no project filter yet — PLN-24 adds one). | `COUNT(test_cases)` | Includes every stored test case regardless of status, including `Not Run`. | Current |
 | Execution rate (`execution_rate`) | Percentage of test cases with a recorded `Passed` or `Failed` status. | `(Passed + Failed) / total_tests × 100` | In the current endpoint, `Blocked` and `Skipped` are not counted as executed; `Not Run` is not counted. | Current; definition follows `backend/app/main.py` |
 | Pass rate (`pass_rate`) | Percentage of executed cases that passed. | `Passed / (Passed + Failed) × 100` | Denominator includes only `Passed` and `Failed`; it excludes `Blocked`, `Skipped`, and `Not Run`. | Current |
-| Open defects (`open_defects`) | Number of defects whose current status is not `Closed`. | `COUNT(defects WHERE status != 'Closed')` | Includes `Open`, `In Progress`, and `Resolved`; a reopened defect is counted because its status returns to `Open`. | Current |
+| Open defects (`open_defects`) | Number of defects with `status != 'Closed'` in the whole database (`main.py:159` in `@app.get("/api/metrics")` has no project filter yet — PLN-24 adds one). | `COUNT(defects WHERE status != 'Closed')` | Includes `Open`, `In Progress`, and `Resolved`; a reopened defect is counted because its status returns to `Open` (and any non-`Closed` status such as `Reopened` if present). | Current |
 
 ### 2.1 Reproducible seed-data example
 
@@ -44,7 +44,7 @@ This example is a regression fixture for the current endpoint. Do not silently c
 
 ## 3. Test-run and execution metrics — PLN-17
 
-The following definitions apply to interactive `TestRun` / `TestExecution` records described by PLN-17. The related implementation is in an open pull request and must be treated as pending integration until merged and migration sequencing is resolved.
+The following definitions apply to interactive `TestRun` / `TestExecution` records implemented by PLN-17 (`backend/app/runs.py`, merged on `main`). Per-run counts and execution statuses are stored and served on `main`; dedicated SQL aggregation across runs remains planned under PLN-24.
 
 | Metric | Formal definition | Formula | Notes / source |
 |---|---|---|---|
@@ -62,12 +62,12 @@ The following definitions apply to interactive `TestRun` / `TestExecution` recor
 
 | Metric | Formal definition | Formula | Scope / notes | Status |
 |---|---|---|---|---|
-| Requirement coverage (`actual_req_coverage`) | Percentage of requirements in the selected release's project that are linked to at least one test case. | `requirements with ≥1 linked test case / all project requirements × 100` | The current schema associates requirements with projects, not directly with releases; the release gate uses the release's project as its requirement population. | Defined by PLN-18 PR; pending integration |
-| Release pass rate (`actual_pass_rate`) | Pass rate for the selected release's project/run population, using the run pass-rate denominator. | `Passed / (Passed + Failed) × 100` | Blocked and skipped results are shown separately and do not count as passes or failures. The exact selected-run aggregation must be kept consistent across API and dashboard. | Defined by PLN-18 PR; pending integration |
-| Open Critical defects (`actual_open_critical`) | Number of Critical defects not in `Closed` status in the release's project scope. | `COUNT(severity = 'Critical' AND status != 'Closed')` | Includes `Open`, `In Progress`, and `Resolved`. | Defined by PLN-18 PR; pending integration |
-| Release gate (`gate_passed`) | Boolean result indicating whether all configured release criteria are met. | `pass_rate ≥ min_pass_rate AND open_critical ≤ max_open_critical AND requirement_coverage ≥ min_req_coverage` | A recorded waiver is a governance override for the release status transition; it does not change the measured values or make the underlying metric pass. | Defined by PLN-18 PR; pending integration |
+| Requirement coverage (`actual_req_coverage`) | Percentage of requirements in the selected release's project that are linked to at least one test case. | `requirements with ≥1 linked test case / all project requirements × 100` | The current schema associates requirements with projects, not directly with releases; the release gate uses the release's project as its requirement population (`backend/app/projects.py:204-212`). | Current (PLN-18, merged on `main`) |
+| Release pass rate (`actual_pass_rate`) | Pass rate for the selected release's project test-case population, using the `(Passed + Failed)` denominator. | `Passed / (Passed + Failed) × 100` | Blocked and skipped results do not count as passes or failures (`backend/app/projects.py:180-183`). Run-scoped SQL aggregation remains planned under PLN-24. | Current (PLN-18, merged on `main`) |
+| Open Critical defects (`actual_open_critical`) | Number of Critical defects not in `Closed` status in the release's project scope. | `COUNT(severity = 'Critical' AND status != 'Closed')` | Includes `Open`, `In Progress`, and `Resolved` scoped to the release's project (`backend/app/projects.py:185-202`). | Current (PLN-18, merged on `main`) |
+| Release gate (`gate_passed`) | Boolean result indicating whether all configured release criteria are met or an active waiver is recorded. | `(pass_rate ≥ min_pass_rate AND open_critical ≤ max_open_critical AND requirement_coverage ≥ min_req_coverage) OR waiver IS NOT NULL` | In `backend/app/projects.py:223`, an active waiver sets `gate_passed = True` to allow `Ready` / `Released` transitions while keeping `passed_criteria` and the raw `actual_*` measurements unchanged and visible. | Current (PLN-18, merged on `main`) |
 
-The PLN-18 proposal stores the configurable criteria on `releases`: `min_pass_rate` (percentage), `max_open_critical` (count), and `min_req_coverage` (percentage). Initial defaults in that PR are 80.0%, 0 Critical defects, and 80.0%, respectively. They are defaults in an open PR, not an approved permanent policy until the team accepts them.
+The PLN-18 implementation stores the configurable criteria on `releases`: `min_pass_rate` (percentage), `max_open_critical` (count), and `min_req_coverage` (percentage). Initial defaults are 80.0%, 0 Critical defects, and 80.0%, respectively (`0008_release_exit_criteria.py`).
 
 ## 5. Defect trend and time metrics — PLN-24 / dashboard proposal
 
