@@ -12,17 +12,37 @@ yayınlama adımlarını tek yerde yönetir; IEEE 829 dokümanlarını ISO/IEC/I
 
 ## Ekran görüntüleri
 
-**Panel ve defect takibi:** metrik kartları, gereksinime bağlı test vakaları, defect
-oluşturma ve yalnızca API'nin izin verdiği durum geçişleri.
+**Panel, grafikli metrikler ve sürüm çıkış kapısı:** özet metrik kartları, koşum başına
+yığılmış sonuç dağılımı ve başarı trendi, defect burn-up, önem dağılımı, sürüm çıkış
+kapısı eşikleri / Test Lead muafiyeti, test vakaları ve yalnızca API'nin izin verdiği
+durum geçişleri.
 
 ![Panel ve defect takibi](docs/screenshots/dashboard-2x.png)
+
+**Test vakası ve suite yönetimi (`/test-cases`):** kararlı anahtar, test adımları,
+beklenen sonuç, öncelik, otomasyon bayrağı, test suite ataması ve zorunlu gereksinim
+bağlantıları.
+
+![Test vakası ve suite yönetimi](docs/screenshots/test-cases-2x.png)
+
+**Etkileşimli gereksinim – test izlenebilirlik matrisi (`/test-cases`):** çoka çok
+gereksinim ↔ test vakası bağlantıları, kapsam özeti ve kapsam eksikliği (gap) uyarısı.
+
+![Gereksinim – test izlenebilirlik matrisi](docs/screenshots/traceability-matrix-2x.png)
+
+**Test koşumu yürütme ve koşum geçmişi (`/test-runs`):** `Passed` / `Failed` /
+`Blocked` / `Skipped` sonuç kaydı, başarısız yürütmeden doğrudan defect açma ve
+koşum geçmişi.
+
+![Test koşumu yürütme ekranı](docs/screenshots/test-runs-2x.png)
 
 **Defect detayı (IEEE 829 Test Incident Report):** bağlı test vakası, izin verilen
 geçişler ve değiştirilemez geçmiş zaman çizelgesi.
 
 ![Defect detay sayfası](docs/screenshots/defect-detail-2x.png)
 
-**Projeler, sürümler ve gereksinimler:** test vakası ↔ gereksinim izlenebilirliği.
+**Projeler, sürümler ve gereksinimler (`/projects`):** proje/sürüm kataloğu ve
+test vakası ↔ gereksinim izlenebilirliği.
 
 ![Projeler ve gereksinimler](docs/screenshots/projects-2x.png)
 
@@ -44,6 +64,7 @@ geçişler ve değiştirilemez geçmiş zaman çizelgesi.
 | Grafikli metrik paneli (`/`) ve sürüm çıkış kapısı kartı: koşum başına yığılmış sonuç çubuğu + başarı trendi, defect burn-up, önem dağılımı, yapılandırılabilir çıkış eşikleri ve Test Lead muafiyeti | R5, R7 | 29119-2 Test İzleme ve Kontrol |
 | Test vakası listesi ve metrikler: koşum oranı, başarı oranı, açık defect sayısı | R2, R5 | 29119-2 Test İzleme ve Kontrol |
 | JUnit XML içe aktarımı; commit/branch üst verisi, projeye göre kararlı test vakası eşleme ve eşleşmeyen sonuç raporu | R6 | 29119-2 Test Yürütme; 12207 Doğrulama |
+| Cobertura XML satır/dal kapsamı içe aktarımı ve GitHub Actions CI kanıtlarının geçici örneğe otomatik aktarımı | R5, R6 | 29119-2 Test İzleme ve Kontrol; 12207 Doğrulama |
 | Test koşumu (Test Run) ve test yürütme (Test Execution): Passed / Failed / Blocked / Skipped sonuçları, yürütme ↔ defect bağlantısı ve `Resolved → Closed` doğrulama şartı | R2, R4 | 29119-2 Test Yürütme; 12207 Doğrulama |
 | Sürüm durumları (`Planned`, `In Test`, `Ready`, `Released`), yapılandırılabilir çıkış kriterleri (başarı oranı, açık kritik defect, gereksinim kapsama) ve Test Lead / Admin muafiyet kaydı | R7 | 29119-2 Test Tamamlama; 12207 Kalite Güvence |
 | IEEE 829 Test Plan kaydı (`Draft` / `In Review` / `Approved`), anlık görüntü (snapshot) saklama ve Jinja2 + WeasyPrint/PDF + HTML üretimi | R1, R3 | IEEE 829 Test Plan; 29119-3 Test Plan; 12207 Uygulama |
@@ -148,8 +169,11 @@ Sınırlar, doğrulama, API ve migrasyon: [Cobertura sözleşmesi](docs/cobertur
 | Doküman | Dosya |
 | --- | --- |
 | Yazılım Gereksinim Spesifikasyonu (R1–R8) | [docs/srs.md](docs/srs.md) |
+| Gereksinim İzlenebilirlik Matrisi (RTM v1) | [docs/requirements-traceability-matrix-v1.md](docs/requirements-traceability-matrix-v1.md) |
+| Metrik Tanımları Kataloğu | [docs/metric-definitions.md](docs/metric-definitions.md) |
 | Proje Planı | [docs/project-plan.md](docs/project-plan.md) |
 | Test Plan (IEEE 829 / 29119-3) | [docs/test-plan.md](docs/test-plan.md) |
+| İş Akışı Test Vakası Spesifikasyonu (IEEE 829) · Ara Demo Senaryosu | [docs/test-case-specification-workflow.md](docs/test-case-specification-workflow.md) · [docs/mid-period-demo-scenario.md](docs/mid-period-demo-scenario.md) |
 | Yazılım Tasarım Tanımı (mimari ve veri modeli) | [docs/software-design-description.md](docs/software-design-description.md) |
 | Standart durumu ve IEEE 829 ↔ 29119 eşlemesi | [docs/standard-status-and-mapping.md](docs/standard-status-and-mapping.md) |
 | Risk kaydı · Definition of Done | [docs/risk-register.md](docs/risk-register.md) · [docs/definition-of-done.md](docs/definition-of-done.md) |
