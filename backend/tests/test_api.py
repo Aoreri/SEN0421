@@ -470,3 +470,224 @@ def test_test_case_writes_reject_unauthenticated_and_developer(client, method, u
     kwargs = {"json": body} if body else {}
     assert send(url, **kwargs).status_code == 401
     assert send(url, headers=as_user("developer"), **kwargs).status_code == 403
+
+
+def test_test_run_and_execution_lifecycle(client):
+    tester = as_user("tester")
+    lead = as_user("testlead")
+    rel = client.post("/api/releases", json={"project_id": 1, "version": "v1.0"}, headers=lead).json()
+    suite = client.post(
+        "/api/test-suites", json={"project_id": 1, "name": "Regresyon Suite"}, headers=lead
+    ).json()
+
+    run_res = client.post(
+        "/api/test-runs",
+        json={
+            "name": " Sprint 1 Regresyon ",
+            "project_id": 1,
+            "release_id": rel["id"],
+            "suite_id": suite["id"],
+            "test_case_ids": ["TC-003", "TC-005", "TC-003"],
+        },
+        headers=tester,
+    )
+    assert run_res.status_code == 201
+    run = run_res.json()
+    assert run["name"] == "Sprint 1 Regresyon"
+    assert run["project_id"] == 1
+    assert run["release_id"] == rel["id"]
+    assert run["suite_id"] == suite["id"]
+    assert run["created_by"] == "tester"
+    assert [e["test_case_id"] for e in run["executions"]] == ["TC-003", "TC-005"]
+    assert all(e["status"] == "Not Run" and e["defect_ids"] == [] for e in run["executions"])
+
+    assert client.get("/api/test-runs").json() == [run]
+    assert client.get(f"/api/test-runs/{run['id']}").json() == run
+    assert client.get("/api/test-runs/999").status_code == 404
+
+    ex_tc3, ex_tc5 = run["executions"]
+    rec = client.post(
+        f"/api/test-runs/{run['id']}/executions/{ex_tc3['id']}",
+        json={"status": "Failed", "actual_result": "Hata verdi", "notes": "Log ekte", "defect_ids": [1]},
+        headers=tester,
+    )
+    assert rec.status_code == 200
+    ex_updated = rec.json()
+    assert ex_updated["status"] == "Failed"
+    assert ex_updated["actual_result"] == "Hata verdi"
+    assert ex_updated["notes"] == "Log ekte"
+    assert ex_updated["executed_by"] == "tester"
+    assert ex_updated["executed_at"] is not None
+    assert ex_updated["defect_ids"] == [1]
+
+    # PUT works as well and updates TestCase.status
+    rec2 = client.put(
+        f"/api/test-runs/{run['id']}/executions/{ex_tc5['id']}",
+        json={"status": "Passed", "actual_result": "PDF üretildi", "notes": ""},
+        headers=lead,
+    )
+    assert rec2.status_code == 200 and rec2.json()["status"] == "Passed"
+    tc5 = next(c for c in client.get("/api/test-cases").json() if c["id"] == "TC-005")
+    assert tc5["status"] == "Passed"
+
+    # Creating a defect directly from a failed execution links it and records history
+    new_def = client.post(
+        f"/api/test-runs/{run['id']}/executions/{ex_tc3['id']}/defects",
+        json={"title": " Boş form hatası devam ediyor ", "severity": "High"},
+        headers=tester,
+    )
+    assert new_def.status_code == 201
+    d_body = new_def.json()
+    assert d_body["title"] == "Boş form hatası devam ediyor"
+    assert d_body["severity"] == "High"
+    assert d_body["status"] == "Open"
+    assert d_body["test_case"] == "TC-003"
+    assert client.get(f"/api/defects/{d_body['id']}/history").json()[0]["to"] == "Open"
+
+    refreshed = client.get(f"/api/test-runs/{run['id']}").json()
+    assert refreshed["executions"][0]["defect_ids"] == [1, d_body["id"]]
+
+
+def test_test_run_validation_and_roles(client):
+    tester = as_user("tester")
+    admin = as_user("admin")
+    p2 = client.post("/api/projects", json={"name": "P2"}, headers=admin).json()
+    r2 = client.post("/api/releases", json={"project_id": p2["id"], "version": "v1"}, headers=admin).json()
+    s2 = client.post("/api/test-suites", json={"project_id": p2["id"], "name": "S2"}, headers=admin).json()
+
+    valid_run = {"name": "Run 1", "project_id": 1, "test_case_ids": ["TC-001"]}
+    assert client.post("/api/test-runs", json=valid_run).status_code == 401
+    assert client.post("/api/test-runs", json=valid_run, headers=as_user("developer")).status_code == 403
+
+    for bad_body in [
+        {"name": "  ", "project_id": 1, "test_case_ids": ["TC-001"]},
+        {"name": "Run", "project_id": 999, "test_case_ids": ["TC-001"]},
+        {"name": "Run", "project_id": 1, "release_id": 999, "test_case_ids": ["TC-001"]},
+        {"name": "Run", "project_id": 1, "release_id": r2["id"], "test_case_ids": ["TC-001"]},
+        {"name": "Run", "project_id": 1, "suite_id": 999, "test_case_ids": ["TC-001"]},
+        {"name": "Run", "project_id": 1, "suite_id": s2["id"], "test_case_ids": ["TC-001"]},
+        {"name": "Run", "project_id": 1, "test_case_ids": []},
+        {"name": "Run", "project_id": 1, "test_case_ids": ["TC-999"]},
+    ]:
+        assert client.post("/api/test-runs", json=bad_body, headers=tester).status_code == 422
+
+    run = client.post("/api/test-runs", json=valid_run, headers=tester).json()
+    ex_id = run["executions"][0]["id"]
+    exec_url = f"/api/test-runs/{run['id']}/executions/{ex_id}"
+    def_url = f"{exec_url}/defects"
+
+    assert client.post(exec_url, json={"status": "Passed"}).status_code == 401
+    assert client.post(exec_url, json={"status": "Passed"}, headers=as_user("developer")).status_code == 403
+    assert client.post(def_url, json={"title": "x"}).status_code == 401
+    assert client.post(def_url, json={"title": "x"}, headers=as_user("developer")).status_code == 403
+
+    assert client.post(f"/api/test-runs/999/executions/{ex_id}",
+                       json={"status": "Passed"}, headers=tester).status_code == 404
+    assert client.post(f"/api/test-runs/{run['id']}/executions/999",
+                       json={"status": "Passed"}, headers=tester).status_code == 404
+    assert client.post(f"/api/test-runs/{run['id']}/executions/999/defects",
+                       json={"title": "x"}, headers=tester).status_code == 404
+    assert client.post(exec_url, json={"status": "Not Run"}, headers=tester).status_code == 422
+    assert client.post(exec_url, json={"status": "Passed", "defect_ids": [999]},
+                       headers=tester).status_code == 422
+    assert client.post(def_url, json={"title": "   "}, headers=tester).status_code == 422
+
+    # Deleting project, release, suite, or test case with test runs/executions returns 409
+    rel1 = client.post("/api/releases", json={"project_id": p2["id"], "version": "v2"}, headers=admin).json()
+    client.post(
+        "/api/test-runs",
+        json={
+            "name": "P2 Run",
+            "project_id": p2["id"],
+            "release_id": rel1["id"],
+            "suite_id": s2["id"],
+            "test_case_ids": ["TC-001"],
+        },
+        headers=tester,
+    )
+    assert client.delete(f"/api/releases/{rel1['id']}", headers=admin).status_code == 409
+    assert client.delete(f"/api/test-suites/{s2['id']}", headers=admin).status_code == 409
+    assert client.delete(f"/api/projects/{p2['id']}", headers=admin).status_code == 409
+    assert client.delete("/api/test-cases/TC-001", headers=tester).status_code == 409
+
+
+def test_defect_close_requires_passed_verification_execution(client):
+    dev = as_user("developer")
+    tester = as_user("tester")
+
+    # Defect 1 is linked to TC-003 (seed status: "Failed")
+    client.post("/api/defects/1/transition", json={"to": "In Progress"}, headers=dev)
+    client.post("/api/defects/1/transition", json={"to": "Resolved"}, headers=dev)
+
+    # Cannot close while TC-003 is Failed and has no Passed verification execution
+    res = client.post("/api/defects/1/transition", json={"to": "Closed"}, headers=tester)
+    assert res.status_code == 409
+
+    # Create a test run with TC-003 and record Blocked -> still cannot close
+    run = client.post(
+        "/api/test-runs",
+        json={"name": "Doğrulama Koşumu", "project_id": 1, "test_case_ids": ["TC-003"]},
+        headers=tester,
+    ).json()
+    ex_id = run["executions"][0]["id"]
+    client.post(
+        f"/api/test-runs/{run['id']}/executions/{ex_id}",
+        json={"status": "Blocked", "actual_result": "Ortam kapalı"},
+        headers=tester,
+    )
+    assert client.post("/api/defects/1/transition", json={"to": "Closed"}, headers=tester).status_code == 409
+
+    # Record Passed execution -> now Resolved -> Closed succeeds
+    client.post(
+        f"/api/test-runs/{run['id']}/executions/{ex_id}",
+        json={"status": "Passed", "actual_result": "Doğrulandı"},
+        headers=tester,
+    )
+    closed = client.post("/api/defects/1/transition", json={"to": "Closed"}, headers=tester)
+    assert closed.status_code == 200 and closed.json()["status"] == "Closed"
+
+    # Defect linked only via execution_defects (defect.test_case is None) also requires Passed execution
+    d_exec = client.post("/api/defects", json={"title": "Yalnızca koşuma bağlı"}, headers=tester).json()
+    run2 = client.post(
+        "/api/test-runs",
+        json={"name": "Koşum 2", "project_id": 1, "test_case_ids": ["TC-004"]},
+        headers=tester,
+    ).json()
+    ex2_id = run2["executions"][0]["id"]
+    client.post(
+        f"/api/test-runs/{run2['id']}/executions/{ex2_id}",
+        json={"status": "Failed", "actual_result": "Hata", "defect_ids": [d_exec["id"]]},
+        headers=tester,
+    )
+    client.post(f"/api/defects/{d_exec['id']}/transition", json={"to": "In Progress"}, headers=dev)
+    client.post(f"/api/defects/{d_exec['id']}/transition", json={"to": "Resolved"}, headers=dev)
+    assert (
+        client.post(
+            f"/api/defects/{d_exec['id']}/transition", json={"to": "Closed"}, headers=tester
+        ).status_code
+        == 409
+    )
+    client.post(
+        f"/api/test-runs/{run2['id']}/executions/{ex2_id}",
+        json={"status": "Passed", "actual_result": "Geçti", "defect_ids": [d_exec["id"]]},
+        headers=tester,
+    )
+    assert (
+        client.post(
+            f"/api/defects/{d_exec['id']}/transition", json={"to": "Closed"}, headers=tester
+        ).status_code
+        == 200
+    )
+
+    # New defect linked to a Not Run test case with zero executions cannot be closed until executed & Passed
+    d_notrun = client.post(
+        "/api/defects", json={"title": "Koşulmamış vaka hatası", "test_case": "TC-006"}, headers=tester
+    ).json()
+    client.post(f"/api/defects/{d_notrun['id']}/transition", json={"to": "In Progress"}, headers=dev)
+    client.post(f"/api/defects/{d_notrun['id']}/transition", json={"to": "Resolved"}, headers=dev)
+    assert (
+        client.post(
+            f"/api/defects/{d_notrun['id']}/transition", json={"to": "Closed"}, headers=tester
+        ).status_code
+        == 409
+    )

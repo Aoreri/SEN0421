@@ -9,7 +9,17 @@ from sqlalchemy.orm import Session, selectinload
 
 from .auth import ADMIN, TEST_LEAD, TESTER, require_roles
 from .db import DB
-from .models import Defect, ImportedTestRun, Project, Release, Requirement, TestCase, TestSuite
+from .models import (
+    Defect,
+    ImportedTestRun,
+    Project,
+    Release,
+    Requirement,
+    TestCase,
+    TestExecution,
+    TestRun,
+    TestSuite,
+)
 
 router = APIRouter(prefix="/api", tags=["projects"])
 WRITE = [Depends(require_roles(ADMIN, TEST_LEAD))]
@@ -182,11 +192,11 @@ def update_project(project_id: int, body: ProjectIn, db: DB):
 @router.delete("/projects/{project_id}", status_code=204, dependencies=WRITE)
 def delete_project(project_id: int, db: DB):
     project = get_or_404(db, Project, project_id)
-    for model in (Release, Requirement, TestSuite, ImportedTestRun):
+    for model in (Release, Requirement, TestSuite, TestRun, ImportedTestRun):
         if db.scalar(select(model.id).where(model.project_id == project_id).limit(1)) is not None:
             raise HTTPException(
                 409,
-                "Projeye bağlı sürüm, gereksinim, test suite veya içe aktarım kayıtları var",
+                "Projeye bağlı sürüm, gereksinim, test suite, test koşumu veya içe aktarım kayıtları var",
             )
     remove(db, project)
 
@@ -217,7 +227,10 @@ def update_release(release_id: int, body: ReleaseIn, db: DB):
 
 @router.delete("/releases/{release_id}", status_code=204, dependencies=WRITE)
 def delete_release(release_id: int, db: DB):
-    remove(db, get_or_404(db, Release, release_id))
+    release = get_or_404(db, Release, release_id)
+    if db.scalar(select(TestRun.id).where(TestRun.release_id == release_id).limit(1)) is not None:
+        raise HTTPException(409, "Sürüme bağlı test koşumları var")
+    remove(db, release)
 
 
 # --- Gereksinimler ------------------------------------------------------------
@@ -303,6 +316,8 @@ def delete_test_suite(suite_id: int, db: DB):
     suite = get_or_404(db, TestSuite, suite_id)
     if suite.test_cases:
         raise HTTPException(409, "Test suite'e bağlı test vakaları var")
+    if db.scalar(select(TestRun.id).where(TestRun.suite_id == suite_id).limit(1)) is not None:
+        raise HTTPException(409, "Test suite'e bağlı test koşumları var")
     remove(db, suite)
 
 
@@ -363,6 +378,13 @@ def delete_test_case(test_case_id: str, db: DB):
     case = get_or_404(db, TestCase, test_case_id)
     if db.scalar(select(Defect.id).where(Defect.test_case == test_case_id).limit(1)) is not None:
         raise HTTPException(409, "Test vakasına bağlı defect'ler var")
+    if (
+        db.scalar(
+            select(TestExecution.id).where(TestExecution.test_case_id == test_case_id).limit(1)
+        )
+        is not None
+    ):
+        raise HTTPException(409, "Test vakasına bağlı test yürütmeleri var")
     case.requirements = []
     remove(db, case)
 
