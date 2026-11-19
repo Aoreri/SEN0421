@@ -1,10 +1,23 @@
 import {
   CreateTestRunPayload,
   Defect,
+  DefectBurnupPoint,
+  DefectHistoryEntry,
   ExecutionStatus,
+  ExitCriteriaConfig,
+  ExpandedMetrics,
+  Metrics,
   Project,
   RecordExecutionPayload,
   Release,
+  ReleaseGateStatus,
+  ReleaseStatus,
+  ReleaseWaiver,
+  Requirement,
+  RunMetricPoint,
+  SEVERITIES,
+  Severity,
+  SeverityDistributionItem,
   TestCase,
   TestCaseCreateInput,
   TestExecution,
@@ -16,6 +29,7 @@ import {
 
 const PLN19_STORAGE_KEY = "sds06:preview:pln19:v1";
 const PLN20_STORAGE_KEY = "sds06:preview:pln20:v1";
+const PLN21_STORAGE_KEY = "sds06:preview:pln21:v1";
 
 type StoredPln19State = {
   testCaseOverrides: Record<
@@ -41,6 +55,16 @@ type StoredPln20State = {
   runs: TestRun[] | null;
   nextRunId: number;
   nextExecutionId: number;
+};
+
+type StoredReleaseGateEntry = {
+  status: ReleaseStatus;
+  criteria: ExitCriteriaConfig;
+  waiver: ReleaseWaiver | null;
+};
+
+type StoredPln21State = {
+  gates: Record<number, StoredReleaseGateEntry>;
 };
 
 const SEED_CASE_DETAILS: Record<
@@ -749,4 +773,335 @@ export function attachDefectToPreviewExecution(
     };
   });
   writeRunState(state);
+}
+
+// --- PLN-21: Expanded Metrics & Release Exit Gate Preview Store ---
+
+function readGateState(): StoredPln21State {
+  try {
+    const raw = localStorage.getItem(PLN21_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as Partial<StoredPln21State>;
+      return { gates: parsed.gates ?? {} };
+    }
+  } catch {
+    // Bozuk localStorage kaydı durumunda varsayılan duruma dön
+  }
+  return { gates: {} };
+}
+
+function writeGateState(state: StoredPln21State): void {
+  try {
+    localStorage.setItem(PLN21_STORAGE_KEY, JSON.stringify(state));
+  } catch {
+    // Depolama kotası veya gizli mod durumunda sessizce devam et
+  }
+}
+
+export function computePreviewExpandedMetrics(
+  baseMetrics: Metrics,
+  testCases: TestCase[],
+  requirements: Requirement[],
+  defects: Defect[],
+  historiesByDefect: Record<number, DefectHistoryEntry[]>,
+  runs: TestRun[],
+  releaseId: number | null,
+  projectId: number | null = null,
+): ExpandedMetrics {
+  const scopedRequirements =
+    projectId !== null
+      ? requirements.filter((req) => req.project_id === projectId)
+      : requirements;
+  const scopedReqIds = new Set(scopedRequirements.map((req) => req.id));
+  const scopedCases =
+    projectId !== null
+      ? testCases.filter(
+          (tc) =>
+            tc.requirements.some((reqId) => scopedReqIds.has(reqId)) ||
+            scopedReqIds.has(tc.requirement),
+        )
+      : testCases;
+  const scopedCaseIds = new Set(scopedCases.map((tc) => tc.id));
+  const scopedRuns =
+    projectId !== null ? runs.filter((r) => r.project_id === projectId) : runs;
+  const filteredRuns = releaseId
+    ? scopedRuns.filter((r) => r.release_id === releaseId || r.release_id === null)
+    : scopedRuns;
+
+  const runSeries: RunMetricPoint[] = [...filteredRuns]
+    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+    .map((run) => {
+      let passed = 0;
+      let failed = 0;
+      let blocked = 0;
+      let skipped = 0;
+      let notRun = 0;
+      for (const ex of run.executions) {
+        if (ex.status === "Passed") passed += 1;
+        else if (ex.status === "Failed") failed += 1;
+        else if (ex.status === "Blocked") blocked += 1;
+        else if (ex.status === "Skipped") skipped += 1;
+        else notRun += 1;
+      }
+      const decisive = passed + failed;
+      const passRate = decisive > 0 ? Math.round((passed / decisive) * 1000) / 10 : 0;
+      return {
+        run_id: run.id,
+        run_name: run.name,
+        executed_at: run.created_at,
+        passed,
+        failed,
+        blocked,
+        skipped,
+        not_run: notRun,
+        pass_rate: passRate,
+      };
+    });
+
+  // Gereksinim kapsamı (R2/R5)
+  const coveredReqs = scopedRequirements.filter((req) =>
+    scopedCases.some((tc) => tc.requirements.includes(req.id)),
+  ).length;
+  const requirementCoverage =
+    scopedRequirements.length > 0
+      ? Math.round((coveredReqs / scopedRequirements.length) * 1000) / 10
+      : 0;
+
+  const scopedDefects =
+    projectId !== null
+      ? defects.filter((d) => d.test_case === null || scopedCaseIds.has(d.test_case))
+      : defects;
+
+  // Önem dağılımı (canlı /api/defects üzerinden)
+  const severityDistribution: SeverityDistributionItem[] = SEVERITIES.map((sev: Severity) => {
+    const matching = scopedDefects.filter((d) => d.severity === sev);
+    const closedCount = matching.filter((d) => d.status === "Closed").length;
+    return {
+      severity: sev,
+      total: matching.length,
+      open: matching.length - closedCount,
+      closed: closedCount,
+    };
+  });
+
+  // Yeniden açılma oranı ve süreler (canlı /api/defects/{id}/history üzerinden)
+  let reopenedDefects = 0;
+  let totalAgeHours = 0;
+  let resolvedCount = 0;
+  let totalResolutionHours = 0;
+
+  type HistoryEvent = { day: string; kind: "opened" | "closed" };
+  const timelineEvents: HistoryEvent[] = [];
+  const nowMs = Date.now();
+
+  for (const defect of scopedDefects) {
+    const entries = historiesByDefect[defect.id] ?? [];
+    if (
+      entries.some(
+        (e) => (e.from === "Resolved" || e.from === "Closed") && e.to === "Open",
+      )
+    ) {
+      reopenedDefects += 1;
+    }
+    const createdEntry = entries.find((e) => e.from === null) ?? entries[0];
+    const closedEntry = [...entries].reverse().find((e) => e.to === "Closed");
+    const resolvedEntry = [...entries].reverse().find((e) => e.to === "Resolved");
+
+    if (createdEntry) {
+      const startMs = new Date(createdEntry.at).getTime();
+      if (!Number.isNaN(startMs)) {
+        const endMs = closedEntry ? new Date(closedEntry.at).getTime() : nowMs;
+        totalAgeHours += Math.max(0, (endMs - startMs) / 3_600_000);
+        timelineEvents.push({ day: createdEntry.at.slice(0, 10), kind: "opened" });
+      }
+      if (resolvedEntry) {
+        const startMsValid = new Date(createdEntry.at).getTime();
+        const resMs = new Date(resolvedEntry.at).getTime();
+        if (!Number.isNaN(startMsValid) && !Number.isNaN(resMs)) {
+          totalResolutionHours += Math.max(0, (resMs - startMsValid) / 3_600_000);
+          resolvedCount += 1;
+        }
+      }
+    }
+    if (closedEntry) {
+      timelineEvents.push({ day: closedEntry.at.slice(0, 10), kind: "closed" });
+    }
+  }
+
+  const reopenRate =
+    scopedDefects.length > 0
+      ? Math.round((reopenedDefects / scopedDefects.length) * 1000) / 10
+      : 0;
+  const avgDefectAgeHours =
+    scopedDefects.length > 0
+      ? Math.round((totalAgeHours / scopedDefects.length) * 10) / 10
+      : 0;
+  const avgResolutionHours =
+    resolvedCount > 0 ? Math.round((totalResolutionHours / resolvedCount) * 10) / 10 : 0;
+
+  // Defect Burn-up serisi (yalnızca gerçek geçmiş olaylarından hesaplanır; sentetik veri eklenmez)
+  const uniqueDays = Array.from(new Set(timelineEvents.map((e) => e.day))).sort();
+  const defectBurnup: DefectBurnupPoint[] = [];
+  if (uniqueDays.length > 0) {
+    let cumOpened = 0;
+    let cumClosed = 0;
+    for (const day of uniqueDays) {
+      cumOpened += timelineEvents.filter((e) => e.day === day && e.kind === "opened").length;
+      cumClosed += timelineEvents.filter((e) => e.day === day && e.kind === "closed").length;
+      defectBurnup.push({
+        date: day,
+        opened: cumOpened,
+        closed: cumClosed,
+        open_remaining: Math.max(0, cumOpened - cumClosed),
+      });
+    }
+  }
+
+  const totalTests = scopedCases.length;
+  const executedCases = scopedCases.filter(
+    (tc) => tc.status === "Passed" || tc.status === "Failed",
+  ).length;
+  const passedCases = scopedCases.filter((tc) => tc.status === "Passed").length;
+  const openDefects = scopedDefects.filter((d) => d.status !== "Closed").length;
+  const scopedBaseMetrics: Metrics =
+    projectId !== null
+      ? {
+          total_tests: totalTests,
+          execution_rate:
+            totalTests > 0 ? Math.round((executedCases / totalTests) * 1000) / 10 : 0,
+          pass_rate:
+            executedCases > 0 ? Math.round((passedCases / executedCases) * 1000) / 10 : 0,
+          open_defects: openDefects,
+        }
+      : baseMetrics;
+
+  return {
+    ...scopedBaseMetrics,
+    requirement_coverage: requirementCoverage,
+    reopen_rate: reopenRate,
+    avg_defect_age_hours: avgDefectAgeHours,
+    avg_resolution_hours: avgResolutionHours,
+    run_series: runSeries,
+    defect_burnup: defectBurnup,
+    severity_distribution: severityDistribution,
+  };
+}
+
+function buildGateEvaluation(
+  release: Release,
+  entry: StoredReleaseGateEntry,
+  metrics: ExpandedMetrics,
+  defects: Defect[],
+): ReleaseGateStatus {
+  const criticalSeverityItem = metrics.severity_distribution.find(
+    (item) => item.severity === "Critical",
+  );
+  const openCritical =
+    criticalSeverityItem !== undefined
+      ? criticalSeverityItem.open
+      : defects.filter((d) => d.severity === "Critical" && d.status !== "Closed").length;
+  const passRateOk = metrics.pass_rate >= entry.criteria.min_pass_rate;
+  const openCriticalOk = openCritical <= entry.criteria.max_open_critical;
+  const reqCoverageOk = metrics.requirement_coverage >= entry.criteria.min_req_coverage;
+  const gatePassed =
+    (passRateOk && openCriticalOk && reqCoverageOk) || entry.waiver !== null;
+
+  return {
+    release_id: release.id,
+    release_version: release.version,
+    status: release.status ?? entry.status,
+    criteria: entry.criteria,
+    actual_pass_rate: metrics.pass_rate,
+    actual_open_critical: openCritical,
+    actual_req_coverage: metrics.requirement_coverage,
+    passed_criteria: {
+      pass_rate: passRateOk,
+      open_critical: openCriticalOk,
+      req_coverage: reqCoverageOk,
+    },
+    gate_passed: gatePassed,
+    waiver: entry.waiver,
+  };
+}
+
+function ensureGateEntry(state: StoredPln21State, releaseId: number): StoredReleaseGateEntry {
+  if (!state.gates[releaseId]) {
+    state.gates[releaseId] = {
+      status: "In Test",
+      criteria: {
+        min_pass_rate: 80,
+        max_open_critical: 0,
+        min_req_coverage: 80,
+      },
+      waiver: null,
+    };
+  }
+  return state.gates[releaseId];
+}
+
+export function loadPreviewReleaseGate(
+  release: Release,
+  metrics: ExpandedMetrics,
+  defects: Defect[],
+): ReleaseGateStatus {
+  const state = readGateState();
+  const entry = ensureGateEntry(state, release.id);
+  writeGateState(state);
+  return buildGateEvaluation(release, entry, metrics, defects);
+}
+
+export function updatePreviewReleaseStatus(
+  release: Release,
+  status: ReleaseStatus,
+  metrics: ExpandedMetrics,
+  defects: Defect[],
+): ReleaseGateStatus {
+  const state = readGateState();
+  const entry = ensureGateEntry(state, release.id);
+  entry.status = status;
+  writeGateState(state);
+  return buildGateEvaluation(release, entry, metrics, defects);
+}
+
+export function updatePreviewExitCriteria(
+  release: Release,
+  criteria: ExitCriteriaConfig,
+  metrics: ExpandedMetrics,
+  defects: Defect[],
+): ReleaseGateStatus {
+  const state = readGateState();
+  const entry = ensureGateEntry(state, release.id);
+  entry.criteria = criteria;
+  writeGateState(state);
+  return buildGateEvaluation(release, entry, metrics, defects);
+}
+
+export function createPreviewReleaseWaiver(
+  release: Release,
+  reason: string,
+  username: string,
+  metrics: ExpandedMetrics,
+  defects: Defect[],
+): ReleaseGateStatus {
+  const state = readGateState();
+  const entry = ensureGateEntry(state, release.id);
+  entry.waiver = {
+    waived_by: username,
+    reason: reason.trim(),
+    waived_at: new Date().toISOString(),
+  };
+  writeGateState(state);
+  return buildGateEvaluation(release, entry, metrics, defects);
+}
+
+export function deletePreviewReleaseWaiver(
+  release: Release,
+  metrics: ExpandedMetrics,
+  defects: Defect[],
+): ReleaseGateStatus {
+  const state = readGateState();
+  const entry = ensureGateEntry(state, release.id);
+  entry.waiver = null;
+  writeGateState(state);
+  return buildGateEvaluation(release, entry, metrics, defects);
 }

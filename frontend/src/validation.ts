@@ -65,6 +65,14 @@ export type TestRunFormValues = {
 
 export type TestRunFormErrors = Partial<Record<keyof TestRunFormValues, string>>;
 
+export type ExitCriteriaFormValues = {
+  minPassRate: string;
+  maxOpenCritical: string;
+  minReqCoverage: string;
+};
+
+export type ExitCriteriaFormErrors = Partial<Record<keyof ExitCriteriaFormValues, string>>;
+
 const MIN_TITLE_LENGTH = 3;
 const MAX_TITLE_LENGTH = 120;
 const MAX_PROJECT_NAME_LENGTH = 100;
@@ -285,6 +293,35 @@ export function validateTestRunForm(values: TestRunFormValues): TestRunFormError
   }
 
   return errors;
+}
+
+export function validateExitCriteriaForm(values: ExitCriteriaFormValues): ExitCriteriaFormErrors {
+  const errors: ExitCriteriaFormErrors = {};
+  const passRate = Number(values.minPassRate);
+  const openCritical = Number(values.maxOpenCritical);
+  const reqCoverage = Number(values.minReqCoverage);
+
+  if (Number.isNaN(passRate) || passRate < 0 || passRate > 100) {
+    errors.minPassRate = "Başarı oranı 0 ile 100 arasında olmalıdır.";
+  }
+  if (!Number.isInteger(openCritical) || openCritical < 0) {
+    errors.maxOpenCritical = "Açık Critical limiti 0 veya daha büyük tam sayı olmalıdır.";
+  }
+  if (Number.isNaN(reqCoverage) || reqCoverage < 0 || reqCoverage > 100) {
+    errors.minReqCoverage = "Gereksinim kapsamı 0 ile 100 arasında olmalıdır.";
+  }
+
+  return errors;
+}
+
+export function validateWaiverReason(reason: string): string | undefined {
+  const trimmed = reason.trim();
+  if (!trimmed) return "Muafiyet gerekçesi boş olamaz.";
+  if (trimmed.length < 5) return "Muafiyet gerekçesi en az 5 karakter olmalıdır.";
+  if (trimmed.length > MAX_DESCRIPTION_LENGTH) {
+    return `Muafiyet gerekçesi en fazla ${MAX_DESCRIPTION_LENGTH} karakter olabilir.`;
+  }
+  return undefined;
 }
 
 export function hasFormErrors(errors: Record<string, string | undefined>): boolean {

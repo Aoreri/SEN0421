@@ -41,13 +41,14 @@ geçişler ve değiştirilemez geçmiş zaman çizelgesi.
 | Test vakası (adımlar, beklenen sonuç, öncelik, otomasyon bayrağı, kararlı anahtar) ve test suite CRUD API'si | R2 | 29119-2 Test Tasarımı ve Gerçekleştirme; 29119-3 Test Case Specification |
 | Test vakası / suite yönetimi (`/test-cases`) ve etkileşimli gereksinim – test izlenebilirlik matrisi | R2 | 29119-2 Test Tasarımı ve Gerçekleştirme |
 | Test koşumu yürütme ekranı (`/test-runs`): `Passed`/`Failed`/`Blocked`/`Skipped` sonuç girme, başarısız yürütmeden defect açma ve koşum geçmişi | R2, R4 | 29119-2 Test Yürütme; Test Olay Raporlama |
+| Grafikli metrik paneli (`/`) ve sürüm çıkış kapısı kartı: koşum başına yığılmış sonuç çubuğu + başarı trendi, defect burn-up, önem dağılımı, yapılandırılabilir çıkış eşikleri ve Test Lead muafiyeti | R5, R7 | 29119-2 Test İzleme ve Kontrol |
 | Test vakası listesi ve metrikler: koşum oranı, başarı oranı, açık defect sayısı | R2, R5 | 29119-2 Test İzleme ve Kontrol |
 | JUnit XML içe aktarımı; commit/branch üst verisi, projeye göre kararlı test vakası eşleme ve eşleşmeyen sonuç raporu | R6 | 29119-2 Test Yürütme; 12207 Doğrulama |
 | Test koşumu (Test Run) ve test yürütme (Test Execution): Passed / Failed / Blocked / Skipped sonuçları, yürütme ↔ defect bağlantısı ve `Resolved → Closed` doğrulama şartı | R2, R4 | 29119-2 Test Yürütme; 12207 Doğrulama |
 | Sürüm durumları (`Planned`, `In Test`, `Ready`, `Released`), yapılandırılabilir çıkış kriterleri (başarı oranı, açık kritik defect, gereksinim kapsama) ve Test Lead / Admin muafiyet kaydı | R7 | 29119-2 Test Tamamlama; 12207 Kalite Güvence |
 | IEEE 829 Test Plan kaydı (`Draft` / `In Review` / `Approved`), anlık görüntü (snapshot) saklama ve Jinja2 + WeasyPrint/PDF + HTML üretimi | R1, R3 | IEEE 829 Test Plan; 29119-3 Test Plan; 12207 Uygulama |
 
-**Planlanan:** grafikli metrik paneli ve
+**Planlanan:** genişletilmiş metrik SQL agregasyon API'si (PLN-24) ve
 Test Summary Report / Test Incident Report üretimi (Jinja2 + WeasyPrint).
 
 ## Mimari
