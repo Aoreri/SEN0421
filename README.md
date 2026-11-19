@@ -45,8 +45,7 @@ geçişler ve değiştirilemez geçmiş zaman çizelgesi.
 | Sürüm durumları (`Planned`, `In Test`, `Ready`, `Released`), yapılandırılabilir çıkış kriterleri (başarı oranı, açık kritik defect, gereksinim kapsama) ve Test Lead / Admin muafiyet kaydı | R7 | 29119-2 Test Tamamlama; 12207 Kalite Güvence |
 | IEEE 829 Test Plan kaydı (`Draft` / `In Review` / `Approved`), anlık görüntü (snapshot) saklama ve Jinja2 + WeasyPrint/PDF + HTML üretimi | R1, R3 | IEEE 829 Test Plan; 29119-3 Test Plan; 12207 Uygulama |
 
-**Planlanan:** test vakası / suite yönetim ekranları, Cobertura
-içe aktarımı, grafikli metrik paneli ve
+**Planlanan:** test vakası / suite yönetim ekranları, grafikli metrik paneli ve
 Test Summary Report / Test Incident Report üretimi (Jinja2 + WeasyPrint).
 
 ## Mimari
@@ -131,6 +130,15 @@ kaydedilip ayrı raporlanır. Sınır 1 MiB / 5000 sonuçtur.
 İçe aktarım anlık görüntüleri genel PLN-17 koşum yönetiminden ayrıdır; mevcut test
 vakası durumlarını veya metrikleri güncellemez. Okuma uçları, örnek XML, eşleme
 kuralları ve migrasyon ayrıntıları: [JUnit import sözleşmesi](docs/junit-import.md).
+
+## Cobertura içe aktarımı ve CI aktarımı (PLN-23 — Esra Kaya)
+
+`POST /api/projects/{id}/coverage/import`, Cobertura XML satır/dal kapsamını
+saklar; sonuçlar listelenebilir ve tekrar okunabilir. İsteğe bağlı JUnit içe
+aktarım kimliğiyle commit/branch kanıtı ilişkilendirilir. CI kendi gerçek JUnit ve
+Cobertura raporlarını geçici bir SDS-06 örneğine aktarır; sonuçlar **Artifacts →
+ci-import-evidence** altında 14 gün saklanır. Canlı proje veritabanına yazılmaz.
+Sınırlar, doğrulama, API ve migrasyon: [Cobertura sözleşmesi](docs/cobertura-import.md).
 
 ## Dokümanlar
 

@@ -35,7 +35,22 @@ jobs:
       - name: Mypy type check
         run: mypy app
       - name: Pytest and Cobertura coverage
-        run: python -m pytest -q --cov=app --cov-report=term-missing --cov-report=xml:coverage.xml
+        run: python -m pytest -q --cov=app --cov-report=term-missing --cov-report=xml:coverage.xml --junitxml=junit.xml -o junit_family=legacy
+      - name: Import CI reports into isolated SDS-06 (PLN-23)
+        env:
+          REPORT_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+          REPORT_BRANCH: ${{ github.head_ref || github.ref_name }}
+        run: python scripts/dogfood_ci.py --junit junit.xml --coverage coverage.xml --commit "$REPORT_COMMIT" --branch "$REPORT_BRANCH"
+      - name: Upload CI import evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-import-evidence
+          path: |
+            backend/junit.xml
+            backend/dogfood-report.json
+          if-no-files-found: warn
+          retention-days: 14
       - name: Upload SQLite Cobertura report
         if: always()
         uses: actions/upload-artifact@v4
@@ -78,7 +93,7 @@ jobs:
       - name: Install dependencies
         run: python -m pip install -r requirements-dev.txt
       - name: Pytest on PostgreSQL and Cobertura coverage
-        run: python -m pytest -q --cov=app --cov-report=term-missing --cov-report=xml:coverage.xml
+        run: python -m pytest -q --cov=app --cov-report=term-missing --cov-report=xml:coverage.xml --junitxml=junit.xml -o junit_family=legacy
       - name: Upload PostgreSQL Cobertura report
         if: always()
         uses: actions/upload-artifact@v4

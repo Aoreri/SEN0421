@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session, selectinload
 from .auth import ADMIN, TEST_LEAD, TESTER, require_roles
 from .db import DB
 from .models import (
+    CoverageImport,
     Defect,
     ImportedTestRun,
     Project,
@@ -306,7 +307,7 @@ def update_project(project_id: int, body: ProjectIn, db: DB):
 @router.delete("/projects/{project_id}", status_code=204, dependencies=WRITE)
 def delete_project(project_id: int, db: DB):
     project = get_or_404(db, Project, project_id)
-    for model in (Release, Requirement, TestSuite, TestRun, TestPlan, ImportedTestRun):
+    for model in (Release, Requirement, TestSuite, TestRun, TestPlan, ImportedTestRun, CoverageImport):
         if db.scalar(select(model.id).where(model.project_id == project_id).limit(1)) is not None:
             raise HTTPException(
                 409,

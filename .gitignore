@@ -24,3 +24,7 @@ dist/
 .coverage.*
 coverage.xml
 htmlcov/
+
+# PLN-23 generated CI import evidence
+junit.xml
+dogfood-report.json

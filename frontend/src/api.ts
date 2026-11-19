@@ -371,6 +371,20 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   return res.json();
 }
 
+export type CoverageSummary = {
+  lines_valid: number; lines_covered: number;
+  branches_valid: number; branches_covered: number;
+  line_coverage: number; branch_coverage: number;
+};
+export type CoverageImport = {
+  id: number; project_id: number; imported_by: number;
+  junit_import_id: number | null; commit: string | null;
+  branch: string | null; created_at: string; summary: CoverageSummary;
+};
+export type CoverageReport = CoverageImport & {
+  files: (CoverageSummary & { filename: string })[];
+};
+
 export const api = {
   login: (username: string, password: string) =>
     request<LoginResponse>("/auth/login", {
@@ -540,6 +554,20 @@ export const api = {
       body: xml,
     });
   },
+  importCoverage: (projectId: number, xml: string,
+    metadata: { commit?: string; branch?: string; junit_import_id?: number } = {}) => {
+    const query = new URLSearchParams();
+    Object.entries(metadata).forEach(([key, value]) => {
+      if (value !== undefined) query.set(key, String(value));
+    });
+    return request<CoverageReport>(`/projects/${projectId}/coverage/import${query.size ? `?${query}` : ""}`, {
+      method: "POST", headers: { "Content-Type": "application/xml" }, body: xml,
+    });
+  },
+  coverageImports: (projectId: number, limit = 50, offset = 0) =>
+    request<CoverageImport[]>(`/projects/${projectId}/coverage/imports?limit=${limit}&offset=${offset}`),
+  coverageImport: (projectId: number, importId: number) =>
+    request<CoverageReport>(`/projects/${projectId}/coverage/imports/${importId}`),
   junitImports: (projectId: number, limit = 50, offset = 0) =>
     request<ImportedTestRun[]>(`/projects/${projectId}/runs/imports?limit=${limit}&offset=${offset}`),
   junitImport: (projectId: number, importId: number) =>
