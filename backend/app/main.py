@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from . import auth, junit_imports, projects, runs
+from . import auth, junit_imports, projects, runs, test_plans
 from .auth import ADMIN, TEST_LEAD, TESTER, CurrentUser, OptionalUser, require_roles
 from .db import DB
 from .models import (
@@ -36,6 +36,7 @@ app.include_router(auth.router)
 app.include_router(projects.router)
 app.include_router(junit_imports.router)
 app.include_router(runs.router)
+app.include_router(test_plans.router)
 
 # --- Şemalar ------------------------------------------------------------------
 class DefectCreate(BaseModel):

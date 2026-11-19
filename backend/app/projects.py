@@ -18,6 +18,7 @@ from .models import (
     Requirement,
     TestCase,
     TestExecution,
+    TestPlan,
     TestRun,
     TestSuite,
     User,
@@ -305,11 +306,11 @@ def update_project(project_id: int, body: ProjectIn, db: DB):
 @router.delete("/projects/{project_id}", status_code=204, dependencies=WRITE)
 def delete_project(project_id: int, db: DB):
     project = get_or_404(db, Project, project_id)
-    for model in (Release, Requirement, TestSuite, TestRun, ImportedTestRun):
+    for model in (Release, Requirement, TestSuite, TestRun, TestPlan, ImportedTestRun):
         if db.scalar(select(model.id).where(model.project_id == project_id).limit(1)) is not None:
             raise HTTPException(
                 409,
-                "Projeye bağlı sürüm, gereksinim, test suite, test koşumu veya içe aktarım kayıtları var",
+                "Projeye bağlı sürüm, gereksinim, test suite, test koşumu, test planı veya içe aktarım kayıtları var",
             )
     remove(db, project)
 
@@ -343,6 +344,8 @@ def delete_release(release_id: int, db: DB):
     release = get_or_404(db, Release, release_id)
     if db.scalar(select(TestRun.id).where(TestRun.release_id == release_id).limit(1)) is not None:
         raise HTTPException(409, "Sürüme bağlı test koşumları var")
+    if db.scalar(select(TestPlan.id).where(TestPlan.release_id == release_id).limit(1)) is not None:
+        raise HTTPException(409, "Sürüme bağlı test planı var")
     remove(db, release)
 
 

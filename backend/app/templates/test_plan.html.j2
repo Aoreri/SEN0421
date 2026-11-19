@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <title>{{ identifier }} - {{ plan.title }}</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 20mm;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      color: #1f2937;
+      line-height: 1.5;
+      font-size: 13px;
+      margin: 0;
+      padding: 24px;
+    }
+    header {
+      border-bottom: 2px solid #2563eb;
+      padding-bottom: 12px;
+      margin-bottom: 20px;
+    }
+    h1 {
+      margin: 0 0 6px 0;
+      font-size: 22px;
+      color: #111827;
+    }
+    h2 {
+      margin-top: 22px;
+      margin-bottom: 8px;
+      font-size: 16px;
+      color: #1e40af;
+      border-bottom: 1px solid #e5e7eb;
+      padding-bottom: 4px;
+    }
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      font-size: 12px;
+      color: #4b5563;
+    }
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: 600;
+      font-size: 11px;
+      background: #dbeafe;
+      color: #1e40af;
+    }
+    .section-box {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      padding: 10px 14px;
+      margin-bottom: 12px;
+      white-space: pre-wrap;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+      margin-bottom: 16px;
+      font-size: 12px;
+    }
+    th, td {
+      border: 1px solid #d1d5db;
+      padding: 6px 8px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background: #f3f4f6;
+      font-weight: 600;
+    }
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-top: 8px;
+    }
+    .metric-card {
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      padding: 8px 12px;
+      background: #f9fafb;
+    }
+    .metric-label {
+      font-size: 11px;
+      color: #6b7280;
+    }
+    .metric-value {
+      font-size: 16px;
+      font-weight: 700;
+      color: #111827;
+    }
+    footer {
+      margin-top: 28px;
+      padding-top: 10px;
+      border-top: 1px solid #e5e7eb;
+      font-size: 11px;
+      color: #6b7280;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>{{ plan.title }}</h1>
+    <div class="meta">
+      <span><strong>Test Plan ID:</strong> {{ identifier }}</span>
+      <span><strong>Proje:</strong> {{ project.name }}</span>
+      <span><strong>Sürüm (Release):</strong> {{ release.version if release else "Genel" }}</span>
+      <span><strong>Plan Versiyonu:</strong> {{ plan.version }}</span>
+      <span><strong>Durum:</strong> <span class="badge">{{ plan.status }}</span></span>
+      <span><strong>Oluşturan:</strong> {{ plan.created_by }}</span>
+      <span><strong>Üretim Zamanı:</strong> {{ generated_at }}</span>
+    </div>
+  </header>
+
+  <section>
+    <h2>1. Test Plan Tanımlayıcısı ve Standart Eşlemesi (IEEE 829 / ISO/IEC/IEEE 29119-3)</h2>
+    <p>
+      Bu doküman <strong>{{ identifier }}</strong> koduyla {{ project.name }} projesi için
+      IEEE 829 Test Plan yapısını ve ISO/IEC/IEEE 29119-3 Test Plan maddelerini karşılamak üzere üretilmiştir.
+    </p>
+  </section>
+
+  <section>
+    <h2>2. Giriş ve Kapsam (Test Items &amp; Features to be Tested)</h2>
+    <div class="section-box">{{ plan.scope or "Belirtilmedi." }}</div>
+  </section>
+
+  <section>
+    <h2>3. Gereksinim ve Test Vakası İzlenebilirlik Tablosu (R1–Rn)</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Gereksinim Kodu</th>
+          <th>Başlık</th>
+          <th>Açıklama</th>
+          <th>Bağlı Test Vakaları</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for req in requirements %}
+        <tr>
+          <td><strong>{{ req.id }}</strong></td>
+          <td>{{ req.title }}</td>
+          <td>{{ req.description or "-" }}</td>
+          <td>{{ req.test_cases | join(", ") if req.test_cases else "Bağlı test vakası yok" }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="4">Kayıtlı gereksinim bulunmuyor.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Test Vakası Kodu</th>
+          <th>Başlık</th>
+          <th>Birincil Gereksinim</th>
+          <th>İzlenen Gereksinimler</th>
+          <th>Durum</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for tc in test_cases %}
+        <tr>
+          <td><strong>{{ tc.id }}</strong></td>
+          <td>{{ tc.title }}</td>
+          <td>{{ tc.requirement }}</td>
+          <td>{{ tc.requirements | join(", ") }}</td>
+          <td>{{ tc.status }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="5">Kayıtlı test vakası bulunmuyor.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>4. Test Yaklaşımı ve Geçti/Kaldı Kriterleri (Approach &amp; Pass/Fail Criteria)</h2>
+    <p><strong>Test Yaklaşımı (Approach):</strong></p>
+    <div class="section-box">{{ plan.approach or "Belirtilmedi." }}</div>
+    <p><strong>Geçti/Kaldı, Giriş/Çıkış ve Askıya Alma Kriterleri (Pass/Fail &amp; Entry/Exit Criteria):</strong></p>
+    <div class="section-box">{{ plan.pass_fail_criteria or "Belirtilmedi." }}</div>
+  </section>
+
+  <section>
+    <h2>5. Test Ortamı, Takvim ve Riskler (Environment, Schedule &amp; Risks)</h2>
+    <p><strong>Test Ortamı ve Teslimatlar (Environment &amp; Deliverables):</strong></p>
+    <div class="section-box">{{ plan.environment or "Belirtilmedi." }}</div>
+    <p><strong>Takvim, Sorumluluklar ve Riskler (Schedule, Responsibilities &amp; Risks):</strong></p>
+    <div class="section-box">{{ plan.schedule_risks or "Belirtilmedi." }}</div>
+  </section>
+
+  <section>
+    <h2>6. Anlık Test ve Defect Özeti (Snapshot Summary)</h2>
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-label">Toplam Test Vakası</div>
+        <div class="metric-value">{{ metrics.total_tests }}</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Koşum Oranı</div>
+        <div class="metric-value">%{{ metrics.execution_rate }}</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Başarı Oranı</div>
+        <div class="metric-value">%{{ metrics.pass_rate }}</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Açık Defect</div>
+        <div class="metric-value">{{ metrics.open_defects }}</div>
+      </div>
+    </div>
+
+    {% if defects %}
+    <table>
+      <thead>
+        <tr>
+          <th>Defect ID</th>
+          <th>Başlık</th>
+          <th>Önem Derecesi</th>
+          <th>Durum</th>
+          <th>Test Vakası</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for d in defects %}
+        <tr>
+          <td>#{{ d.id }}</td>
+          <td>{{ d.title }}</td>
+          <td>{{ d.severity }}</td>
+          <td>{{ d.status }}</td>
+          <td>{{ d.test_case or "-" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+  </section>
+
+  <footer>
+    SDS-06 Agile Test and Defect Tracking System · IEEE 829 / ISO/IEC/IEEE 29119-3 Test Plan · Üreten: {{ generated_by }}
+  </footer>
+</body>
+</html>

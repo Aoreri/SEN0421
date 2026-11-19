@@ -863,3 +863,254 @@ def test_defect_close_requires_passed_verification_execution(client):
         ).status_code
         == 409
     )
+
+
+def test_test_plan_crud_and_workflow(client):
+    lead = as_user("testlead")
+    rel = client.post("/api/releases", json={"project_id": 1, "version": "v1.0"}, headers=lead).json()
+    plan_in = {
+        "project_id": 1,
+        "release_id": rel["id"],
+        "version": "1.0",
+        "title": "SDS-06 Ana Test Planı",
+        "scope": "Backend ve Frontend bileşenleri",
+        "approach": "Birim, entegrasyon ve sistem testleri",
+        "pass_fail_criteria": "Kritik açık defect olmamalı",
+        "environment": "Docker Compose + PostgreSQL 16",
+        "schedule_risks": "RSK-07 PDF üretim yedeklemesi",
+    }
+    res = client.post("/api/test-plans", json=plan_in, headers=lead)
+    assert res.status_code == 201
+    plan = res.json()
+    assert plan["status"] == "Draft"
+    assert plan["created_by"] == "testlead"
+    assert plan["snapshot_count"] == 0
+    assert plan["snapshots"] == []
+
+    # Duplicate (project_id, version) -> 409
+    assert client.post("/api/test-plans", json=plan_in, headers=lead).status_code == 409
+
+    # Update while Draft
+    updated_in = {**plan_in, "title": "Güncellenmiş Test Planı"}
+    updated = client.put(f"/api/test-plans/{plan['id']}", json=updated_in, headers=lead).json()
+    assert updated["title"] == "Güncellenmiş Test Planı"
+
+    # Direct Draft -> Approved rejected with 409
+    status_url = f"/api/test-plans/{plan['id']}/status"
+    assert client.put(status_url, json={"status": "Approved"}, headers=lead).status_code == 409
+
+    # Valid workflow: Draft -> In Review -> Approved
+    in_rev = client.put(status_url, json={"status": "In Review"}, headers=lead)
+    assert in_rev.status_code == 200 and in_rev.json()["status"] == "In Review"
+    approved = client.put(status_url, json={"status": "Approved"}, headers=lead)
+    assert approved.status_code == 200 and approved.json()["status"] == "Approved"
+
+    # Approved plan cannot be updated or deleted directly -> 409
+    assert client.put(f"/api/test-plans/{plan['id']}", json=updated_in, headers=lead).status_code == 409
+    assert client.delete(f"/api/test-plans/{plan['id']}", headers=lead).status_code == 409
+
+    # Re-draft (Approved -> Draft) allows deletion
+    redraft = client.put(status_url, json={"status": "Draft"}, headers=lead)
+    assert redraft.status_code == 200 and redraft.json()["status"] == "Draft"
+    assert client.delete(f"/api/test-plans/{plan['id']}", headers=lead).status_code == 204
+    assert client.get(f"/api/test-plans/{plan['id']}").status_code == 404
+
+
+def test_test_plan_validation_and_dependents(client):
+    admin = as_user("admin")
+    p2 = client.post("/api/projects", json={"name": "P2"}, headers=admin).json()
+    r1 = client.post("/api/releases", json={"project_id": 1, "version": "v1"}, headers=admin).json()
+
+    # Unknown project or mismatched release -> 422
+    assert client.post(
+        "/api/test-plans",
+        json={"project_id": 999, "version": "1.0", "title": "T"},
+        headers=admin,
+    ).status_code == 422
+    assert client.post(
+        "/api/test-plans",
+        json={"project_id": p2["id"], "release_id": r1["id"], "version": "1.0", "title": "T"},
+        headers=admin,
+    ).status_code == 422
+
+    # Project or release with a TestPlan cannot be deleted -> 409
+    r2 = client.post("/api/releases", json={"project_id": p2["id"], "version": "v1"}, headers=admin).json()
+    tp = client.post(
+        "/api/test-plans",
+        json={"project_id": p2["id"], "release_id": r2["id"], "version": "1.0", "title": "P2 Plan"},
+        headers=admin,
+    ).json()
+    assert client.delete(f"/api/releases/{r2['id']}", headers=admin).status_code == 409
+    assert client.delete(f"/api/projects/{p2['id']}", headers=admin).status_code == 409
+
+    # After deleting TestPlan and Release, Project can be deleted
+    assert client.delete(f"/api/test-plans/{tp['id']}", headers=admin).status_code == 204
+    assert client.delete(f"/api/releases/{r2['id']}", headers=admin).status_code == 204
+    assert client.delete(f"/api/projects/{p2['id']}", headers=admin).status_code == 204
+
+
+def test_test_plan_role_checks(client):
+    admin = as_user("admin")
+    tp = client.post(
+        "/api/test-plans",
+        json={"project_id": 1, "version": "1.0", "title": "Yetki Testi"},
+        headers=admin,
+    ).json()
+    pid = tp["id"]
+
+    for method, url, body in [
+        ("post", "/api/test-plans", {"project_id": 1, "version": "2.0", "title": "X"}),
+        ("put", f"/api/test-plans/{pid}", {"project_id": 1, "version": "1.0", "title": "X"}),
+        ("put", f"/api/test-plans/{pid}/status", {"status": "In Review"}),
+        ("delete", f"/api/test-plans/{pid}", None),
+    ]:
+        send = getattr(client, method)
+        kwargs = {"json": body} if body else {}
+        assert send(url, **kwargs).status_code == 401
+        for role_user in ("tester", "developer"):
+            assert send(url, headers=as_user(role_user), **kwargs).status_code == 403
+
+    # Snapshots allow Tester, reject Developer
+    snap_url = f"/api/test-plans/{pid}/snapshots"
+    assert client.post(snap_url).status_code == 401
+    assert client.post(snap_url, headers=as_user("developer")).status_code == 403
+    assert client.post(snap_url, headers=as_user("tester")).status_code == 201
+
+
+def test_test_plan_snapshots_and_html_pdf_export(client):
+    from app.test_plans import _fallback_pdf_bytes
+
+    lead = as_user("testlead")
+    tester = as_user("tester")
+    plan = client.post(
+        "/api/test-plans",
+        json={
+            "project_id": 1,
+            "version": "1.0",
+            "title": "IEEE 829 Snapshot Planı",
+            "scope": "İlk kapsam metni",
+            "approach": "Entegrasyon yaklaşımı",
+        },
+        headers=lead,
+    ).json()
+    pid = plan["id"]
+
+    # Create snapshot #1 while scope is "İlk kapsam metni"
+    snap1_res = client.post(f"/api/test-plans/{pid}/snapshots", headers=tester)
+    assert snap1_res.status_code == 201
+    snap1 = snap1_res.json()
+    assert snap1["version"] == "1.0"
+    assert snap1["status"] == "Draft"
+    assert snap1["generated_by"] == "tester"
+    assert "TP-SDS-06-1.0" in snap1["html_content"]
+    assert "İlk kapsam metni" in snap1["html_content"]
+    assert snap1["payload"]["metrics"]["total_tests"] == 6
+
+    # Modify plan scope and create a new defect, then verify snapshot #1 is immutable
+    client.put(
+        f"/api/test-plans/{pid}",
+        json={
+            "project_id": 1,
+            "version": "1.1",
+            "title": "IEEE 829 Snapshot Planı",
+            "scope": "\n".join(f"Kapsam satırı {i}" for i in range(1, 55)),
+            "approach": "Entegrasyon yaklaşımı",
+        },
+        headers=lead,
+    )
+    client.post("/api/defects", json={"title": "Sonradan eklenen hata"}, headers=tester)
+
+    stored_snap1 = client.get(f"/api/test-plans/{pid}/snapshots/{snap1['id']}").json()
+    assert "İlk kapsam metni" in stored_snap1["html_content"]
+    assert "Kapsam satırı 1" not in stored_snap1["html_content"]
+    assert stored_snap1["payload"]["metrics"]["open_defects"] == 3
+
+    # Export live HTML vs snapshot HTML
+    live_html = client.get(f"/api/test-plans/{pid}/export?format=html")
+    assert live_html.status_code == 200
+    assert "text/html" in live_html.headers["content-type"]
+    assert "Kapsam satırı 50" in live_html.text
+
+    snap_html = client.get(f"/api/test-plans/{pid}/export?format=html&snapshot_id={snap1['id']}")
+    assert snap_html.status_code == 200
+    assert "İlk kapsam metni" in snap_html.text
+    assert "Kapsam satırı 1" not in snap_html.text
+
+    # Export PDF (live and snapshot) and verify multi-page + defects completeness in fallback PDF
+    live_pdf = client.get(f"/api/test-plans/{pid}/export?format=pdf")
+    assert live_pdf.status_code == 200
+    assert live_pdf.headers["content-type"] == "application/pdf"
+    assert f'filename="test-plan-{pid}-1.1.pdf"' in live_pdf.headers["content-disposition"]
+    assert live_pdf.content.startswith(b"%PDF-1.")
+    assert live_pdf.content.strip().endswith(b"%%EOF")
+
+    live_snap = client.post(f"/api/test-plans/{pid}/snapshots", headers=tester).json()
+    fallback_bytes = _fallback_pdf_bytes(live_snap["payload"])
+    assert fallback_bytes.startswith(b"%PDF-1.4")
+    assert b"8. Defects:" in fallback_bytes
+    assert b"9. Metrics Summary: Total=6" in fallback_bytes
+    assert b"/Count 2" in fallback_bytes
+
+    snap_pdf = client.get(f"/api/test-plans/{pid}/export?format=pdf&snapshot_id={snap1['id']}")
+    assert snap_pdf.status_code == 200
+    assert snap_pdf.headers["content-type"] == "application/pdf"
+    assert f'filename="test-plan-{pid}-1.0.pdf"' in snap_pdf.headers["content-disposition"]
+    assert snap_pdf.content.startswith(b"%PDF-1.")
+
+    # List plans shows snapshot_count == 2
+    plans = client.get("/api/test-plans").json()
+    assert len(plans) == 1 and plans[0]["snapshot_count"] == 2
+    assert len(client.get(f"/api/test-plans/{pid}/snapshots").json()) == 2
+    assert client.get(f"/api/test-plans/{pid}/snapshots/999").status_code == 404
+    assert client.get(f"/api/test-plans/{pid}/export?snapshot_id=999").status_code == 404
+
+
+def test_test_plan_snapshot_isolates_projects(client):
+    admin = as_user("admin")
+    tester = as_user("tester")
+
+    p2 = client.post("/api/projects", json={"name": "P2-Plan"}, headers=admin).json()
+    client.post(
+        "/api/requirements",
+        json={"id": "R-P2", "project_id": p2["id"], "title": "P2 Gereksinimi"},
+        headers=admin,
+    )
+    client.post(
+        "/api/test-cases",
+        json={"id": "TC-P2", "title": "P2 Test Vakası", "status": "Failed", "requirements": ["R-P2"]},
+        headers=tester,
+    )
+    client.post(
+        "/api/defects",
+        json={"title": "P2 Özel Hatası", "severity": "Critical", "test_case": "TC-P2"},
+        headers=tester,
+    )
+
+    tp1 = client.post(
+        "/api/test-plans",
+        json={"project_id": 1, "version": "1.0", "title": "P1 Planı"},
+        headers=admin,
+    ).json()
+    tp2 = client.post(
+        "/api/test-plans",
+        json={"project_id": p2["id"], "version": "1.0", "title": "P2 Planı"},
+        headers=admin,
+    ).json()
+
+    snap1 = client.post(f"/api/test-plans/{tp1['id']}/snapshots", headers=tester).json()
+    snap2 = client.post(f"/api/test-plans/{tp2['id']}/snapshots", headers=tester).json()
+
+    assert [tc["id"] for tc in snap1["payload"]["test_cases"]] == [
+        "TC-001", "TC-002", "TC-003", "TC-004", "TC-005", "TC-006"
+    ]
+    assert all(d["title"] != "P2 Özel Hatası" for d in snap1["payload"]["defects"])
+    assert snap1["payload"]["metrics"]["total_tests"] == 6
+    assert snap1["payload"]["metrics"]["open_defects"] == 3
+    assert "P2 Özel Hatası" not in snap1["html_content"]
+
+    assert [tc["id"] for tc in snap2["payload"]["test_cases"]] == ["TC-P2"]
+    assert [d["title"] for d in snap2["payload"]["defects"]] == ["P2 Özel Hatası"]
+    assert snap2["payload"]["metrics"]["total_tests"] == 1
+    assert snap2["payload"]["metrics"]["pass_rate"] == 0.0
+    assert snap2["payload"]["metrics"]["open_defects"] == 1
+    assert "TC-001" not in snap2["html_content"]
