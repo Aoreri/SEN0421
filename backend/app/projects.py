@@ -1,15 +1,15 @@
-"""Proje, sürüm ve gereksinim CRUD uçları + test vakası izlenebilirliği (PLN-06)."""
-from typing import Annotated, Any
+"""Proje, sürüm, gereksinim, test suite ve test vakası CRUD uçları + izlenebilirlik (PLN-06, PLN-16)."""
+from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, StringConstraints
+from pydantic import BaseModel, Field, StringConstraints
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from .auth import ADMIN, TEST_LEAD, TESTER, require_roles
 from .db import DB
-from .models import ImportedTestRun, Project, Release, Requirement, TestCase
+from .models import Defect, ImportedTestRun, Project, Release, Requirement, TestCase, TestSuite
 
 router = APIRouter(prefix="/api", tags=["projects"])
 WRITE = [Depends(require_roles(ADMIN, TEST_LEAD))]
@@ -21,6 +21,9 @@ Short = StringConstraints(strip_whitespace=True, min_length=1, max_length=100)
 Version = StringConstraints(strip_whitespace=True, min_length=1, max_length=50)
 Code = StringConstraints(strip_whitespace=True, min_length=1, max_length=20)
 Description = Annotated[str, StringConstraints(strip_whitespace=True, max_length=1000)]
+Step = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)]
+Priority = Literal["Low", "Medium", "High", "Critical"]
+CaseStatus = Literal["Not Run", "Passed", "Failed", "Blocked", "Skipped"]
 
 
 class ProjectIn(BaseModel):
@@ -45,6 +48,31 @@ class RequirementCreate(RequirementIn):
 
 class TraceLinks(BaseModel):
     test_cases: list[str]
+
+
+class RequirementLinks(BaseModel):
+    requirements: list[str] = Field(min_length=1)
+
+
+class TestSuiteIn(BaseModel):
+    project_id: int
+    name: Annotated[str, Short]
+    description: Description = ""
+
+
+class TestCaseIn(BaseModel):
+    title: Annotated[str, Title]
+    suite_id: int | None = None
+    priority: Priority = "Medium"
+    automated: bool = False
+    steps: list[Step] = Field(default_factory=list, max_length=100)
+    expected_result: Description = ""
+    status: CaseStatus = "Not Run"
+    requirements: list[Annotated[str, Code]] = Field(min_length=1)
+
+
+class TestCaseCreate(TestCaseIn):
+    id: Annotated[str, Code]
 
 
 def get_or_404[T](db: Session, model: type[T], key: Any) -> T:
@@ -93,6 +121,43 @@ def requirement_out(r: Requirement) -> dict:
             "test_cases": sorted(t.id for t in r.test_cases)}
 
 
+def suite_out(s: TestSuite) -> dict:
+    return {"id": s.id, "project_id": s.project_id, "name": s.name, "description": s.description,
+            "test_cases": sorted(t.id for t in s.test_cases)}
+
+
+def test_case_out(t: TestCase) -> dict:
+    return {
+        "id": t.id,
+        "suite_id": t.suite_id,
+        "title": t.title,
+        "requirement": t.requirement,
+        "requirements": sorted(r.id for r in t.requirements),
+        "status": t.status,
+        "priority": t.priority,
+        "automated": t.automated,
+        "steps": t.steps,
+        "expected_result": t.expected_result,
+    }
+
+
+def resolve_case_relations(
+    db: Session, suite_id: int | None, req_ids: list[str]
+) -> tuple[TestSuite | None, list[Requirement]]:
+    suite = None
+    if suite_id is not None:
+        suite = db.get(TestSuite, suite_id)
+        if suite is None:
+            raise HTTPException(422, "Test suite bulunamadı")
+    ids = set(req_ids)
+    requirements = list(db.scalars(select(Requirement).where(Requirement.id.in_(ids))))
+    if len(requirements) != len(ids):
+        raise HTTPException(422, "Gereksinim bulunamadı")
+    if suite is not None and any(r.project_id != suite.project_id for r in requirements):
+        raise HTTPException(422, "Test suite ve gereksinimler aynı projede olmalıdır")
+    return suite, requirements
+
+
 # --- Projeler -----------------------------------------------------------------
 @router.get("/projects")
 def list_projects(db: DB):
@@ -117,9 +182,12 @@ def update_project(project_id: int, body: ProjectIn, db: DB):
 @router.delete("/projects/{project_id}", status_code=204, dependencies=WRITE)
 def delete_project(project_id: int, db: DB):
     project = get_or_404(db, Project, project_id)
-    for model in (Release, Requirement, ImportedTestRun):
+    for model in (Release, Requirement, TestSuite, ImportedTestRun):
         if db.scalar(select(model.id).where(model.project_id == project_id).limit(1)) is not None:
-            raise HTTPException(409, "Projeye bağlı sürüm, gereksinim veya içe aktarım kayıtları var")
+            raise HTTPException(
+                409,
+                "Projeye bağlı sürüm, gereksinim, test suite veya içe aktarım kayıtları var",
+            )
     remove(db, project)
 
 
@@ -194,6 +262,117 @@ def set_requirement_test_cases(requirement_id: str, body: TraceLinks, db: DB):
     test_cases = list(db.scalars(select(TestCase).where(TestCase.id.in_(ids))))
     if len(test_cases) != len(ids):
         raise HTTPException(422, "Test vakası bulunamadı")
+    for tc in test_cases:
+        if tc.suite is not None and tc.suite.project_id != requirement.project_id:
+            raise HTTPException(422, "Test vakasının suite'i ile gereksinim aynı projede olmalıdır")
     requirement.test_cases = test_cases
     commit_or_409(db)
     return requirement_out(requirement)
+
+
+# --- Test Suite'leri ----------------------------------------------------------
+@router.get("/test-suites")
+def list_test_suites(db: DB):
+    rows = db.scalars(select(TestSuite).options(selectinload(TestSuite.test_cases))
+                      .order_by(TestSuite.id))
+    return [suite_out(s) for s in rows]
+
+
+@router.post("/test-suites", status_code=201, dependencies=WRITE)
+def create_test_suite(body: TestSuiteIn, db: DB):
+    require_project(db, body.project_id)
+    return suite_out(save(db, TestSuite(), body))
+
+
+@router.get("/test-suites/{suite_id}")
+def get_test_suite(suite_id: int, db: DB):
+    return suite_out(get_or_404(db, TestSuite, suite_id))
+
+
+@router.put("/test-suites/{suite_id}", dependencies=WRITE)
+def update_test_suite(suite_id: int, body: TestSuiteIn, db: DB):
+    suite = get_or_404(db, TestSuite, suite_id)
+    require_project(db, body.project_id)
+    if suite.project_id != body.project_id and suite.test_cases:
+        raise HTTPException(409, "Test vakaları bağlıyken suite projesi değiştirilemez")
+    return suite_out(save(db, suite, body))
+
+
+@router.delete("/test-suites/{suite_id}", status_code=204, dependencies=WRITE)
+def delete_test_suite(suite_id: int, db: DB):
+    suite = get_or_404(db, TestSuite, suite_id)
+    if suite.test_cases:
+        raise HTTPException(409, "Test suite'e bağlı test vakaları var")
+    remove(db, suite)
+
+
+# --- Test Vakaları ------------------------------------------------------------
+@router.get("/test-cases")
+def list_test_cases(db: DB):
+    rows = db.scalars(select(TestCase).options(selectinload(TestCase.requirements))
+                      .order_by(TestCase.id))
+    return [test_case_out(t) for t in rows]
+
+
+@router.post("/test-cases", status_code=201, dependencies=TRACE)
+def create_test_case(body: TestCaseCreate, db: DB):
+    _, requirements = resolve_case_relations(db, body.suite_id, body.requirements)
+    reqs = sorted(r.id for r in requirements)
+    case = TestCase(
+        id=body.id,
+        suite_id=body.suite_id,
+        title=body.title,
+        requirement=reqs[0],
+        status=body.status,
+        priority=body.priority,
+        automated=body.automated,
+        steps=body.steps,
+        expected_result=body.expected_result,
+        requirements=requirements,
+    )
+    db.add(case)
+    commit_or_409(db)
+    return test_case_out(case)
+
+
+@router.get("/test-cases/{test_case_id}")
+def get_test_case(test_case_id: str, db: DB):
+    return test_case_out(get_or_404(db, TestCase, test_case_id))
+
+
+@router.put("/test-cases/{test_case_id}", dependencies=TRACE)
+def update_test_case(test_case_id: str, body: TestCaseIn, db: DB):
+    case = get_or_404(db, TestCase, test_case_id)
+    _, requirements = resolve_case_relations(db, body.suite_id, body.requirements)
+    reqs = sorted(r.id for r in requirements)
+    case.suite_id = body.suite_id
+    case.title = body.title
+    case.requirement = reqs[0]
+    case.status = body.status
+    case.priority = body.priority
+    case.automated = body.automated
+    case.steps = body.steps
+    case.expected_result = body.expected_result
+    case.requirements = requirements
+    commit_or_409(db)
+    return test_case_out(case)
+
+
+@router.delete("/test-cases/{test_case_id}", status_code=204, dependencies=TRACE)
+def delete_test_case(test_case_id: str, db: DB):
+    case = get_or_404(db, TestCase, test_case_id)
+    if db.scalar(select(Defect.id).where(Defect.test_case == test_case_id).limit(1)) is not None:
+        raise HTTPException(409, "Test vakasına bağlı defect'ler var")
+    case.requirements = []
+    remove(db, case)
+
+
+@router.put("/test-cases/{test_case_id}/requirements", dependencies=TRACE)
+def set_test_case_requirements(test_case_id: str, body: RequirementLinks, db: DB):
+    """Test vakasının gereksinim bağlantılarını verilen listeyle değiştirir (en az 1 gereksinim şart)."""
+    case = get_or_404(db, TestCase, test_case_id)
+    _, requirements = resolve_case_relations(db, case.suite_id, body.requirements)
+    case.requirements = requirements
+    case.requirement = sorted(r.id for r in requirements)[0]
+    commit_or_409(db)
+    return test_case_out(case)

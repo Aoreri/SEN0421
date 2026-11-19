@@ -2,6 +2,7 @@ from datetime import datetime
 
 from sqlalchemy import (
     JSON,
+    Boolean,
     Column,
     DateTime,
     ForeignKey,
@@ -61,13 +62,30 @@ class Requirement(Base):
         secondary=test_case_requirements, back_populates="requirements")
 
 
+class TestSuite(Base):
+    __tablename__ = "test_suites"
+    __table_args__ = (UniqueConstraint("project_id", "name"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    name: Mapped[str] = mapped_column(String(100))
+    description: Mapped[str] = mapped_column(String(1000), default="")
+    test_cases: Mapped[list["TestCase"]] = relationship(back_populates="suite")
+
+
 class TestCase(Base):
     __tablename__ = "test_cases"
 
     id: Mapped[str] = mapped_column(String(20), primary_key=True)
+    suite_id: Mapped[int | None] = mapped_column(ForeignKey("test_suites.id"), index=True)
     title: Mapped[str] = mapped_column(String(200))
     requirement: Mapped[str] = mapped_column(String(20))
     status: Mapped[str] = mapped_column(String(20), default="Not Run")
+    priority: Mapped[str] = mapped_column(String(20), default="Medium")
+    automated: Mapped[bool] = mapped_column(Boolean, default=False)
+    steps: Mapped[list[str]] = mapped_column(JSON, default=list)
+    expected_result: Mapped[str] = mapped_column(String(1000), default="")
+    suite: Mapped[TestSuite | None] = relationship(back_populates="test_cases")
     requirements: Mapped[list[Requirement]] = relationship(
         secondary=test_case_requirements, back_populates="test_cases")
 
