@@ -1,4 +1,4 @@
-# PLN-22 — JUnit XML içe aktarımı (Esra Kaya)
+# PLN-22 / PLN-33 — JUnit XML içe aktarımı ve otomatik defect (Esra Kaya)
 
 **Hedef:** 16.11.2026 · **Gereksinim:** R6
 **Standart:** ISO/IEC/IEEE 29119-2 — Test Yürütme; ISO/IEC/IEEE 12207 — Doğrulama.
@@ -54,7 +54,9 @@ curl -X POST 'http://localhost:8000/api/projects/1/runs/import?commit=abcdef1&br
 Yanıt ayrıca `id`, `project_id`, `imported_by`, `commit`, `branch`, `created_at`,
 `results` ve `unmatched_results` içerir. Her sonuçta sıra (`position`, 0'dan başlar),
 JUnit adı/sınıfı/suite'i, bildirilen anahtar, eşleşen `test_case_id`, sonuç, süre,
-tanı mesajı ve varsa eşleşmeme nedeni bulunur. Özet tüm sonuçları kapsar;
+tanı mesajı ve varsa eşleşmeme nedeni bulunur. PLN-33 ile `failure_signature`
+(SHA-256 imzası veya null) ve `defect_id` (oluşturulan/yeniden kullanılan defect
+kimliği veya null) da döner; bu bağlantılar kayıtlı raporda korunur. Özet tüm sonuçları kapsar;
 başarı/başarısızlık sayıları yalnızca eşleşenlerle sınırlı değildir.
 
 ## Anahtar eşleme ve sonuç kuralları
@@ -105,15 +107,51 @@ silinmesi `409` ile engellenir; geçmiş kayıtları sessizce kaybolmaz.
 
 ## Diğer plan maddeleriyle sınır
 
-`main` üzerinde henüz PLN-17'nin Test Run/Test Execution modelleri yoktur. Bu nedenle
-PLN-22 yalnızca **içe aktarım anlık görüntülerini** saklar; genel koşum CRUD API'si,
-manüel yürütme ekranı, defect ↔ yürütme bağlantısı veya kapanış doğrulama şartı eklemez.
-PLN-17 ile bütünleştirme için bu kayıtların ortak koşum/yürütme modeline taşınması
-veya bağlanması ekipçe kararlaştırılmalıdır. `TestCase.status`, mevcut metrikler ve
-immutable defect geçmişi içe aktarım tarafından değiştirilmez.
+PLN-17 etkileşimli Test Run/Test Execution kayıtları ile JUnit içe aktarım anlık
+görüntüleri ayrıdır. Bu iş, JUnit sonuçlarını etkileşimli yürütmelere dönüştürmez;
+`TestCase.status`, yürütme sonuçları ve mevcut kapanış doğrulama şartları korunur.
 
-Cobertura içe aktarımı ve CI'ın sonuçları bu API'ye otomatik göndermesi PLN-23;
-genişletilmiş metrikler PLN-24 kapsamındadır ve bu değişiklikte uygulanmaz.
+## Otomatik defect (PLN-33 — 21.11.2026)
+
+**Gereksinimler:** R4, R6. **Standart:** ISO/IEC/IEEE 29119-2 — Test Olay Raporlama;
+ISO/IEC/IEEE 12207 — Problem Çözümleme.
+
+- Yalnızca projeye eşleşmiş `Failed` sonuçlar (`failure` veya `error`) için
+  `Open` / `Medium` defect oluşturulur; test vakası bağlantısı korunur. Başlık
+  test vakası kimliği ve JUnit adıyla oluşturulur, 200 karakterle sınırlıdır.
+- Passed, Skipped ve eşleşmeyen sonuçlar otomatik defect açmaz. Eşleşmeyen
+  başarısızlıklar yine raporlanır; yanlış projeye ait test vakasıyla ilişki kurulmaz.
+- Anahtar `(project_id, test_case_id, failure_signature)` üzerinde veritabanı
+  unique kısıtı vardır. Aynı dosyada tekrarlanan sonuçlar, yeniden import ve
+  eşzamanlı importlar tek defect'i kullanır. Her import yine ayrı kanıt kaydıdır.
+- İmza, tüm failure/error öğelerinin türü, `type` niteliği, mesajı ve ayrıntı
+  metninin sıralanmış JSON gösteriminin SHA-256 özetidir. Boşluk/CRLF farkları
+  tek boşluğa normalize edilir. Test fonksiyonu adı, suite/sınıf, süre, commit ve
+  branch kimliği imzaya katılmaz; bunların değişmesi aynı hatayı çoğaltmaz.
+  Hata türü veya tanı içeriği değişirse farklı imza üretilir. Dinamik değerler,
+  stack trace satır numaraları ve kimlikler tahminle silinmez; içerik değişirse
+  yeni imza oluşabilir. Boş failure öğeleri de türlerine göre kararlı imzalanır.
+- Yeni defect ve yalnızca bir `None → Open` geçmiş kaydı, imza anahtarı ve import
+  sonuçlarıyla aynı transaction'da yazılır. Yazım başarısızsa hepsi geri alınır.
+  Eşzamanlı aynı anahtar yarışında savepoint kaybedenin geçici defect'ini geri
+  alır; kalıcı kısıt kazanan defect'in kimliği kullanılır. Yetki, XML ve proje
+  doğrulaması tamamlanmadan hiçbir defect oluşturulmaz.
+- Manuel defect'ler tahmini mesaj eşlemesiyle birleştirilmez. Önceden otomatik
+  açılmış defect Resolved/Closed olsa bile yeni bir kopya açılmaz; mevcut durum
+  ve geçmiş değiştirilmez. Gerekli yeniden açma normal rol kontrollü yaşam döngüsü
+  uç noktasından yapılır. Sonradan Passed gelmesi defect'i otomatik kapatmaz.
+- Oluşan defect mevcut defect listesi ve geçmiş uçlarından görülebilir; yeni bir
+  yönetim ekranı eklenmez. Açık defect sayısı doğal olarak bu kayıtları içerir.
+- Yeni `0011_pln33` migrasyonu `0010` üzerine `junit_auto_defects` tablosunu ve
+  import sonuçlarına nullable imza/defect bağlantılarını ekler. Eski kayıtlar null
+  bağlantıyla korunur; eski raporlardan geriye dönük defect oluşturulmaz. Yeni
+  sürümde `alembic upgrade head` kullanılır. `alembic downgrade 0010` bağlantı ve
+  tekilleştirme verisini kaldırır, defect'leri ve değiştirilemez geçmişi korur.
+  Birleşmiş migrasyonlara dokunulmaz. Paralel açık PLN-28 migrasyonu farklı bir
+  revision olduğundan, ikinci birleşen dal ana dalın şema zincirine uyarlanmalıdır.
+
+Cobertura ve CI aktarımı PLN-23; SQL metrikleri PLN-24 kapsamındadır. PLN-33 bunların
+hesaplama kodunu veya diğer ekip üyelerinin görevlerini değiştirmez.
 
 ## Doğrulama
 

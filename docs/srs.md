@@ -158,7 +158,7 @@ The current relational model includes users, projects, releases, requirements, t
 - PostgreSQL-specific history immutability is verified against a disposable PostgreSQL 16 database, not inferred from SQLite behavior.
 - Frontend maintainability checks are verified using ESLint, TypeScript type checking, and the Vite production build.
 - Performance and clean-machine portability targets require separate measurement evidence.
-- Report generation and Cobertura ingestion remain open. The JUnit portion of FR-IMP-01 is implemented and tested in PLN-22; import snapshots do not update existing test-case states or metrics.
+- Report generation and Cobertura ingestion remain open. The JUnit portion of FR-IMP-01 is implemented and tested in PLN-22; import snapshots do not update existing test-case states or interactive executions. PLN-33 creates deduplicated Open defects for matched failed JUnit results, with one immutable creation-history entry; these incidents contribute to normal defect metrics.
 
 ## 7. References
 

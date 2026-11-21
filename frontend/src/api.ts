@@ -182,6 +182,8 @@ export type ImportedTestResult = {
   duration_seconds: number | null;
   message: string;
   unmatched_reason: "unknown_test_case" | "not_linked_to_project" | null;
+  failure_signature: string | null;
+  defect_id: number | null;
 };
 
 export type ImportedTestRun = {
