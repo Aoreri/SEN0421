@@ -15,6 +15,7 @@ from .models import (
     DefectTransition,
     Project,
     Release,
+    Sprint,
     TestCase,
     TestExecution,
     TestRun,
@@ -36,6 +37,7 @@ class TestRunCreate(BaseModel):
     name: RunName
     project_id: int
     release_id: int | None = None
+    sprint_id: int | None = None
     suite_id: int | None = None
     test_case_ids: list[CaseCode] = Field(min_length=1)
 
@@ -72,6 +74,7 @@ def run_out(run: TestRun) -> dict:
         "name": run.name,
         "project_id": run.project_id,
         "release_id": run.release_id,
+        "sprint_id": run.sprint_id,
         "suite_id": run.suite_id,
         "created_by": run.created_by,
         "created_at": run.created_at,
@@ -122,10 +125,23 @@ def get_test_run(run_id: int, db: DB):
 def create_test_run(body: TestRunCreate, db: DB, user: ExecuteUser):
     if db.get(Project, body.project_id) is None:
         raise HTTPException(422, "Proje bulunamadı")
-    if body.release_id is not None:
-        release = db.get(Release, body.release_id)
+    release_id = body.release_id
+    if release_id is not None:
+        release = db.get(Release, release_id)
         if release is None or release.project_id != body.project_id:
             raise HTTPException(422, "Sürüm bulunamadı veya projeye ait değil")
+    if body.sprint_id is not None:
+        sprint = db.get(Sprint, body.sprint_id)
+        if sprint is None or sprint.project_id != body.project_id:
+            raise HTTPException(422, "Sprint bulunamadı veya projeye ait değil")
+        if (
+            release_id is not None
+            and sprint.release_id is not None
+            and sprint.release_id != release_id
+        ):
+            raise HTTPException(422, "Sprint farklı bir sürüme bağlı")
+        if release_id is None and sprint.release_id is not None:
+            release_id = sprint.release_id
     if body.suite_id is not None:
         suite = db.get(TestSuite, body.suite_id)
         if suite is None or suite.project_id != body.project_id:
@@ -138,7 +154,8 @@ def create_test_run(body: TestRunCreate, db: DB, user: ExecuteUser):
     run = TestRun(
         name=body.name,
         project_id=body.project_id,
-        release_id=body.release_id,
+        release_id=release_id,
+        sprint_id=body.sprint_id,
         suite_id=body.suite_id,
         created_by=user.username,
     )

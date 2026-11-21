@@ -33,6 +33,9 @@ export type Role = (typeof ROLES)[number];
 export const RELEASE_STATUSES = ["Planned", "In Test", "Ready", "Released"] as const;
 export type ReleaseStatus = (typeof RELEASE_STATUSES)[number];
 
+export const SPRINT_STATUSES = ["Planned", "Active", "Completed"] as const;
+export type SprintStatus = (typeof SPRINT_STATUSES)[number];
+
 export type User = {
   id: number;
   username: string;
@@ -56,6 +59,27 @@ export type Release = {
   project_id: number;
   version: string;
   status: ReleaseStatus;
+};
+
+export type Sprint = {
+  id: number;
+  project_id: number;
+  release_id: number | null;
+  name: string;
+  goal: string;
+  start_at: string | null;
+  end_at: string | null;
+  status: SprintStatus;
+};
+
+export type SprintInput = {
+  project_id: number;
+  release_id?: number | null;
+  name: string;
+  goal?: string;
+  start_at?: string | null;
+  end_at?: string | null;
+  status?: SprintStatus;
 };
 
 export type Requirement = {
@@ -127,6 +151,7 @@ export type TestRun = {
   name: string;
   project_id: number;
   release_id: number | null;
+  sprint_id?: number | null;
   suite_id: number | null;
   created_by: string;
   created_at: string;
@@ -137,6 +162,7 @@ export type CreateTestRunPayload = {
   name: string;
   project_id: number;
   release_id: number | null;
+  sprint_id?: number | null;
   suite_id: number | null;
   test_case_ids: string[];
 };
@@ -447,10 +473,24 @@ export const api = {
     }),
   me: () => request<User>("/auth/me"),
   metrics: () => request<Metrics>("/metrics"),
-  expandedMetrics: (releaseId?: number | null) =>
-    request<ExpandedMetrics>(
-      releaseId ? `/metrics/expanded?release_id=${releaseId}` : "/metrics/expanded",
-    ),
+  expandedMetrics: (
+    releaseId?: number | null,
+    options: {
+      projectId?: number | null;
+      sprintId?: number | null;
+      startAt?: string | null;
+      endAt?: string | null;
+    } = {},
+  ) => {
+    const params = new URLSearchParams();
+    if (options.projectId) params.set("project_id", String(options.projectId));
+    if (releaseId) params.set("release_id", String(releaseId));
+    if (options.sprintId) params.set("sprint_id", String(options.sprintId));
+    if (options.startAt) params.set("start_at", options.startAt);
+    if (options.endAt) params.set("end_at", options.endAt);
+    const qs = params.toString();
+    return request<ExpandedMetrics>(qs ? `/metrics/expanded?${qs}` : "/metrics/expanded");
+  },
   testSuites: () => request<TestSuite[]>("/test-suites"),
   getTestSuite: (id: number) => request<TestSuite>(`/test-suites/${id}`),
   createTestSuite: (project_id: number, name: string, description = "") =>
@@ -555,6 +595,33 @@ export const api = {
       body: JSON.stringify({ project_id, version: version.trim() }),
     }),
   deleteRelease: (id: number) => request<void>(`/releases/${id}`, { method: "DELETE" }),
+  sprints: (filters: { projectId?: number | null; releaseId?: number | null } = {}) => {
+    const params = new URLSearchParams();
+    if (filters.projectId) params.set("project_id", String(filters.projectId));
+    if (filters.releaseId) params.set("release_id", String(filters.releaseId));
+    const qs = params.toString();
+    return request<Sprint[]>(qs ? `/sprints?${qs}` : "/sprints");
+  },
+  getSprint: (id: number) => request<Sprint>(`/sprints/${id}`),
+  createSprint: (input: SprintInput) =>
+    request<Sprint>("/sprints", {
+      method: "POST",
+      body: JSON.stringify({
+        ...input,
+        name: input.name.trim(),
+        goal: (input.goal ?? "").trim(),
+      }),
+    }),
+  updateSprint: (id: number, input: SprintInput) =>
+    request<Sprint>(`/sprints/${id}`, {
+      method: "PUT",
+      body: JSON.stringify({
+        ...input,
+        name: input.name.trim(),
+        goal: (input.goal ?? "").trim(),
+      }),
+    }),
+  deleteSprint: (id: number) => request<void>(`/sprints/${id}`, { method: "DELETE" }),
   releaseGate: (releaseId: number) => request<ReleaseGateStatus>(`/releases/${releaseId}/gate`),
   updateReleaseStatus: (releaseId: number, status: ReleaseStatus) =>
     request<ReleaseGateStatus>(`/releases/${releaseId}/status`, {
