@@ -124,6 +124,18 @@ export function TestRunsPage({ user }: TestRunsPageProps) {
   );
 
   const loadData = useCallback(async () => {
+    if (!user) {
+      setProjects([]);
+      setReleases([]);
+      setSuites([]);
+      setRawServerCases([]);
+      setTestCases([]);
+      setDefects([]);
+      setRuns([]);
+      setError("");
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const [projs, rels, cases, defs] = await Promise.all([
@@ -178,7 +190,7 @@ export function TestRunsPage({ user }: TestRunsPageProps) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     void loadData();

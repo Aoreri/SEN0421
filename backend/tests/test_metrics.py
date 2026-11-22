@@ -21,8 +21,14 @@ from app.models import (
 from app.models import (
     TestRun as RunModel,
 )
+from tests.conftest import as_user
 
 pytestmark = [pytest.mark.integration, pytest.mark.usefixtures('fresh_seed')]
+
+
+@pytest.fixture(autouse=True)
+def auth_client(fresh_seed, client):
+    client.headers.update(as_user('tester'))
 
 
 def at(day):

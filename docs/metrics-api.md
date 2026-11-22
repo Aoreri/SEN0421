@@ -21,7 +21,7 @@ UI must display “unavailable” for null, rather than claiming a measured zero
 
 ## Request and scope
 
-`GET /api/metrics/expanded` follows the existing public read-only metrics policy.
+`GET /api/metrics/expanded` requires authentication (any valid bearer token, PLN-29).
 Optional query parameters:
 
 - `project_id`: positive existing project ID.

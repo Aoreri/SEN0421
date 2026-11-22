@@ -8,7 +8,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
-from .auth import ADMIN, TEST_LEAD, TESTER, require_roles
+from .auth import ADMIN, TEST_LEAD, TESTER, current_user, require_roles
 from .db import DB
 from .models import (
     CoverageImport,
@@ -27,6 +27,7 @@ from .models import (
 )
 
 router = APIRouter(prefix="/api", tags=["projects"])
+READ = [Depends(current_user)]
 WRITE = [Depends(require_roles(ADMIN, TEST_LEAD))]
 TRACE = [Depends(require_roles(ADMIN, TEST_LEAD, TESTER))]
 GateManager = Annotated[User, Depends(require_roles(ADMIN, TEST_LEAD))]
@@ -284,7 +285,7 @@ def resolve_case_relations(
 
 
 # --- Projeler -----------------------------------------------------------------
-@router.get("/projects")
+@router.get("/projects", dependencies=READ)
 def list_projects(db: DB):
     return [project_out(p) for p in db.scalars(select(Project).order_by(Project.id))]
 
@@ -294,7 +295,7 @@ def create_project(body: ProjectIn, db: DB):
     return project_out(save(db, Project(), body))
 
 
-@router.get("/projects/{project_id}")
+@router.get("/projects/{project_id}", dependencies=READ)
 def get_project(project_id: int, db: DB):
     return project_out(get_or_404(db, Project, project_id))
 
@@ -317,7 +318,7 @@ def delete_project(project_id: int, db: DB):
 
 
 # --- Sürümler -----------------------------------------------------------------
-@router.get("/releases")
+@router.get("/releases", dependencies=READ)
 def list_releases(db: DB):
     return [release_out(r) for r in db.scalars(select(Release).order_by(Release.id))]
 
@@ -328,7 +329,7 @@ def create_release(body: ReleaseIn, db: DB):
     return release_out(save(db, Release(), body))
 
 
-@router.get("/releases/{release_id}")
+@router.get("/releases/{release_id}", dependencies=READ)
 def get_release(release_id: int, db: DB):
     return release_out(get_or_404(db, Release, release_id))
 
@@ -350,7 +351,7 @@ def delete_release(release_id: int, db: DB):
     remove(db, release)
 
 
-@router.get("/releases/{release_id}/gate")
+@router.get("/releases/{release_id}/gate", dependencies=READ)
 def get_release_gate(release_id: int, db: DB):
     release = get_or_404(db, Release, release_id)
     return release_gate_out(db, release)
@@ -401,7 +402,7 @@ def update_release_status(release_id: int, body: ReleaseStatusIn, db: DB):
 
 
 # --- Gereksinimler ------------------------------------------------------------
-@router.get("/requirements")
+@router.get("/requirements", dependencies=READ)
 def list_requirements(db: DB):
     rows = db.scalars(select(Requirement).options(selectinload(Requirement.test_cases))
                       .order_by(Requirement.id))
@@ -414,7 +415,7 @@ def create_requirement(body: RequirementCreate, db: DB):
     return requirement_out(save(db, Requirement(), body))
 
 
-@router.get("/requirements/{requirement_id}")
+@router.get("/requirements/{requirement_id}", dependencies=READ)
 def get_requirement(requirement_id: str, db: DB):
     return requirement_out(get_or_404(db, Requirement, requirement_id))
 
@@ -451,7 +452,7 @@ def set_requirement_test_cases(requirement_id: str, body: TraceLinks, db: DB):
 
 
 # --- Test Suite'leri ----------------------------------------------------------
-@router.get("/test-suites")
+@router.get("/test-suites", dependencies=READ)
 def list_test_suites(db: DB):
     rows = db.scalars(select(TestSuite).options(selectinload(TestSuite.test_cases))
                       .order_by(TestSuite.id))
@@ -464,7 +465,7 @@ def create_test_suite(body: TestSuiteIn, db: DB):
     return suite_out(save(db, TestSuite(), body))
 
 
-@router.get("/test-suites/{suite_id}")
+@router.get("/test-suites/{suite_id}", dependencies=READ)
 def get_test_suite(suite_id: int, db: DB):
     return suite_out(get_or_404(db, TestSuite, suite_id))
 
@@ -489,7 +490,7 @@ def delete_test_suite(suite_id: int, db: DB):
 
 
 # --- Test Vakaları ------------------------------------------------------------
-@router.get("/test-cases")
+@router.get("/test-cases", dependencies=READ)
 def list_test_cases(db: DB):
     rows = db.scalars(select(TestCase).options(selectinload(TestCase.requirements))
                       .order_by(TestCase.id))
@@ -517,7 +518,7 @@ def create_test_case(body: TestCaseCreate, db: DB):
     return test_case_out(case)
 
 
-@router.get("/test-cases/{test_case_id}")
+@router.get("/test-cases/{test_case_id}", dependencies=READ)
 def get_test_case(test_case_id: str, db: DB):
     return test_case_out(get_or_404(db, TestCase, test_case_id))
 

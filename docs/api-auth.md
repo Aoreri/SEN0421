@@ -40,6 +40,8 @@ Errors use FastAPI's format: `{ "detail": "<message>" }`.
 
 | Endpoint | Allowed |
 | --- | --- |
+| `GET /api/health`, `POST /api/auth/login` | Public |
+| All other `GET` read endpoints (`/api/defects`, `/api/defects/{id}/history`, `/api/metrics`, `/api/metrics/expanded`, `/api/projects*`, `/api/releases*`, `/api/requirements*`, `/api/test-suites*`, `/api/test-cases*`, `/api/test-runs*`, `/api/test-plans*`) | Any authenticated role (`Admin`, `Test Lead`, `Tester`, `Developer`) |
 | `POST /api/defects` | `Admin`, `Test Lead`, `Tester` |
 | `POST /api/defects/{id}/transition` | depends on the transition, see below |
 | `POST`, `PUT`, `DELETE` on `/api/projects`, `/api/releases`, `/api/requirements`, `/api/test-suites` | `Admin`, `Test Lead` |
@@ -50,7 +52,7 @@ Errors use FastAPI's format: `{ "detail": "<message>" }`.
 | `POST`, `PUT`, `DELETE` on `/api/test-plans`, `PUT /api/test-plans/{id}/status` | `Admin`, `Test Lead` |
 | `POST /api/test-plans/{id}/snapshots` | `Admin`, `Test Lead`, `Tester` |
 
-`GET` endpoints stay public. A token is optional on them, but an invalid or expired one gets `401`.
+All read (`GET`) endpoints except `/api/health` require a valid bearer token (PLN-29); missing, invalid, or expired tokens receive `401`.
 
 ## Defect transitions
 

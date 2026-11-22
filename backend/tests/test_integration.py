@@ -10,6 +10,11 @@ from tests.conftest import as_user
 
 pytestmark = [pytest.mark.integration, pytest.mark.usefixtures("fresh_seed")]
 
+
+@pytest.fixture(autouse=True)
+def auth_client(fresh_seed, client):
+    client.headers.update(as_user("tester"))
+
 # Expected policy is stated independently of the implementation's TRANSITIONS table.
 LEGAL = {("Open", "In Progress"), ("In Progress", "Resolved"),
          ("Resolved", "Closed"), ("Resolved", "Open"), ("Closed", "Open")}

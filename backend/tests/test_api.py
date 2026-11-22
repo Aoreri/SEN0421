@@ -14,8 +14,9 @@ pytestmark = [pytest.mark.integration, pytest.mark.usefixtures("fresh_seed")]
 
 
 def test_seed_and_metrics(client):
-    assert len(client.get("/api/test-cases").json()) == 6
-    assert client.get("/api/metrics").json() == {
+    tester = as_user("tester")
+    assert len(client.get("/api/test-cases", headers=tester).json()) == 6
+    assert client.get("/api/metrics", headers=tester).json() == {
         "total_tests": 6, "execution_rate": 66.7, "pass_rate": 75.0, "open_defects": 3,
     }
 
@@ -31,7 +32,7 @@ def test_defect_lifecycle_and_history(client):
     for to in ("In Progress", "Resolved", "Closed", "Open"):
         assert client.post(url, json={"to": to}, headers=admin).json()["status"] == to
 
-    hist = client.get(f"/api/defects/{d['id']}/history").json()
+    hist = client.get(f"/api/defects/{d['id']}/history", headers=admin).json()
     assert [(h["from"], h["to"]) for h in hist] == [
         (None, "Open"), ("Open", "In Progress"), ("In Progress", "Resolved"),
         ("Resolved", "Closed"), ("Closed", "Open"),
@@ -52,16 +53,16 @@ def test_health(client):
 
 
 def test_rejected_requests_leave_data_unchanged(client):
-    before = client.get("/api/defects/1/history").json()
-    count = len(client.get("/api/defects").json())
     tester = as_user("tester")
+    before = client.get("/api/defects/1/history", headers=tester).json()
+    count = len(client.get("/api/defects", headers=tester).json())
     assert client.post("/api/defects/1/transition", json={"to": "Closed"},
                        headers=tester).status_code == 409
     assert client.post("/api/defects/1/transition", json={"to": "In Progress"},
                        headers=tester).status_code == 403
     assert client.post("/api/defects", json={"title": " "}, headers=tester).status_code == 422
-    assert client.get("/api/defects/1/history").json() == before
-    assert len(client.get("/api/defects").json()) == count
+    assert client.get("/api/defects/1/history", headers=tester).json() == before
+    assert len(client.get("/api/defects", headers=tester).json()) == count
 
 
 @pytest.mark.parametrize("username,role", [
@@ -110,12 +111,13 @@ def test_bad_tokens_are_rejected(client, headers):
 
 
 def test_mutations_require_login_and_role(client):
-    before = len(client.get("/api/defects").json())
+    tester = as_user("tester")
+    before = len(client.get("/api/defects", headers=tester).json())
     assert client.post("/api/defects", json={"title": "x"}).status_code == 401
     assert client.post("/api/defects/1/transition", json={"to": "In Progress"}).status_code == 401
     assert client.post("/api/defects", json={"title": "x"},
                        headers=as_user("developer")).status_code == 403
-    assert len(client.get("/api/defects").json()) == before
+    assert len(client.get("/api/defects", headers=tester).json()) == before
     for username in ("admin", "testlead", "tester"):
         assert client.post("/api/defects", json={"title": "x"},
                            headers=as_user(username)).status_code == 201
@@ -146,7 +148,7 @@ def test_allowed_depends_on_role(client):
     def allowed(headers):
         return {d["id"]: d["allowed"] for d in client.get("/api/defects", headers=headers).json()}
 
-    assert allowed({}) == {1: [], 2: [], 3: []}
+    assert client.get("/api/defects").status_code == 401
     assert allowed(as_user("developer")) == {1: ["In Progress"], 2: ["Resolved"], 3: []}
     assert allowed(as_user("tester")) == {1: [], 2: [], 3: ["Closed", "Open"]}
     assert allowed(as_user("admin")) == {1: ["In Progress"], 2: ["Resolved"], 3: ["Closed", "Open"]}
@@ -154,11 +156,12 @@ def test_allowed_depends_on_role(client):
 
 
 def test_denied_transitions_write_no_history(client):
-    before = client.get("/api/defects/1/history").json()
+    tester = as_user("tester")
+    before = client.get("/api/defects/1/history", headers=tester).json()
     url = "/api/defects/1/transition"
-    assert client.post(url, json={"to": "In Progress"}, headers=as_user("tester")).status_code == 403
+    assert client.post(url, json={"to": "In Progress"}, headers=tester).status_code == 403
     assert client.post(url, json={"to": "Nope"}, headers=as_user("admin")).status_code == 409
-    assert client.get("/api/defects/1/history").json() == before
+    assert client.get("/api/defects/1/history", headers=tester).json() == before
 
 
 def test_transition_rules_come_from_the_database(client):
@@ -177,12 +180,12 @@ def test_project_crud(client):
     project = created.json()
     assert project["name"] == "Yeni" and project["description"] == ""
     url = f"/api/projects/{project['id']}"
-    assert client.get(url).json() == project
+    assert client.get(url, headers=lead).json() == project
     updated = client.put(url, json={"name": "Yeni 2", "description": "d"}, headers=lead).json()
     assert updated == {"id": project["id"], "name": "Yeni 2", "description": "d"}
-    assert updated in client.get("/api/projects").json()
+    assert updated in client.get("/api/projects", headers=lead).json()
     assert client.delete(url, headers=lead).status_code == 204
-    assert client.get(url).status_code == 404
+    assert client.get(url, headers=lead).status_code == 404
 
 
 def test_release_crud(client):
@@ -191,12 +194,12 @@ def test_release_crud(client):
     assert release.status_code == 201
     assert release.json()["status"] == "Planned"
     url = f"/api/releases/{release.json()['id']}"
-    assert client.get(url).json()["version"] == "v1"
+    assert client.get(url, headers=lead).json()["version"] == "v1"
     assert client.put(url, json={"project_id": 1, "version": "v2"},
                       headers=lead).json()["version"] == "v2"
-    assert len(client.get("/api/releases").json()) == 1
+    assert len(client.get("/api/releases", headers=lead).json()) == 1
     assert client.delete(url, headers=lead).status_code == 204
-    assert client.get(url).status_code == 404
+    assert client.get(url, headers=lead).status_code == 404
 
 
 def test_release_exit_gate_criteria_waiver_and_status(client):
@@ -209,7 +212,7 @@ def test_release_exit_gate_criteria_waiver_and_status(client):
     rid = rel["id"]
 
     # 404 on nonexistent release
-    assert client.get("/api/releases/999/gate").status_code == 404
+    assert client.get("/api/releases/999/gate", headers=lead).status_code == 404
     assert client.put("/api/releases/999/criteria",
                       json={"min_pass_rate": 80, "max_open_critical": 0, "min_req_coverage": 80},
                       headers=lead).status_code == 404
@@ -221,7 +224,7 @@ def test_release_exit_gate_criteria_waiver_and_status(client):
     # Seed test cases: 4 executed (3 Passed, 1 Failed) -> pass_rate = 75.0 (< 80.0)
     # Seed defects: 0 Critical open -> open_critical = 0 (<= 0)
     # Seed requirements: 5 of 8 covered (R1, R3, R4, R6, R7) -> req_coverage = 62.5 (< 80.0)
-    gate = client.get(f"/api/releases/{rid}/gate").json()
+    gate = client.get(f"/api/releases/{rid}/gate", headers=lead).json()
     assert gate == {
         "release_id": rid,
         "release_version": "v1.0.0",
@@ -243,7 +246,7 @@ def test_release_exit_gate_criteria_waiver_and_status(client):
     for blocked_status in ("Ready", "Released"):
         assert client.put(f"/api/releases/{rid}/status",
                           json={"status": blocked_status}, headers=lead).status_code == 409
-    assert client.get(f"/api/releases/{rid}/gate").json()["status"] == "In Test"
+    assert client.get(f"/api/releases/{rid}/gate", headers=lead).json()["status"] == "In Test"
 
     # Role guards on gate mutation endpoints (401 unauthenticated, 403 for Tester/Developer)
     for method, path, payload in [
@@ -309,7 +312,7 @@ def test_release_exit_gate_criteria_waiver_and_status(client):
     crit = client.post("/api/defects",
                        json={"title": "Kritik çökme", "severity": "Critical"},
                        headers=tester).json()
-    after_crit = client.get(f"/api/releases/{rid}/gate").json()
+    after_crit = client.get(f"/api/releases/{rid}/gate", headers=tester).json()
     assert after_crit["actual_open_critical"] == 1
     assert after_crit["passed_criteria"]["open_critical"] is False
     assert after_crit["gate_passed"] is False
@@ -356,14 +359,14 @@ def test_release_gate_isolates_projects(client):
     rel2 = client.post("/api/releases", json={"project_id": p2["id"], "version": "v1"}, headers=admin).json()
 
     # Project 1 gate is unaffected by Project 2's failed test case and open Critical defect
-    gate1 = client.get(f"/api/releases/{rel1['id']}/gate").json()
+    gate1 = client.get(f"/api/releases/{rel1['id']}/gate", headers=admin).json()
     assert gate1["actual_pass_rate"] == 75.0
     assert gate1["actual_open_critical"] == 0
     assert gate1["actual_req_coverage"] == 100.0 if False else 62.5
     assert gate1["gate_passed"] is True
 
     # Project 2 gate sees only Project 2's 0% pass rate, 1 open Critical defect, and 100% req coverage
-    gate2 = client.get(f"/api/releases/{rel2['id']}/gate").json()
+    gate2 = client.get(f"/api/releases/{rel2['id']}/gate", headers=admin).json()
     assert gate2["actual_pass_rate"] == 0.0
     assert gate2["actual_open_critical"] == 1
     assert gate2["actual_req_coverage"] == 100.0
@@ -378,9 +381,9 @@ def test_requirement_crud(client):
     assert client.put("/api/requirements/R9", json=update, headers=lead).json() == {
         "id": "R9", "project_id": 1, "title": "Değişti", "description": "d", "test_cases": [],
     }
-    assert len(client.get("/api/requirements").json()) == 9
+    assert len(client.get("/api/requirements", headers=lead).json()) == 9
     assert client.delete("/api/requirements/R9", headers=lead).status_code == 204
-    assert client.get("/api/requirements/R9").status_code == 404
+    assert client.get("/api/requirements/R9", headers=lead).status_code == 404
 
 
 @pytest.mark.parametrize("url,body,status", [
@@ -424,7 +427,7 @@ def test_delete_with_dependents_is_rejected(client):
     admin = as_user("admin")
     assert client.delete("/api/projects/1", headers=admin).status_code == 409
     assert client.delete("/api/requirements/R1", headers=admin).status_code == 409
-    assert client.get("/api/requirements/R1").json()["test_cases"] == ["TC-001", "TC-002"]
+    assert client.get("/api/requirements/R1", headers=admin).json()["test_cases"] == ["TC-001", "TC-002"]
 
 
 def test_project_with_only_releases_cannot_be_deleted(client):
@@ -435,9 +438,10 @@ def test_project_with_only_releases_cannot_be_deleted(client):
 
 
 def test_seed_traceability_matches_test_case_requirement(client):
-    for case in client.get("/api/test-cases").json():
+    tester = as_user("tester")
+    for case in client.get("/api/test-cases", headers=tester).json():
         assert case["requirements"] == [case["requirement"]]
-    assert len(client.get("/api/requirements").json()) == 8
+    assert len(client.get("/api/requirements", headers=tester).json()) == 8
 
 
 def test_traceability_is_many_to_many_and_replaceable(client):
@@ -445,22 +449,23 @@ def test_traceability_is_many_to_many_and_replaceable(client):
     url = "/api/requirements/R2/test-cases"
     assert client.put(url, json={"test_cases": ["TC-001", "TC-003", "TC-001"]},
                       headers=tester).json()["test_cases"] == ["TC-001", "TC-003"]
-    tc1 = next(c for c in client.get("/api/test-cases").json() if c["id"] == "TC-001")
+    tc1 = next(c for c in client.get("/api/test-cases", headers=tester).json() if c["id"] == "TC-001")
     assert tc1["requirements"] == ["R1", "R2"]
     assert client.put(url, json={"test_cases": []}, headers=tester).json()["test_cases"] == []
     assert client.delete("/api/requirements/R2", headers=as_user("admin")).status_code == 204
 
 
 def test_traceability_rejects_bad_input(client):
+    tester = as_user("tester")
     url = "/api/requirements/R1/test-cases"
     body = {"test_cases": ["TC-999"]}
-    assert client.put(url, json=body, headers=as_user("tester")).status_code == 422
+    assert client.put(url, json=body, headers=tester).status_code == 422
     assert client.put("/api/requirements/R99/test-cases", json={"test_cases": []},
-                      headers=as_user("tester")).status_code == 404
+                      headers=tester).status_code == 404
     links = {"test_cases": ["TC-001"]}
     assert client.put(url, json=links).status_code == 401
     assert client.put(url, json=links, headers=as_user("developer")).status_code == 403
-    assert client.get("/api/requirements/R1").json()["test_cases"] == ["TC-001", "TC-002"]
+    assert client.get("/api/requirements/R1", headers=tester).json()["test_cases"] == ["TC-001", "TC-002"]
 
 
 def test_test_suite_crud(client):
@@ -475,13 +480,13 @@ def test_test_suite_crud(client):
         "description": "Giriş", "test_cases": [],
     }
     url = f"/api/test-suites/{suite['id']}"
-    assert client.get(url).json() == suite
+    assert client.get(url, headers=lead).json() == suite
     updated = client.put(url, json={"project_id": 1, "name": "Auth v2", "description": "d"},
                          headers=lead).json()
     assert updated["name"] == "Auth v2" and updated["description"] == "d"
-    assert updated in client.get("/api/test-suites").json()
+    assert updated in client.get("/api/test-suites", headers=lead).json()
     assert client.delete(url, headers=lead).status_code == 204
-    assert client.get(url).status_code == 404
+    assert client.get(url, headers=lead).status_code == 404
 
 
 def test_test_case_crud_and_specification_fields(client):
@@ -516,9 +521,9 @@ def test_test_case_crud_and_specification_fields(client):
         "steps": ["1. Giriş yap", "2. Suite oluştur"],
         "expected_result": "201 döner ve listede görünür",
     }
-    assert client.get("/api/test-cases/TC-007").json() == tc
-    assert client.get(f"/api/test-suites/{suite['id']}").json()["test_cases"] == ["TC-007"]
-    assert "TC-007" in client.get("/api/requirements/R2").json()["test_cases"]
+    assert client.get("/api/test-cases/TC-007", headers=tester).json() == tc
+    assert client.get(f"/api/test-suites/{suite['id']}", headers=tester).json()["test_cases"] == ["TC-007"]
+    assert "TC-007" in client.get("/api/requirements/R2", headers=tester).json()["test_cases"]
 
     updated = client.put("/api/test-cases/TC-007", json={
         "title": "Güncel başlık",
@@ -536,7 +541,7 @@ def test_test_case_crud_and_specification_fields(client):
     assert updated["status"] == "Passed"
     assert updated["requirement"] == "R3"
     assert updated["requirements"] == ["R3"]
-    assert "TC-007" not in client.get("/api/requirements/R2").json()["test_cases"]
+    assert "TC-007" not in client.get("/api/requirements/R2", headers=tester).json()["test_cases"]
 
     relinked = client.put("/api/test-cases/TC-007/requirements",
                           json={"requirements": ["R5", "R2"]},
@@ -545,7 +550,7 @@ def test_test_case_crud_and_specification_fields(client):
     assert relinked["requirement"] == "R2"
 
     assert client.delete("/api/test-cases/TC-007", headers=tester).status_code == 204
-    assert client.get("/api/test-cases/TC-007").status_code == 404
+    assert client.get("/api/test-cases/TC-007", headers=tester).status_code == 404
 
 
 def test_test_case_and_suite_validation_and_conflicts(client):
@@ -673,9 +678,9 @@ def test_test_run_and_execution_lifecycle(client):
     assert [e["test_case_id"] for e in run["executions"]] == ["TC-003", "TC-005"]
     assert all(e["status"] == "Not Run" and e["defect_ids"] == [] for e in run["executions"])
 
-    assert client.get("/api/test-runs").json() == [run]
-    assert client.get(f"/api/test-runs/{run['id']}").json() == run
-    assert client.get("/api/test-runs/999").status_code == 404
+    assert client.get("/api/test-runs", headers=tester).json() == [run]
+    assert client.get(f"/api/test-runs/{run['id']}", headers=tester).json() == run
+    assert client.get("/api/test-runs/999", headers=tester).status_code == 404
 
     ex_tc3, ex_tc5 = run["executions"]
     rec = client.post(
@@ -699,7 +704,7 @@ def test_test_run_and_execution_lifecycle(client):
         headers=lead,
     )
     assert rec2.status_code == 200 and rec2.json()["status"] == "Passed"
-    tc5 = next(c for c in client.get("/api/test-cases").json() if c["id"] == "TC-005")
+    tc5 = next(c for c in client.get("/api/test-cases", headers=tester).json() if c["id"] == "TC-005")
     assert tc5["status"] == "Passed"
 
     # Creating a defect directly from a failed execution links it and records history
@@ -714,9 +719,9 @@ def test_test_run_and_execution_lifecycle(client):
     assert d_body["severity"] == "High"
     assert d_body["status"] == "Open"
     assert d_body["test_case"] == "TC-003"
-    assert client.get(f"/api/defects/{d_body['id']}/history").json()[0]["to"] == "Open"
+    assert client.get(f"/api/defects/{d_body['id']}/history", headers=tester).json()[0]["to"] == "Open"
 
-    refreshed = client.get(f"/api/test-runs/{run['id']}").json()
+    refreshed = client.get(f"/api/test-runs/{run['id']}", headers=tester).json()
     assert refreshed["executions"][0]["defect_ids"] == [1, d_body["id"]]
 
 
@@ -913,7 +918,7 @@ def test_test_plan_crud_and_workflow(client):
     redraft = client.put(status_url, json={"status": "Draft"}, headers=lead)
     assert redraft.status_code == 200 and redraft.json()["status"] == "Draft"
     assert client.delete(f"/api/test-plans/{plan['id']}", headers=lead).status_code == 204
-    assert client.get(f"/api/test-plans/{plan['id']}").status_code == 404
+    assert client.get(f"/api/test-plans/{plan['id']}", headers=lead).status_code == 404
 
 
 def test_test_plan_validation_and_dependents(client):
@@ -1020,24 +1025,24 @@ def test_test_plan_snapshots_and_html_pdf_export(client):
     )
     client.post("/api/defects", json={"title": "Sonradan eklenen hata"}, headers=tester)
 
-    stored_snap1 = client.get(f"/api/test-plans/{pid}/snapshots/{snap1['id']}").json()
+    stored_snap1 = client.get(f"/api/test-plans/{pid}/snapshots/{snap1['id']}", headers=tester).json()
     assert "İlk kapsam metni" in stored_snap1["html_content"]
     assert "Kapsam satırı 1" not in stored_snap1["html_content"]
     assert stored_snap1["payload"]["metrics"]["open_defects"] == 3
 
     # Export live HTML vs snapshot HTML
-    live_html = client.get(f"/api/test-plans/{pid}/export?format=html")
+    live_html = client.get(f"/api/test-plans/{pid}/export?format=html", headers=tester)
     assert live_html.status_code == 200
     assert "text/html" in live_html.headers["content-type"]
     assert "Kapsam satırı 50" in live_html.text
 
-    snap_html = client.get(f"/api/test-plans/{pid}/export?format=html&snapshot_id={snap1['id']}")
+    snap_html = client.get(f"/api/test-plans/{pid}/export?format=html&snapshot_id={snap1['id']}", headers=tester)
     assert snap_html.status_code == 200
     assert "İlk kapsam metni" in snap_html.text
     assert "Kapsam satırı 1" not in snap_html.text
 
     # Export PDF (live and snapshot) and verify multi-page + defects completeness in fallback PDF
-    live_pdf = client.get(f"/api/test-plans/{pid}/export?format=pdf")
+    live_pdf = client.get(f"/api/test-plans/{pid}/export?format=pdf", headers=tester)
     assert live_pdf.status_code == 200
     assert live_pdf.headers["content-type"] == "application/pdf"
     assert f'filename="test-plan-{pid}-1.1.pdf"' in live_pdf.headers["content-disposition"]
@@ -1051,18 +1056,18 @@ def test_test_plan_snapshots_and_html_pdf_export(client):
     assert b"9. Metrics Summary: Total=6" in fallback_bytes
     assert b"/Count 2" in fallback_bytes
 
-    snap_pdf = client.get(f"/api/test-plans/{pid}/export?format=pdf&snapshot_id={snap1['id']}")
+    snap_pdf = client.get(f"/api/test-plans/{pid}/export?format=pdf&snapshot_id={snap1['id']}", headers=tester)
     assert snap_pdf.status_code == 200
     assert snap_pdf.headers["content-type"] == "application/pdf"
     assert f'filename="test-plan-{pid}-1.0.pdf"' in snap_pdf.headers["content-disposition"]
     assert snap_pdf.content.startswith(b"%PDF-1.")
 
     # List plans shows snapshot_count == 2
-    plans = client.get("/api/test-plans").json()
+    plans = client.get("/api/test-plans", headers=tester).json()
     assert len(plans) == 1 and plans[0]["snapshot_count"] == 2
-    assert len(client.get(f"/api/test-plans/{pid}/snapshots").json()) == 2
-    assert client.get(f"/api/test-plans/{pid}/snapshots/999").status_code == 404
-    assert client.get(f"/api/test-plans/{pid}/export?snapshot_id=999").status_code == 404
+    assert len(client.get(f"/api/test-plans/{pid}/snapshots", headers=tester).json()) == 2
+    assert client.get(f"/api/test-plans/{pid}/snapshots/999", headers=tester).status_code == 404
+    assert client.get(f"/api/test-plans/{pid}/export?snapshot_id=999", headers=tester).status_code == 404
 
 
 def test_test_plan_snapshot_isolates_projects(client):
@@ -1114,3 +1119,43 @@ def test_test_plan_snapshot_isolates_projects(client):
     assert snap2["payload"]["metrics"]["pass_rate"] == 0.0
     assert snap2["payload"]["metrics"]["open_defects"] == 1
     assert "TC-001" not in snap2["html_content"]
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "/api/defects",
+        "/api/defects/1/history",
+        "/api/metrics",
+        "/api/metrics/expanded",
+        "/api/projects",
+        "/api/projects/1",
+        "/api/releases",
+        "/api/releases/1",
+        "/api/releases/1/gate",
+        "/api/requirements",
+        "/api/requirements/R1",
+        "/api/test-suites",
+        "/api/test-suites/1",
+        "/api/test-cases",
+        "/api/test-cases/TC-001",
+        "/api/test-runs",
+        "/api/test-runs/1",
+        "/api/test-plans",
+        "/api/test-plans/1",
+        "/api/test-plans/1/snapshots",
+        "/api/test-plans/1/snapshots/1",
+        "/api/test-plans/1/export",
+        "/api/projects/1/runs/imports",
+        "/api/projects/1/runs/imports/1",
+        "/api/projects/1/coverage/imports",
+        "/api/projects/1/coverage/imports/1",
+    ],
+)
+def test_read_endpoints_require_authentication(client, url):
+    assert client.get(url).status_code == 401
+    assert client.get(url, headers=forged(expires_in=-60)).status_code == 401
+    # Every authenticated role (including least-privileged Developer) passes the auth check (not 401/403)
+    for role_user in ("admin", "testlead", "tester", "developer"):
+        res = client.get(url, headers=as_user(role_user))
+        assert res.status_code in (200, 404), f"{url} for {role_user} returned {res.status_code}"
