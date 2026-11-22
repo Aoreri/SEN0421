@@ -264,3 +264,35 @@ class CoverageImport(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     summary: Mapped[dict] = mapped_column(JSON)
     files: Mapped[list[dict]] = mapped_column(JSON)
+
+
+class TestIncidentReportSnapshot(Base):
+    """PLN-39 IEEE 829 Test Incident Report anlık görüntüsü (defect başına)."""
+
+    __tablename__ = "test_incident_report_snapshots"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    defect_id: Mapped[int] = mapped_column(ForeignKey("defects.id"), index=True)
+    status: Mapped[str] = mapped_column(String(20))
+    severity: Mapped[str] = mapped_column(String(20))
+    html_content: Mapped[str] = mapped_column(Text)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSON)
+    generated_by: Mapped[str] = mapped_column(String(50))
+    generated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
+class TestLogSnapshot(Base):
+    """PLN-39 IEEE 829 Test Log anlık görüntüsü (test koşumu başına)."""
+
+    __tablename__ = "test_log_snapshots"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    test_run_id: Mapped[int] = mapped_column(ForeignKey("test_runs.id"), index=True)
+    html_content: Mapped[str] = mapped_column(Text)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSON)
+    generated_by: Mapped[str] = mapped_column(String(50))
+    generated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )

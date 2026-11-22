@@ -653,6 +653,24 @@ export function TestRunsPage({ user }: TestRunsPageProps) {
               <span className="badge skipped">Skipped: {activeSummary.counts.Skipped}</span>
               <span className="badge not-run">Not Run: {activeSummary.counts["Not Run"]}</span>
               <span className="badge">Başarı: {activeSummary.passRate}%</span>
+              {!previewMode && (
+                <>
+                  <a
+                    href={api.exportTestLogUrl(activeRun.id, "html")}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="detail-link"
+                  >
+                    Test Log (HTML)
+                  </a>
+                  <a
+                    href={api.exportTestLogUrl(activeRun.id, "pdf")}
+                    className="detail-link"
+                  >
+                    Test Log (PDF)
+                  </a>
+                </>
+              )}
             </div>
           </div>
 

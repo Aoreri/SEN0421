@@ -314,6 +314,32 @@ export type TestPlanInput = {
   schedule_risks?: string;
 };
 
+export type TestIncidentReportSnapshotSummary = {
+  id: number;
+  defect_id: number;
+  status: string;
+  severity: string;
+  generated_by: string;
+  generated_at: string;
+};
+
+export type TestIncidentReportSnapshot = TestIncidentReportSnapshotSummary & {
+  html_content: string;
+  payload: Record<string, unknown>;
+};
+
+export type TestLogSnapshotSummary = {
+  id: number;
+  test_run_id: number;
+  generated_by: string;
+  generated_at: string;
+};
+
+export type TestLogSnapshot = TestLogSnapshotSummary & {
+  html_content: string;
+  payload: Record<string, unknown>;
+};
+
 const TOKEN_STORAGE_KEY = "token";
 export const AUTH_EXPIRED_EVENT = "sds06:auth-expired";
 
@@ -659,6 +685,40 @@ export const api = {
     snapshotId?: number,
   ) =>
     `/api/test-plans/${planId}/export?format=${format}${
+      snapshotId !== undefined ? `&snapshot_id=${snapshotId}` : ""
+    }`,
+  incidentReportSnapshots: (defectId: number) =>
+    request<TestIncidentReportSnapshotSummary[]>(`/defects/${defectId}/incident-report/snapshots`),
+  createIncidentReportSnapshot: (defectId: number) =>
+    request<TestIncidentReportSnapshot>(`/defects/${defectId}/incident-report/snapshots`, {
+      method: "POST",
+    }),
+  getIncidentReportSnapshot: (defectId: number, snapshotId: number) =>
+    request<TestIncidentReportSnapshot>(
+      `/defects/${defectId}/incident-report/snapshots/${snapshotId}`,
+    ),
+  exportIncidentReportUrl: (
+    defectId: number,
+    format: "html" | "pdf" = "html",
+    snapshotId?: number,
+  ) =>
+    `/api/defects/${defectId}/incident-report/export?format=${format}${
+      snapshotId !== undefined ? `&snapshot_id=${snapshotId}` : ""
+    }`,
+  testLogSnapshots: (runId: number) =>
+    request<TestLogSnapshotSummary[]>(`/test-runs/${runId}/test-log/snapshots`),
+  createTestLogSnapshot: (runId: number) =>
+    request<TestLogSnapshot>(`/test-runs/${runId}/test-log/snapshots`, {
+      method: "POST",
+    }),
+  getTestLogSnapshot: (runId: number, snapshotId: number) =>
+    request<TestLogSnapshot>(`/test-runs/${runId}/test-log/snapshots/${snapshotId}`),
+  exportTestLogUrl: (
+    runId: number,
+    format: "html" | "pdf" = "html",
+    snapshotId?: number,
+  ) =>
+    `/api/test-runs/${runId}/test-log/export?format=${format}${
       snapshotId !== undefined ? `&snapshot_id=${snapshotId}` : ""
     }`,
 };
