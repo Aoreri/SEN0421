@@ -49,6 +49,7 @@ Errors use FastAPI's format: `{ "detail": "<message>" }`.
 | `POST /api/test-runs`, `POST`/`PUT /api/test-runs/{id}/executions/{exec_id}`, `POST /api/test-runs/{id}/executions/{exec_id}/defects` | `Admin`, `Test Lead`, `Tester` |
 | `POST`, `PUT`, `DELETE` on `/api/test-plans`, `PUT /api/test-plans/{id}/status` | `Admin`, `Test Lead` |
 | `POST /api/test-plans/{id}/snapshots` | `Admin`, `Test Lead`, `Tester` |
+| `POST /api/releases/{id}/summary-report/snapshots` | `Admin`, `Test Lead`, `Tester` |
 
 `GET` endpoints stay public. A token is optional on them, but an invalid or expired one gets `401`.
 

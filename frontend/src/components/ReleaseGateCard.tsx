@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useState } from "react";
 import {
+  api,
   ExitCriteriaConfig,
   RELEASE_STATUSES,
   ReleaseGateStatus,
@@ -218,6 +219,23 @@ export function ReleaseGateCard({
             {editingCriteria ? "Eşikleri Gizle" : "Çıkış Eşikleri Düzenle"}
           </button>
         )}
+
+        <div className="row-actions">
+          <a
+            href={api.exportSummaryReportUrl(gate.release_id, "html")}
+            target="_blank"
+            rel="noreferrer"
+            className="detail-link"
+          >
+            Test Summary Report (HTML)
+          </a>
+          <a
+            href={api.exportSummaryReportUrl(gate.release_id, "pdf")}
+            className="detail-link"
+          >
+            Test Summary Report (PDF)
+          </a>
+        </div>
       </div>
 
       {!canManageGate && (
