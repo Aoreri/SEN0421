@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from . import auth, coverage_imports, junit_imports, projects, runs, test_plans
+from . import auth, coverage_imports, junit_imports, projects, runs, summary_reports, test_plans
 from . import metrics as expanded_metrics
 from .auth import ADMIN, TEST_LEAD, TESTER, CurrentUser, OptionalUser, require_roles
 from .db import DB
@@ -38,6 +38,7 @@ app.include_router(projects.router)
 app.include_router(junit_imports.router)
 app.include_router(runs.router)
 app.include_router(test_plans.router)
+app.include_router(summary_reports.router)
 app.include_router(coverage_imports.router)
 app.include_router(expanded_metrics.router)
 

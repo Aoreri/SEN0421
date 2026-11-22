@@ -264,3 +264,21 @@ class CoverageImport(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     summary: Mapped[dict] = mapped_column(JSON)
     files: Mapped[list[dict]] = mapped_column(JSON)
+
+
+class TestSummaryReportSnapshot(Base):
+    """PLN-30 IEEE 829 Test Summary Report anlık görüntüsü (sürüm başına)."""
+
+    __tablename__ = "test_summary_report_snapshots"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    release_id: Mapped[int] = mapped_column(ForeignKey("releases.id"), index=True)
+    release_version: Mapped[str] = mapped_column(String(50))
+    release_status: Mapped[str] = mapped_column(String(20))
+    gate_passed: Mapped[bool] = mapped_column(Boolean)
+    html_content: Mapped[str] = mapped_column(Text)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSON)
+    generated_by: Mapped[str] = mapped_column(String(50))
+    generated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
