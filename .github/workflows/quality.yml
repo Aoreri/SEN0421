@@ -1,0 +1,82 @@
+name: PLN-35 Quality measurements
+
+on:
+  push:
+    branches: [main, "feature/pln-35-*"]
+    paths: ["backend/**", "frontend/**", "quality/**", ".github/workflows/quality.yml"]
+  pull_request:
+    paths:
+      - "backend/**"
+      - "frontend/**"
+      - "quality/**"
+      - ".github/workflows/quality.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  performance:
+    name: 10000 executions and document performance
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: sds06
+          POSTGRES_PASSWORD: sds06
+          POSTGRES_DB: sds06_pln35_benchmark
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U sds06 -d sds06_pln35_benchmark"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      DATABASE_URL: postgresql+psycopg://sds06:sds06@localhost:5432/sds06_pln35_benchmark
+      PLN35_DISPOSABLE: "1"
+      REPORT_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements*.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: |
+            frontend/package-lock.json
+            quality/package-lock.json
+      - name: Install backend and renderer libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libpango-1.0-0 libpangocairo-1.0-0 libpangoft2-1.0-0 libcairo2 libgdk-pixbuf-2.0-0 libffi8 shared-mime-info fonts-dejavu-core
+          python -m pip install -r backend/requirements-dev.txt
+      - name: Build production frontend
+        working-directory: frontend
+        run: npm ci && npm run build
+      - name: Install measurement browser
+        working-directory: quality
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Measure a freshly seeded PostgreSQL instance
+        working-directory: quality
+        run: npm run measure
+      - name: Upload raw measurements
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pln35-performance
+          path: quality/results/performance.json
+          retention-days: 14
+          if-no-files-found: warn

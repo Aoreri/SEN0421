@@ -22,9 +22,15 @@ dist/
 # Generated test coverage
 .coverage
 .coverage.*
+.coverage-*
 coverage.xml
 htmlcov/
 
 # PLN-23 generated CI import evidence
 junit.xml
 dogfood-report.json
+
+# PLN-35 generated quality evidence
+quality/results/
+backend/unit-coverage.json
+backend/unit-coverage.xml
