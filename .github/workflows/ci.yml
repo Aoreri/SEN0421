@@ -23,6 +23,9 @@ jobs:
         working-directory: backend
     steps:
       - uses: actions/checkout@v4
+      - name: Record the exact checked-out commit
+        id: checkout
+        run: echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -38,7 +41,7 @@ jobs:
         run: python -m pytest -q --cov=app --cov-report=term-missing --cov-report=xml:coverage.xml --junitxml=junit.xml -o junit_family=legacy
       - name: Import CI reports into isolated SDS-06 (PLN-23)
         env:
-          REPORT_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+          REPORT_COMMIT: ${{ steps.checkout.outputs.commit }}
           REPORT_BRANCH: ${{ github.head_ref || github.ref_name }}
         run: python scripts/dogfood_ci.py --junit junit.xml --coverage coverage.xml --commit "$REPORT_COMMIT" --branch "$REPORT_BRANCH"
       - name: Upload CI import evidence
@@ -85,6 +88,9 @@ jobs:
         working-directory: backend
     steps:
       - uses: actions/checkout@v4
+      - name: Record the exact checked-out commit
+        id: checkout
+        run: echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -112,6 +118,9 @@ jobs:
         working-directory: frontend
     steps:
       - uses: actions/checkout@v4
+      - name: Record the exact checked-out commit
+        id: checkout
+        run: echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -137,6 +146,9 @@ jobs:
       E2E_DISPOSABLE: "1"
     steps:
       - uses: actions/checkout@v4
+      - name: Record the exact checked-out commit
+        id: checkout
+        run: echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -157,7 +169,7 @@ jobs:
         if: ${{ !cancelled() && steps.browser-tests.outcome != 'skipped' }}
         working-directory: frontend
         env:
-          REPORT_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+          REPORT_COMMIT: ${{ steps.checkout.outputs.commit }}
           REPORT_BRANCH: ${{ github.head_ref || github.ref_name }}
         run: npm run test:e2e:report
       - name: Collect application logs

@@ -110,17 +110,29 @@ test("saved Test Plan snapshot exports HTML and downloads a PDF in the browser",
     headers, data: { project_id: data.projectId, version: "e2e-2", title: "Changed after snapshot" },
   })).status()).toBe(200);
   await login(page);
-  await page.goto(`/api/test-plans/${planId}/export?format=html&snapshot_id=${snapshotId}`);
+  const html = await page.evaluate(async url => {
+    const response = await fetch(url, { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } });
+    if (!response.ok) throw new Error(`HTML export failed: ${response.status}`);
+    return response.text();
+  }, `/api/test-plans/${planId}/export?format=html&snapshot_id=${snapshotId}`);
+  await page.setContent(html);
   await expect(page.locator("body")).toContainText(title);
   await expect(page.locator("body")).not.toContainText("Changed after snapshot");
   const downloadPromise = page.waitForEvent("download");
-  // There is no Test Plan UI on main yet. Exercise the existing export attachment itself.
-  await page.evaluate(url => {
+  // Fetch with the actual UI session; a direct link cannot send the JWT header.
+  const blobURL = await page.evaluate(async url => {
+    const response = await fetch(url, { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } });
+    if (!response.ok) throw new Error(`PDF export failed: ${response.status}`);
+    const filename = response.headers.get("content-disposition")?.match(/filename="([^"]+)"/)?.[1];
+    if (!filename) throw new Error("Missing PDF filename");
+    const objectURL = URL.createObjectURL(await response.blob());
     const link = document.createElement("a");
-    link.href = url;
+    link.href = objectURL;
+    link.download = filename;
     document.body.append(link);
     link.click();
     link.remove();
+    return objectURL;
   }, `/api/test-plans/${planId}/export?format=pdf&snapshot_id=${snapshotId}`);
   const download = await downloadPromise;
   expect(await download.failure()).toBeNull();
@@ -130,4 +142,5 @@ test("saved Test Plan snapshot exports HTML and downloads a PDF in the browser",
   const bytes = await readFile(path!);
   expect(bytes.subarray(0, 5).toString()).toBe("%PDF-");
   expect(bytes.toString("latin1")).toContain("%%EOF");
+  await page.evaluate(url => URL.revokeObjectURL(url), blobURL);
 });

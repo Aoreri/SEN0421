@@ -67,3 +67,7 @@ CI always removes only its own uniquely named stack and volume.
 
 The normal frontend lint/typecheck checks include the E2E sources. No
 application schema, merged migration or production endpoint is changed.
+
+Exports use the UI session JWT through fetch, including PDF blob downloads,
+so they remain compatible with authenticated read endpoints. CI records the
+actual checkout commit (including a PR merge commit), not an untested PR head.
