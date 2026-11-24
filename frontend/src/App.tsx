@@ -29,6 +29,7 @@ import { ReleaseGateCard } from "./components/ReleaseGateCard";
 import { StatusBadge } from "./components/StatusBadge";
 import { DefectDetailPage } from "./pages/DefectDetailPage";
 import { LoginPage } from "./pages/LoginPage";
+import { JUnitImportsPage } from "./pages/JUnitImportsPage";
 import { ProjectsPage } from "./pages/ProjectsPage";
 import { TestCasesPage } from "./pages/TestCasesPage";
 import { TestRunsPage } from "./pages/TestRunsPage";
@@ -710,6 +711,7 @@ export default function App() {
           >
             Giriş / Rol Seçimi
           </NavLink>
+          <NavLink to="/junit-imports" className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}>JUnit Raporları</NavLink>
         </nav>
       </header>
 
@@ -717,6 +719,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<DashboardView user={user} />} />
           <Route path="/test-cases" element={<TestCasesPage user={user} />} />
+          <Route path="/junit-imports" element={<JUnitImportsPage user={user} />} />
           <Route path="/test-runs" element={<TestRunsPage user={user} />} />
           <Route path="/defects/:id" element={<DefectDetailPage user={user} />} />
           <Route path="/projects" element={<ProjectsPage user={user} />} />

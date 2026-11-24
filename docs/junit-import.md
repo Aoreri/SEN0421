@@ -166,3 +166,11 @@ Yeni `test_junit_parser.py` ve `test_junit_import.py` testleri güvenli ayrışt
 sonuç eşlemesini, rol ve proje sınırlarını, üst veriyi, tekrar okumayı ve atomic
 rollback'i denetler. Tüm migrasyonlar ayrıca atılabilir PostgreSQL veritabanında
 çalıştırılmalıdır; testler şemayı sıfırladığı için gerçek veritabanı kullanılmaz.
+
+## İçe aktarım raporunu arayüzden görme
+
+Giriş yaptıktan sonra **JUnit Raporları** (`/junit-imports`) sayfasından proje
+ve rapor seçilir. Sonuç tablosundaki **Otomatik Defect** bağlantısı oluşturulan
+veya yeniden kullanılan incident detayını açar. Bağlantısız sonuçlarda çizgi
+gösterilir; eşleşmeyen ve başarılı sonuçlar da raporda kalır. Son 50 rapor
+listelenir. Bu sayfa salt okunurdur; XML yükleme veya defect durumunu değiştirmez.
