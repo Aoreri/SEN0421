@@ -186,6 +186,13 @@ kullanılabilir. Formüller ve kapsam: [Metrik API sözleşmesi](docs/metrics-ap
 | Standart durumu ve IEEE 829 ↔ 29119 eşlemesi | [docs/standard-status-and-mapping.md](docs/standard-status-and-mapping.md) |
 | Risk kaydı · Definition of Done | [docs/risk-register.md](docs/risk-register.md) · [docs/definition-of-done.md](docs/definition-of-done.md) |
 
+## Sürüm adayı doğrulaması (PLN-36 — Esra Kaya)
+
+Sürüm bilgileri, Test Summary Report ekleri ve Docker imaj kimlikleri yayın
+öncesinde doğrulanır; başarılı pakete manifest ve SHA256SUMS eklenir.
+[Doğrulama ve yayın teslim yönergesi](docs/release-verification.md).
+Bu araç etiket veya Release yayımlamaz.
+
 ## Katkı süreci
 
 `main` korumalıdır. Her iş plan maddesini taşıyan bir branch'te yapılır
