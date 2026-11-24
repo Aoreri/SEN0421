@@ -89,3 +89,10 @@ coverage. No source line is excluded to reach the threshold.
 The normal CI backend job enforces this gate and uploads JSON/Cobertura as
 `workflow-metrics-unit-coverage`. Final measured numbers and the ISO/IEC
 25010 table input are in [the measurement report](../docs/pln35-quality-measurements.md).
+
+The benchmark count is scoped to the 100 runs it creates. If a future seed
+migration adds executions to the selected release, `panel_executions` and
+`panel_pass_rate` explicitly describe that retained population. Such records
+are preserved; they are not counted as benchmark-created executions. Logout
+also verifies that the anonymous dashboard clears data without protected API
+requests. CI evidence identifies the exact checked-out tree.

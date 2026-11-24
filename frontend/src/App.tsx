@@ -90,6 +90,12 @@ function DashboardView({ user }: DashboardViewProps) {
   const load = useCallback(async () => {
     const selectedReleaseId = selectedReleaseRef.current;
     const sequence = ++loadSequence.current;
+    if (!user) {
+      setMetrics(null); setExpandedMetrics(null); setTests([]); setDefects([]);
+      setReleases([]); setReleaseGate(null); setAnalyticsPreviewMode(false);
+      selectedReleaseRef.current = null; setSelectedReleaseId(null); setError("");
+      return;
+    }
     try {
       const [m, t, d, projs, rels, reqs] = await Promise.all([
         api.metrics(),
@@ -202,7 +208,7 @@ function DashboardView({ user }: DashboardViewProps) {
         ),
       );
     }
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     void load();

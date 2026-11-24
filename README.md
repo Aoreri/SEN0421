@@ -143,13 +143,6 @@ GitHub Actions `CI` hattı her PR'da backend (SQLite ve PostgreSQL 16) ve fronte
 kontrollerini çalıştırır; Cobertura kapsam raporları Actions → **Artifacts** altında
 14 gün saklanır.
 
-## Performans ve birim test kapsamı (PLN-35)
-
-10.000 yürütmeyle gerçek tarayıcı panel süresi ve Test Plan üretimi ölçülür.
-İş akışı/metrik modüllerinin her birinde satır ve dal birim test kapsamı en az
-%80 olmalıdır. [Çalıştırma yönergesi](quality/README.md) ·
-[Ölçüm raporu ve ISO/IEC 25010 girdileri](docs/pln35-quality-measurements.md).
-
 ## JUnit XML içe aktarımı (PLN-22 — Esra Kaya)
 
 `POST /api/projects/{id}/runs/import`, ham XML gövdesini `application/xml` olarak
@@ -170,6 +163,13 @@ aktarım kimliğiyle commit/branch kanıtı ilişkilendirilir. CI kendi gerçek 
 Cobertura raporlarını geçici bir SDS-06 örneğine aktarır; sonuçlar **Artifacts →
 ci-import-evidence** altında 14 gün saklanır. Canlı proje veritabanına yazılmaz.
 Sınırlar, doğrulama, API ve migrasyon: [Cobertura sözleşmesi](docs/cobertura-import.md).
+
+## Performans ve birim test kapsamı (PLN-35)
+
+10.000 yürütmeyle gerçek tarayıcı panel süresi ve Test Plan üretimi ölçülür.
+İş akışı/metrik modüllerinin her birinde satır ve dal birim test kapsamı en az
+%80 olmalıdır. [Çalıştırma yönergesi](quality/README.md) ·
+[Ölçüm raporu ve ISO/IEC 25010 girdileri](docs/pln35-quality-measurements.md).
 
 ## SQL metrikleri (PLN-24 — Esra Kaya)
 

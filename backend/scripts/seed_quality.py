@@ -87,9 +87,16 @@ def main():
                             version="pln35-benchmark", created_by="admin", scope="100 cases, 100 runs, 10,000 executions and 100 added incidents")
             db.add(plan)
             db.commit()
-            count = db.scalar(select(func.count()).select_from(TestExecution))
+            count = db.scalar(select(func.count()).select_from(TestExecution).where(
+                TestExecution.run_id.in_([run.id for run in test_runs])))
+            panel_query = select(func.count()).select_from(TestExecution).join(
+                TestRun, TestRun.id == TestExecution.run_id).where(TestRun.release_id == release.id)
+            panel_count = db.scalar(panel_query)
+            panel_passed = db.scalar(panel_query.where(TestExecution.status == "Passed"))
+            panel_failed = db.scalar(panel_query.where(TestExecution.status == "Failed"))
             assert count == 10_000, count
-            print(json.dumps({"executions": count, "runs_added": 100, "cases_added": 100,
+            print(json.dumps({"executions": count, "panel_executions": panel_count,
+                              "panel_pass_rate": round(panel_passed / (panel_passed + panel_failed) * 100, 1), "runs_added": 100, "cases_added": 100,
                               "defects_added": 100,
                               "cases_total": db.scalar(select(func.count()).select_from(TestCase)),
                               "defects_total": db.scalar(select(func.count()).select_from(Defect)),

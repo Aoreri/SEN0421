@@ -56,6 +56,7 @@ try {
   const headers = { Authorization: `Bearer ${token}` };
   browser = await chromium.launch(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH } : {});
   results.environment.chromium = browser.version();
+  assert.ok(fixture.executions === 10_000 && fixture.panel_executions >= fixture.executions);
   const samples = [];
   results.panel_diagnostics = [];
   const sampleCount = Number(process.env.PLN35_SAMPLES ?? 10);
@@ -78,11 +79,11 @@ try {
       const apiMs = performance.now() - before;
       for (const response of loaded) assert.equal(response.status(), 200, response.url());
       const metrics = await loaded[6].json();
-      assert.equal(metrics.total_tests, 10_000);
-      assert.equal(metrics.pass_rate, 87.5);
-      assert.equal(metrics.denominators.planned_executions, 10_000);
+      assert.equal(metrics.total_tests, fixture.panel_executions);
+      assert.equal(metrics.pass_rate, fixture.panel_pass_rate);
+      assert.equal(metrics.denominators.planned_executions, fixture.panel_executions);
       await page.getByRole("heading", { name: "Grafikli Metrik Paneli (R5)", exact: true }).waitFor();
-      await page.locator(".metrics .card").filter({ hasText: "Toplam Test" }).getByText("10000", { exact: true }).waitFor();
+      await page.locator(".metrics .card").filter({ hasText: "Toplam Test" }).getByText(String(fixture.panel_executions), { exact: true }).waitFor();
       await page.getByRole("img", { name: "Koşum başına yığılmış test sonuçları ve başarı oranı trend grafiği", exact: true }).waitFor();
       await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
       const totalMs = performance.now() - before;
@@ -102,16 +103,24 @@ try {
     await page.goto("http://127.0.0.1:5175/");
     const selector = page.getByLabel("Sürüm:", { exact: true });
     const card = page.locator(".metrics .card").filter({ hasText: "Toplam Test" });
-    await card.getByText("10000", { exact: true }).waitFor();
+    await card.getByText(String(fixture.panel_executions), { exact: true }).waitFor();
     let changed = page.waitForResponse(r => r.url().endsWith(`/api/metrics/expanded?release_id=${fixture.empty_release_id}`));
     await selector.selectOption(String(fixture.empty_release_id));
     assert.equal((await (await changed).json()).total_tests, 0);
     await card.getByText("0", { exact: true }).waitFor();
     changed = page.waitForResponse(r => r.url().endsWith(`/api/metrics/expanded?release_id=${fixture.release_id}`));
     await selector.selectOption(String(fixture.release_id));
-    assert.equal((await (await changed).json()).total_tests, 10_000);
-    await card.getByText("10000", { exact: true }).waitFor();
+    assert.equal((await (await changed).json()).total_tests, fixture.panel_executions);
+    await card.getByText(String(fixture.panel_executions), { exact: true }).waitFor();
     results.release_selector_verified = true;
+    const anonymousRequests = [];
+    page.on("request", r => { if (new URL(r.url()).pathname.startsWith("/api/")) anonymousRequests.push(r.url()); });
+    await page.getByRole("button", { name: "Çıkış Yap", exact: true }).click();
+    await page.getByRole("link", { name: "Giriş Yap", exact: true }).waitFor();
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    assert.equal(await page.locator(".metrics .card").count(), 0);
+    assert.deepEqual(anonymousRequests, [], "Anonymous dashboard must not request protected data");
+    results.anonymous_dashboard_verified = true;
   } finally { await control.close(); }
   const operations = {
     test_plan_html: [`/api/test-plans/${fixture.plan_id}/export?format=html`, "GET", "text/html"],
