@@ -5,6 +5,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import os from "node:os";
 import { performance } from "node:perf_hooks";
 import { fileURLToPath } from "node:url";
+import { stripVTControlCharacters } from "node:util";
 import { chromium } from "playwright";
 
 assert.equal(process.env.PLN35_DISPOSABLE, "1", "Only run against a disposable database");
@@ -18,11 +19,11 @@ async function start(command, args, cwd, marker) {
   const child = spawn(command, args, { cwd, env: process.env, stdio: ["ignore", "pipe", "pipe"] });
   children.push(child);
   await new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => reject(new Error(`${command} startup timed out`)), 30_000);
     let logs = "";
+    const timeout = setTimeout(() => reject(new Error(`${command} startup timed out: ${stripVTControlCharacters(logs)}`)), 30_000);
     const chunk = data => {
       logs = (logs + data.toString()).slice(-4000);
-      if (logs.includes(marker)) { clearTimeout(timeout); resolve(); }
+      if (stripVTControlCharacters(logs).includes(marker)) { clearTimeout(timeout); resolve(); }
     };
     child.stdout.on("data", chunk);
     child.stderr.on("data", chunk);
@@ -76,7 +77,10 @@ try {
       const loaded = await Promise.all(responses);
       const apiMs = performance.now() - before;
       for (const response of loaded) assert.equal(response.status(), 200, response.url());
-      assert.equal((await loaded[6].json()).total_tests, 10_000);
+      const metrics = await loaded[6].json();
+      assert.equal(metrics.total_tests, 10_000);
+      assert.equal(metrics.pass_rate, 87.5);
+      assert.equal(metrics.denominators.planned_executions, 10_000);
       await page.getByRole("heading", { name: "Grafikli Metrik Paneli (R5)", exact: true }).waitFor();
       await page.locator(".metrics .card").filter({ hasText: "Toplam Test" }).getByText("10000", { exact: true }).waitFor();
       await page.getByRole("img", { name: "Koşum başına yığılmış test sonuçları ve başarı oranı trend grafiği", exact: true }).waitFor();
