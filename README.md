@@ -69,6 +69,7 @@ test vakası ↔ gereksinim izlenebilirliği.
 | Sürüm durumları (`Planned`, `In Test`, `Ready`, `Released`), yapılandırılabilir çıkış kriterleri (başarı oranı, açık kritik defect, gereksinim kapsama) ve Test Lead / Admin muafiyet kaydı | R7 | 29119-2 Test Tamamlama; 12207 Kalite Güvence |
 | IEEE 829 Test Plan kaydı (`Draft` / `In Review` / `Approved`), anlık görüntü (snapshot) saklama ve Jinja2 + WeasyPrint/PDF + HTML üretimi | R1, R3 | IEEE 829 Test Plan; 29119-3 Test Plan; 12207 Uygulama |
 | IEEE 829 Test Summary Report üretimi: sürüm verisinden toplamlar, özellik/gereksinim bazında sonuçlar, defect özeti ve çıkış kriteri değerlendirmesi; HTML + PDF ve anlık görüntü (snapshot) saklama | R3, R7 | IEEE 829 Test Summary Report; 29119-3 Test Completion Report |
+| Sürüm yönetim ekranı (`/releases`): durum geçişleri, çıkış kriteri ayarları, yalnızca Test Lead'e açık muafiyet kaydı, Test Summary Report anlık görüntüsü ve HTML / PDF indirme; sürüm / sprint filtreli metrik paneli | R5, R7 | 29119-2 Test Tamamlama; 29119-3 Test Completion Report |
 
 **Planlanan:** Test Incident Report üretimi (Jinja2 + WeasyPrint).
 

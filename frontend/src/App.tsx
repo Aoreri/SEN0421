@@ -30,6 +30,7 @@ import { StatusBadge } from "./components/StatusBadge";
 import { DefectDetailPage } from "./pages/DefectDetailPage";
 import { LoginPage } from "./pages/LoginPage";
 import { ProjectsPage } from "./pages/ProjectsPage";
+import { ReleasesPage } from "./pages/ReleasesPage";
 import { TestCasesPage } from "./pages/TestCasesPage";
 import { TestRunsPage } from "./pages/TestRunsPage";
 import {
@@ -499,6 +500,7 @@ function DashboardView({ user }: DashboardViewProps) {
         onUpdateCriteria={handleUpdateExitCriteria}
         onCreateWaiver={handleCreateWaiver}
         onDeleteWaiver={handleDeleteWaiver}
+        showManageLink
       />
 
       <section>
@@ -699,6 +701,12 @@ export default function App() {
             Test Koşumları
           </NavLink>
           <NavLink
+            to="/releases"
+            className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
+          >
+            Sürüm Yönetimi
+          </NavLink>
+          <NavLink
             to="/projects"
             className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
           >
@@ -719,6 +727,7 @@ export default function App() {
           <Route path="/test-cases" element={<TestCasesPage user={user} />} />
           <Route path="/test-runs" element={<TestRunsPage user={user} />} />
           <Route path="/defects/:id" element={<DefectDetailPage user={user} />} />
+          <Route path="/releases" element={<ReleasesPage user={user} />} />
           <Route path="/projects" element={<ProjectsPage user={user} />} />
           <Route
             path="/login"
