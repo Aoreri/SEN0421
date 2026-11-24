@@ -14,6 +14,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   candidate:
@@ -66,6 +67,19 @@ jobs:
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then
             git merge-base --is-ancestor HEAD origin/main
           fi
+      - name: Verify configured publication approval rules
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/environments/release-production" > approval-environment.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          rules = json.loads(Path("approval-environment.json").read_text()).get("protection_rules", [])
+          if not any(r.get("type") == "required_reviewers" and r.get("reviewers") and r.get("prevent_self_review") is True for r in rules):
+              raise SystemExit("Configure release-production required reviewers and prevent self-review before tagging; publication is blocked")
+          PY
       - name: Install backend and real PDF renderer
         run: |
           sudo apt-get update
@@ -112,11 +126,13 @@ jobs:
           Path("built-images.json").write_text(json.dumps(images))
           PY
           docker save "ghcr.io/$REPO/backend:$VERSION" "ghcr.io/$REPO/frontend:$VERSION" | gzip -1 > images.tar.gz
-          sha256sum images.tar.gz > images.sha256
       - name: Verify the exact publication bundle
         env:
           VERSION: ${{ steps.meta.outputs.version }}
-        run: python scripts/verify_release.py --root . --bundle release-bundle --images built-images.json --version "$VERSION" --commit "$(git rev-parse HEAD)" --output release-bundle
+        run: |
+          cp scripts/verify_release.py release-bundle/verify_release.py
+          python scripts/verify_release.py --root . --bundle release-bundle --images built-images.json --version "$VERSION" --commit "$(git rev-parse HEAD)" --output release-bundle --archive images.tar.gz
+          python scripts/verify_release.py --check-archive release-bundle/release-manifest.json --archive images.tar.gz
       - name: Save the verified package without publishing
         uses: actions/upload-artifact@v4
         with:
@@ -124,7 +140,6 @@ jobs:
           path: |
             release-bundle/
             images.tar.gz
-            images.sha256
           compression-level: 0
           retention-days: 14
           if-no-files-found: error
@@ -133,6 +148,8 @@ jobs:
     name: Publish the previously verified bytes (tag on main only)
     if: startsWith(github.ref, 'refs/tags/')
     needs: candidate
+    environment:
+      name: release-production
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -147,8 +164,8 @@ jobs:
           name: verified-release-package
       - name: Recheck integrity and load the verified images
         run: |
-          sha256sum --check images.sha256
           (cd release-bundle && sha256sum --check SHA256SUMS)
+          python3 release-bundle/verify_release.py --check-archive release-bundle/release-manifest.json --archive images.tar.gz
           docker load -i images.tar.gz
       - uses: docker/login-action@v3
         with:

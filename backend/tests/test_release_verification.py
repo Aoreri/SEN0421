@@ -61,7 +61,11 @@ def candidate(tmp_path):
             ]
         )
     )
+    archive = tmp_path / "images.tar.gz"
+    archive.write_bytes(b"synthetic archive unit fixture")
+    (bundle / "verify_release.py").write_bytes(Path(verifier.__file__).read_bytes())
     return dict(
+        archive_path=archive,
         root=tmp_path,
         bundle=bundle,
         images_path=images,
@@ -208,4 +212,25 @@ def test_actual_report_is_recomputed_from_evidence(candidate, tampered):
             verifier.verify(**candidate, require_test_evidence=True)
     else:
         result = verifier.verify(**candidate, require_test_evidence=True)
-        assert len(result["assets"]) == 7
+        assert len(result["assets"]) == 8
+
+
+@pytest.mark.parametrize("change", ["bytes", "missing", "symlink", "manifest"])
+def test_publication_rechecks_archive_against_manifest(candidate, change):
+    verifier.verify(**candidate)
+    manifest = candidate["output"] / "release-manifest.json"
+    archive = candidate["archive_path"]
+    verifier.check_archive(manifest, archive)
+    if change == "bytes":
+        archive.write_bytes(b"different saved images")
+    elif change == "missing":
+        archive.unlink()
+    elif change == "symlink":
+        archive.unlink()
+        archive.symlink_to(candidate["images_path"])
+    else:
+        value = json.loads(manifest.read_text())
+        value["image_archive"]["sha256"] = "0" * 64
+        manifest.write_text(json.dumps(value))
+    with pytest.raises(verifier.InvalidRelease):
+        verifier.check_archive(manifest, archive)

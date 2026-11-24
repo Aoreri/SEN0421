@@ -71,7 +71,9 @@ The publish job is skipped. The candidate:
 4. Builds backend/frontend production Dockerfiles, captures their actual local
    image IDs and versioned tags, and saves both images in one compressed tar.
 5. Verifies source metadata, report provenance/percentages/exit gate, attachment
-   signatures and image identities. Creates release-manifest.json/SHA256SUMS.
+   signatures and image identities. Binds the compressed image archive name,
+   size and streamed SHA-256 into release-manifest.json, whose checksum is
+   included in SHA256SUMS. The checksummed verifier is included in the bundle.
 6. Uploads the exact bundle and image archive as verified-release-package
    (14-day retention). It does not push to a registry or publish a Release.
 
@@ -86,9 +88,12 @@ requirements. With the responsible release owner's approval, create v1.0.0
 on that commit. Never move/force-push a published tag.
 
 Tag-triggered publication verifies the tagged commit is an ancestor of main.
-Its candidate job runs again on that exact tagged checkout. The dependent
-publish job downloads the already verified package, rechecks every checksum,
-loads and pushes those exact saved images, and attaches those exact report
+Its candidate job runs again on that exact tagged checkout and checks that
+release-production has required reviewers and prevent-self-review enabled.
+The dependent publish job waits at that GitHub Environment for approval. It
+downloads the verified package, checks bundle checksums and uses the checked
+copy of verify_release.py to bind images.tar.gz back to the verified manifest,
+then loads/pushes those exact saved images and attaches those exact report
 bytes plus evidence/manifest/checksums to GitHub Release. It never regenerates
 the report or rebuilds images after verification. Publication permissions are
 restricted to that tag-only job. No latest tag is moved by this workflow.
@@ -112,7 +117,7 @@ cp junit.xml coverage.xml test-evidence.json ../release-bundle/
 ```
 
 Use repository-root scripts/verify_release.py with --root, --bundle, --images,
---version, --commit and a fresh --output directory. Image JSON must be captured
+--version, --commit, --archive images.tar.gz and a fresh --output directory. Image JSON must be captured
 from docker image inspect, never guessed. Existing manifest/checksum outputs
 are rejected. The manifest identifies local image IDs, not registry manifest
 digests. PDF signature checks do not establish visual/typographical equivalence.
@@ -137,3 +142,18 @@ and [validator tests](https://github.com/esrakaya38/SEN0421/actions/runs/4542242
 also passed. The 30 focused tests use synthetic contract fixtures; those are
 not substituted for the full candidate's actual test evidence. A subsequent
 main integration commit must be tested again before the real tag is created.
+
+
+## Required repository configuration before the first real tag
+
+A repository administrator must configure Settings → Environments →
+release-production with required reviewers and prevent-self-review enabled.
+The tag-only preflight refuses a missing/unprotected environment; an API read
+failure also blocks publication. Dry runs neither enter this environment nor
+request approval. The connected integration cannot change this repository's
+environment settings (HTTP 403); the remaining administrator setup is explicit.
+
+The image archive is bound by the verified manifest, not an adjacent editable
+images.sha256 file. The portable check can also be run independently:
+`python verify_release.py --check-archive release-manifest.json --archive images.tar.gz`.
+Corrupted, missing, symlinked or differently declared archives are rejected.

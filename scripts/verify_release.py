@@ -52,8 +52,40 @@ def check_source(root, version):
     require(versions == [expected], "Backend FastAPI version mismatch")
 
 
+def archive_record(path):
+    require(
+        path.name == "images.tar.gz" and path.is_file() and not path.is_symlink(),
+        "Missing or linked image archive",
+    )
+    require(0 < path.stat().st_size <= 4 * 1024**3, "Empty or oversized image archive")
+    checksum = hashlib.sha256()
+    with path.open("rb") as stream:
+        for block in iter(lambda: stream.read(1024 * 1024), b""):
+            checksum.update(block)
+    return {
+        "name": path.name,
+        "bytes": path.stat().st_size,
+        "sha256": checksum.hexdigest(),
+    }
+
+
+def check_archive(manifest_path, archive_path):
+    expected = read_json(manifest_path).get("image_archive")
+    require(
+        expected is not None and archive_record(archive_path) == expected,
+        "Image archive disagrees with verified manifest",
+    )
+
+
 def verify(
-    root, bundle, images_path, version, commit, output, require_test_evidence=False
+    root,
+    bundle,
+    images_path,
+    version,
+    commit,
+    output,
+    require_test_evidence=False,
+    archive_path=None,
 ):
     require(
         re.fullmatch(r"v\d+\.\d+\.\d+", version),
@@ -79,6 +111,13 @@ def verify(
         )
     if source_report.get("generated_by") == "hash-bound-ci-test-evidence":
         names.extend(["junit.xml", "coverage.xml", "test-evidence.json"])
+    if require_test_evidence:
+        require(
+            archive_path is not None,
+            "Publication requires a manifest-bound image archive",
+        )
+        names.append("verify_release.py")
+    image_archive = archive_record(archive_path) if archive_path is not None else None
     assets = []
     for name in names:
         path = bundle / name
@@ -232,6 +271,7 @@ def verify(
         "exit_gate_passed": True,
         "assets": assets,
         "images": images,
+        "image_archive": image_archive,
     }
     output.mkdir(parents=True, exist_ok=True)
     manifest_path = output / "release-manifest.json"
@@ -246,13 +286,42 @@ def verify(
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--root", type=Path, required=True)
-    parser.add_argument("--bundle", type=Path, required=True)
-    parser.add_argument("--images", type=Path, required=True)
-    parser.add_argument("--version", required=True)
-    parser.add_argument("--commit", required=True)
-    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--root", type=Path)
+    parser.add_argument("--bundle", type=Path)
+    parser.add_argument("--images", type=Path)
+    parser.add_argument("--version")
+    parser.add_argument("--commit")
+    parser.add_argument("--output", type=Path)
+    parser.add_argument("--archive", type=Path)
+    parser.add_argument(
+        "--check-archive",
+        type=Path,
+        help="Recheck archive against an already verified manifest",
+    )
     args = parser.parse_args()
+    if args.check_archive:
+        if not args.archive:
+            parser.error("--check-archive requires --archive")
+        try:
+            check_archive(args.check_archive, args.archive)
+        except (InvalidRelease, OSError) as error:
+            raise SystemExit(str(error)) from error
+        print("Image archive matches verified manifest")
+        return
+    if not all(
+        (
+            args.root,
+            args.bundle,
+            args.images,
+            args.version,
+            args.commit,
+            args.output,
+            args.archive,
+        )
+    ):
+        parser.error(
+            "--root, --bundle, --images, --version, --commit, --output and --archive are required"
+        )
     try:
         manifest = verify(
             args.root,
@@ -262,6 +331,7 @@ def main():
             args.commit,
             args.output,
             require_test_evidence=True,
+            archive_path=args.archive,
         )
     except (InvalidRelease, OSError, TypeError, AttributeError) as error:
         raise SystemExit(f"Release verification failed: {error}") from error
