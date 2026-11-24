@@ -120,3 +120,20 @@ digests. PDF signature checks do not establish visual/typographical equivalence.
 No .env or deployment data is read. PostgreSQL test fixtures reset only the
 job's disposable database. Generated PDF/release bundles are artifacts, not
 committed course reports. Original demo preview output is diagnostic only.
+
+## Executed dry-run evidence (24.11.2026)
+
+Candidate code commit: `8fb8db3756bb225d28cf3bfc55848db720974626`.
+[Full candidate run](https://github.com/esrakaya38/SEN0421/actions/runs/45422428012)
+passed: 216 real PostgreSQL tests, frontend checks/build, evidence-backed PDF /
+HTML / JSON / notes generation, both Docker builds, independent report
+recomputation and package/image integrity verification. The publish job was
+skipped because this was a feature-branch dry run. Artifact
+`verified-release-package` (ID 14935817328) contains the verified bundle and
+saved images. No tag, Release or registry image was published.
+
+[Standard CI](https://github.com/esrakaya38/SEN0421/actions/runs/45422427850)
+and [validator tests](https://github.com/esrakaya38/SEN0421/actions/runs/45422426959)
+also passed. The 30 focused tests use synthetic contract fixtures; those are
+not substituted for the full candidate's actual test evidence. A subsequent
+main integration commit must be tested again before the real tag is created.
