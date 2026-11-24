@@ -23,6 +23,7 @@ from .models import (
     TestPlan,
     TestRun,
     TestSuite,
+    TestSummaryReportSnapshot,
     User,
     execution_defects,
 )
@@ -416,6 +417,15 @@ def delete_release(release_id: int, db: DB):
         raise HTTPException(409, "Sürüme bağlı test koşumları var")
     if db.scalar(select(TestPlan.id).where(TestPlan.release_id == release_id).limit(1)) is not None:
         raise HTTPException(409, "Sürüme bağlı test planı var")
+    if (
+        db.scalar(
+            select(TestSummaryReportSnapshot.id)
+            .where(TestSummaryReportSnapshot.release_id == release_id)
+            .limit(1)
+        )
+        is not None
+    ):
+        raise HTTPException(409, "Sürüme bağlı Test Summary Report anlık görüntüleri var")
     remove(db, release)
 
 

@@ -68,8 +68,9 @@ test vakası ↔ gereksinim izlenebilirliği.
 | Test koşumu (Test Run) ve test yürütme (Test Execution): Passed / Failed / Blocked / Skipped sonuçları, yürütme ↔ defect bağlantısı ve `Resolved → Closed` doğrulama şartı | R2, R4 | 29119-2 Test Yürütme; 12207 Doğrulama |
 | Sürüm durumları (`Planned`, `In Test`, `Ready`, `Released`), yapılandırılabilir çıkış kriterleri (başarı oranı, açık kritik defect, gereksinim kapsama) ve Test Lead / Admin muafiyet kaydı | R7 | 29119-2 Test Tamamlama; 12207 Kalite Güvence |
 | IEEE 829 Test Plan kaydı (`Draft` / `In Review` / `Approved`), anlık görüntü (snapshot) saklama ve Jinja2 + WeasyPrint/PDF + HTML üretimi | R1, R3 | IEEE 829 Test Plan; 29119-3 Test Plan; 12207 Uygulama |
+| IEEE 829 Test Summary Report üretimi: sürüm verisinden toplamlar, özellik/gereksinim bazında sonuçlar, defect özeti ve çıkış kriteri değerlendirmesi; HTML + PDF ve anlık görüntü (snapshot) saklama | R3, R7 | IEEE 829 Test Summary Report; 29119-3 Test Completion Report |
 
-**Planlanan:** Test Summary Report / Test Incident Report üretimi (Jinja2 + WeasyPrint).
+**Planlanan:** Test Incident Report üretimi (Jinja2 + WeasyPrint).
 
 ## Mimari
 
