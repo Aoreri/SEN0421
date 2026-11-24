@@ -1,0 +1,274 @@
+{
+  "measured_at": "2026-11-24T14:07:20.258Z",
+  "commit": "61999d7fb48dae8dd3f201490af296e8cdfa6f6f",
+  "environment": {
+    "os": "7.0.0-1020-azure",
+    "platform": "linux",
+    "cpu": "Intel(R) Xeon(R) Platinum 8370C CPU @ 2.80GHz",
+    "logical_cpus": 4,
+    "memory_bytes": 16758394880,
+    "node": "v22.23.5",
+    "runner": "GitHub Actions ubuntu-latest",
+    "chromium": "159.0.8154.6"
+  },
+  "fixture": {
+    "executions": 10000,
+    "runs_added": 100,
+    "cases_added": 100,
+    "defects_added": 100,
+    "cases_total": 106,
+    "defects_total": 103,
+    "requirements_total": 8,
+    "history_total": 253,
+    "project_id": 1,
+    "release_id": 1,
+    "empty_release_id": 2,
+    "plan_id": 1,
+    "python": "3.12.16",
+    "database": "postgresql",
+    "database_version": [
+      16,
+      16
+    ]
+  },
+  "measurements": {
+    "panel_navigation": {
+      "unit": "ms",
+      "samples": [
+        477.76872100000037,
+        291.50972999999976,
+        295.6232660000005,
+        297.25487200000043,
+        278.71611399999983,
+        295.3978450000004,
+        308.21679700000004,
+        278.8706110000003,
+        312.82175000000007,
+        278.23279400000047
+      ],
+      "first": 477.76872100000037,
+      "min": 278.23279400000047,
+      "median": 295.6232660000005,
+      "p95": 477.76872100000037,
+      "max": 477.76872100000037,
+      "limit_ms": 2000,
+      "passed": true
+    },
+    "test_plan_html": {
+      "unit": "ms",
+      "samples": [
+        61.09051499999987,
+        36.87206700000024,
+        32.90006999999969,
+        41.763606000000436,
+        41.07926000000043
+      ],
+      "first": 61.09051499999987,
+      "min": 32.90006999999969,
+      "median": 41.07926000000043,
+      "p95": 61.09051499999987,
+      "max": 61.09051499999987,
+      "limit_ms": 10000,
+      "passed": true
+    },
+    "test_plan_pdf": {
+      "unit": "ms",
+      "samples": [
+        2172.398065999999,
+        1497.7462800000012,
+        1595.6158919999998,
+        1612.3349170000001,
+        1527.686701999999
+      ],
+      "first": 2172.398065999999,
+      "min": 1497.7462800000012,
+      "median": 1595.6158919999998,
+      "p95": 2172.398065999999,
+      "max": 2172.398065999999,
+      "limit_ms": 10000,
+      "passed": true
+    },
+    "test_plan_snapshot": {
+      "unit": "ms",
+      "samples": [
+        37.082039000000805,
+        34.54912699999841,
+        35.4129869999997,
+        35.94035900000017,
+        36.36022299999968
+      ],
+      "first": 37.082039000000805,
+      "min": 34.54912699999841,
+      "median": 35.94035900000017,
+      "p95": 37.082039000000805,
+      "max": 37.082039000000805,
+      "limit_ms": 10000,
+      "passed": true
+    }
+  },
+  "panel_diagnostics": [
+    {
+      "navigation_ms": 66.09513400000014,
+      "api_ready_ms": 312.00068500000043,
+      "paint_ms": 477.76872100000037,
+      "request_counts": {
+        "/api/auth/me": 1,
+        "/api/metrics": 1,
+        "/api/test-cases": 1,
+        "/api/requirements": 1,
+        "/api/releases": 1,
+        "/api/projects": 1,
+        "/api/defects": 1,
+        "/api/releases/1/gate": 1,
+        "/api/metrics/expanded": 1
+      }
+    },
+    {
+      "navigation_ms": 38.86446599999999,
+      "api_ready_ms": 165.0492409999997,
+      "paint_ms": 291.50972999999976,
+      "request_counts": {
+        "/api/auth/me": 1,
+        "/api/metrics": 1,
+        "/api/test-cases": 1,
+        "/api/projects": 1,
+        "/api/requirements": 1,
+        "/api/releases": 1,
+        "/api/defects": 1,
+        "/api/releases/1/gate": 1,
+        "/api/metrics/expanded": 1
+      }
+    },
+    {
+      "navigation_ms": 40.98623300000054,
+      "api_ready_ms": 171.31306700000005,
+      "paint_ms": 295.6232660000005,
+      "request_counts": {
+        "/api/auth/me": 1,
+        "/api/metrics": 1,
+        "/api/projects": 1,
+        "/api/test-cases": 1,
+        "/api/releases": 1,
+        "/api/defects": 1,
+        "/api/requirements": 1,
+        "/api/releases/1/gate": 1,
+        "/api/metrics/expanded": 1
+      }
+    },
+    {
+      "navigation_ms": 37.77238800000032,
+      "api_ready_ms": 156.6038210000006,
+      "paint_ms": 297.25487200000043,
+      "request_counts": {
+        "/api/auth/me": 1,
+        "/api/projects": 1,
+        "/api/releases": 1,
+        "/api/test-cases": 1,
+        "/api/metrics": 1,
+        "/api/requirements": 1,
+        "/api/defects": 1,
+        "/api/releases/1/gate": 1,
+        "/api/metrics/expanded": 1
+      }
+    },
+    {
+      "navigation_ms": 38.50288300000011,
+      "api_ready_ms": 157.75728600000002,
+      "paint_ms": 278.71611399999983,
+      "request_counts": {
+        "/api/auth/me": 1,
+        "/api/metrics": 1,
+        "/api/projects": 1,
+        "/api/requirements": 1,
+        "/api/test-cases": 1,
+        "/api/defects": 1,
+        "/api/releases": 1,
+        "/api/releases/1/gate": 1,
+        "/api/metrics/expanded": 1
+      }
+    },
+    {
+      "navigation_ms": 37.96478599999955,
+      "api_ready_ms": 149.24880399999984,
+      "paint_ms": 295.3978450000004,
+      "request_counts": {
+        "/api/auth/me": 1,
+        "/api/metrics": 1,
+        "/api/requirements": 1,
+        "/api/test-cases": 1,
+        "/api/projects": 1,
+        "/api/defects": 1,
+        "/api/releases": 1,
+        "/api/releases/1/gate": 1,
+        "/api/metrics/expanded": 1
+      }
+    },
+    {
+      "navigation_ms": 37.47077300000001,
+      "api_ready_ms": 154.59729100000004,
+      "paint_ms": 308.21679700000004,
+      "request_counts": {
+        "/api/auth/me": 1,
+        "/api/projects": 1,
+        "/api/defects": 1,
+        "/api/metrics": 1,
+        "/api/requirements": 1,
+        "/api/test-cases": 1,
+        "/api/releases": 1,
+        "/api/releases/1/gate": 1,
+        "/api/metrics/expanded": 1
+      }
+    },
+    {
+      "navigation_ms": 40.2062190000006,
+      "api_ready_ms": 159.96739799999978,
+      "paint_ms": 278.8706110000003,
+      "request_counts": {
+        "/api/auth/me": 1,
+        "/api/projects": 1,
+        "/api/metrics": 1,
+        "/api/releases": 1,
+        "/api/test-cases": 1,
+        "/api/defects": 1,
+        "/api/requirements": 1,
+        "/api/releases/1/gate": 1,
+        "/api/metrics/expanded": 1
+      }
+    },
+    {
+      "navigation_ms": 40.0467009999993,
+      "api_ready_ms": 151.97454899999957,
+      "paint_ms": 312.82175000000007,
+      "request_counts": {
+        "/api/auth/me": 1,
+        "/api/metrics": 1,
+        "/api/releases": 1,
+        "/api/test-cases": 1,
+        "/api/projects": 1,
+        "/api/requirements": 1,
+        "/api/defects": 1,
+        "/api/releases/1/gate": 1,
+        "/api/metrics/expanded": 1
+      }
+    },
+    {
+      "navigation_ms": 40.49427399999968,
+      "api_ready_ms": 148.85318000000007,
+      "paint_ms": 278.23279400000047,
+      "request_counts": {
+        "/api/auth/me": 1,
+        "/api/metrics": 1,
+        "/api/projects": 1,
+        "/api/releases": 1,
+        "/api/requirements": 1,
+        "/api/defects": 1,
+        "/api/test-cases": 1,
+        "/api/releases/1/gate": 1,
+        "/api/metrics/expanded": 1
+      }
+    }
+  ],
+  "release_selector_verified": true,
+  "passed": true,
+  "workflow_run": "https://github.com/esrakaya38/SEN0421/actions/runs/45410292362"
+}
