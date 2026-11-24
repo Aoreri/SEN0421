@@ -62,6 +62,14 @@ export function TestPlansPage({ user }: TestPlansPageProps) {
   const [creatingSnapshotId, setCreatingSnapshotId] = useState<number | null>(null);
   const [loadingSnapshotId, setLoadingSnapshotId] = useState<number | null>(null);
   const [error, setError] = useState("");
+
+  async function handleDownload(planId: number, format: "html" | "pdf", snapshotId?: number) {
+    try {
+      await api.downloadTestPlan(planId, format, snapshotId);
+    } catch (err) {
+      setError(formatErrorMessage(err, "Test Plan indirilemedi."));
+    }
+  }
   const [notice, setNotice] = useState("");
 
   // Form state (create & draft/in-review edit)
@@ -371,17 +379,12 @@ export function TestPlansPage({ user }: TestPlansPageProps) {
       header: "HTML / PDF İndir",
       render: (p) => (
         <div className="row-actions">
-          <a
-            href={api.exportTestPlanUrl(p.id, "html")}
-            target="_blank"
-            rel="noreferrer"
-            className="detail-link"
-          >
+          <button type="button" className="secondary-btn" onClick={() => void handleDownload(p.id, "html")}>
             HTML
-          </a>
-          <a href={api.exportTestPlanUrl(p.id, "pdf")} className="detail-link">
+          </button>
+          <button type="button" className="secondary-btn" onClick={() => void handleDownload(p.id, "pdf")}>
             PDF İndir
-          </a>
+          </button>
         </div>
       ),
     },
@@ -447,20 +450,12 @@ export function TestPlansPage({ user }: TestPlansPageProps) {
       header: "Çıktı & İndirme",
       render: (s) => (
         <div className="row-actions">
-          <a
-            href={api.exportTestPlanUrl(s.test_plan_id, "html", s.id)}
-            target="_blank"
-            rel="noreferrer"
-            className="detail-link"
-          >
+          <button type="button" className="secondary-btn" onClick={() => void handleDownload(s.test_plan_id, "html", s.id)}>
             HTML Görüntüle
-          </a>
-          <a
-            href={api.exportTestPlanUrl(s.test_plan_id, "pdf", s.id)}
-            className="detail-link"
-          >
+          </button>
+          <button type="button" className="secondary-btn" onClick={() => void handleDownload(s.test_plan_id, "pdf", s.id)}>
             PDF İndir
-          </a>
+          </button>
           <button
             type="button"
             className="secondary-btn"
@@ -814,20 +809,12 @@ export function TestPlansPage({ user }: TestPlansPageProps) {
             </div>
 
             <div className="row-actions">
-              <a
-                href={api.exportTestPlanUrl(activePlan.id, "html")}
-                target="_blank"
-                rel="noreferrer"
-                className="btn-link secondary-btn"
-              >
-                Canlı HTML Görüntüle
-              </a>
-              <a
-                href={api.exportTestPlanUrl(activePlan.id, "pdf")}
-                className="btn-link secondary-btn"
-              >
-                Canlı PDF İndir
-              </a>
+              <button type="button" className="secondary-btn" onClick={() => void handleDownload(activePlan.id, "html")}>
+            Canlı HTML Görüntüle
+          </button>
+              <button type="button" className="secondary-btn" onClick={() => void handleDownload(activePlan.id, "pdf")}>
+            Canlı PDF İndir
+          </button>
               {canTakeSnapshot && (
                 <button
                   type="button"
@@ -929,20 +916,12 @@ export function TestPlansPage({ user }: TestPlansPageProps) {
                   </p>
                 </div>
                 <div className="row-actions">
-                  <a
-                    href={api.exportTestPlanUrl(activePlan.id, "html", previewSnapshot.id)}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="detail-link"
-                  >
-                    Tam HTML Raporu Aç
-                  </a>
-                  <a
-                    href={api.exportTestPlanUrl(activePlan.id, "pdf", previewSnapshot.id)}
-                    className="detail-link"
-                  >
-                    PDF İndir
-                  </a>
+                  <button type="button" className="secondary-btn" onClick={() => void handleDownload(activePlan.id, "html", previewSnapshot.id)}>
+            Tam HTML Raporu Aç
+          </button>
+                  <button type="button" className="secondary-btn" onClick={() => void handleDownload(activePlan.id, "pdf", previewSnapshot.id)}>
+            PDF İndir
+          </button>
                   <button
                     type="button"
                     className="secondary-btn"
