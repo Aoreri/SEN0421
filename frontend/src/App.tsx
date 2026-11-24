@@ -728,7 +728,7 @@ export default function App() {
       </main>
 
       <footer>
-        İstanbul Kültür Üniversitesi · Software Development with Standards · v0.1
+        İstanbul Kültür Üniversitesi · Software Development with Standards · v1.0
       </footer>
     </>
   );

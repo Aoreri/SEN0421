@@ -1,0 +1,100 @@
+name: Release v1.0
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version tag (e.g. v1.0.0)"
+        required: false
+        default: "v1.0.0"
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  release:
+    name: Build Docker images, Test Summary Report & GitHub Release (PLN-36)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve release version
+        id: meta
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/}"
+          else
+            VERSION="${{ inputs.version || 'v1.0.0' }}"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "repo_lc=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements*.txt
+
+      - name: Install backend dependencies & run verification suite
+        working-directory: backend
+        run: |
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends \
+            libpango-1.0-0 libpangocairo-1.0-0 libpangoft2-1.0-0 libcairo2 \
+            libgdk-pixbuf-2.0-0 libffi8 shared-mime-info fonts-dejavu-core
+          python -m pip install -r requirements-dev.txt
+          ruff check .
+          mypy app
+          python -m pytest -q
+
+      - name: Generate IEEE 829 Test Summary Report attachments
+        working-directory: backend
+        run: |
+          python scripts/generate_release_report.py \
+            --version "${{ steps.meta.outputs.version }}" \
+            --commit "${{ github.sha }}" \
+            --output-dir release-artifacts
+
+      - name: Build production Docker images (backend & frontend)
+        run: |
+          docker build -t "ghcr.io/${{ steps.meta.outputs.repo_lc }}/backend:${{ steps.meta.outputs.version }}" -t "ghcr.io/${{ steps.meta.outputs.repo_lc }}/backend:latest" ./backend
+          docker build -t "ghcr.io/${{ steps.meta.outputs.repo_lc }}/frontend:${{ steps.meta.outputs.version }}" -t "ghcr.io/${{ steps.meta.outputs.repo_lc }}/frontend:latest" ./frontend
+
+      - name: Log in to GitHub Container Registry and push images on tag push
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push Docker images to GHCR
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          docker push "ghcr.io/${{ steps.meta.outputs.repo_lc }}/backend:${{ steps.meta.outputs.version }}"
+          docker push "ghcr.io/${{ steps.meta.outputs.repo_lc }}/backend:latest"
+          docker push "ghcr.io/${{ steps.meta.outputs.repo_lc }}/frontend:${{ steps.meta.outputs.version }}"
+          docker push "ghcr.io/${{ steps.meta.outputs.repo_lc }}/frontend:latest"
+
+      - name: Upload release bundle artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sds06-release-${{ steps.meta.outputs.version }}
+          path: backend/release-artifacts/*
+          retention-days: 30
+
+      - name: Publish GitHub Release with attached Test Summary Report
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.version }}
+          name: "SDS-06 ${{ steps.meta.outputs.version }}"
+          body_path: backend/release-artifacts/release-notes-${{ steps.meta.outputs.version }}.md
+          files: |
+            backend/release-artifacts/test-summary-report-${{ steps.meta.outputs.version }}.pdf
+            backend/release-artifacts/test-summary-report-${{ steps.meta.outputs.version }}.html
+            backend/release-artifacts/test-summary-report-${{ steps.meta.outputs.version }}.json
