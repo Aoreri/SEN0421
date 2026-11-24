@@ -65,8 +65,12 @@ running `sha256sum --check SHA256SUMS`. Keep the original verified files intact.
 4. With the responsible team member's release approval, tag that exact main
    commit `v1.0.0` and run the publisher from #40. Confirm both registry images
    and the PDF/HTML/JSON report assets and release notes are present.
-5. Attach the verified manifest/checksums alongside the original report assets;
-   compare the published bytes with the verified candidate. This verification
+5. If the publisher regenerates reports or rebuilds images, run this verifier
+   again on those actual files and image records immediately before uploading.
+   Report generation timestamps and rebuilt image IDs can differ; never reuse
+   an earlier manifest for changed bytes. Attach the resulting manifest and
+   checksums beside those exact assets and verify the published downloads.
+   This verification
    workflow is separate from #40 and is not automatically enforced by its
    publisher; the release operator must check it before creating the tag.
 6. Record the actual GitHub Release URL and tag commit as delivery evidence.
