@@ -143,10 +143,12 @@ GitHub Actions `CI` hattı her PR'da backend (SQLite ve PostgreSQL 16) ve fronte
 kontrollerini çalıştırır; Cobertura kapsam raporları Actions → **Artifacts** altında
 14 gün saklanır.
 
-`v*.*.*` sürüm etiketlerinde (veya manuel tetiklemede) `.github/workflows/release.yml`
-(`Release v1.0`, PLN-36) backend ve frontend Docker imajlarını derler, `backend/scripts/generate_release_report.py`
-ile üretilen IEEE 829 Test Summary Report (`PDF`, `HTML`, `JSON`) ve sürüm notlarını
-GitHub Release eki olarak yayınlar.
+PLN-36 sürüm akışı gerçek PostgreSQL pytest/JUnit ve Cobertura çıktılarından
+IEEE 829 Test Summary Report üretir; sürümleri, Docker imajlarını ve dosya
+checksum'larını doğrular. Manuel çalıştırma yalnızca kuru denemedir; hiçbir
+Release yayımlamaz. `main` üzerindeki bir commit'e ait `v*.*.*` etiketi ise
+başarılı doğrulamadan sonra aynı doğrulanmış imajları ve ekleri yayımlar.
+[Yayın ve gerçek test kanıtı sözleşmesi](docs/release-verification.md).
 
 ## JUnit XML içe aktarımı (PLN-22 — Esra Kaya)
 

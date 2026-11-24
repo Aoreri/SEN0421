@@ -4,6 +4,7 @@ Uses an isolated temporary SQLite database migrated to head, evaluates the v1.0 
 against the repository's verification evidence, and exports standalone HTML and PDF (WeasyPrint or
 RSK-07 PDF-1.4 fallback) reports plus release notes.
 """
+
 import argparse
 import importlib
 import json
@@ -39,7 +40,7 @@ def _render_summary_html(payload: dict[str, Any]) -> str:
 <html lang="tr">
 <head>
   <meta charset="UTF-8" />
-  <title>{payload['identifier']} - {project['name']} {release['version']}</title>
+  <title>{payload["identifier"]} - {project["name"]} {release["version"]}</title>
   <style>
     @page {{ size: A4; margin: 20mm; }}
     body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; color: #1f2937; line-height: 1.5; font-size: 13px; margin: 0; padding: 24px; }}
@@ -55,13 +56,13 @@ def _render_summary_html(payload: dict[str, Any]) -> str:
 </head>
 <body>
   <header>
-    <h1>IEEE 829 Test Summary Report · {payload['identifier']}</h1>
+    <h1>IEEE 829 Test Summary Report · {payload["identifier"]}</h1>
     <div class="meta">
-      <span><strong>Proje:</strong> {project['name']}</span>
-      <span><strong>Sürüm:</strong> {release['version']} ({release['status']})</span>
-      <span><strong>Commit:</strong> {payload['commit']}</span>
+      <span><strong>Proje:</strong> {project["name"]}</span>
+      <span><strong>Sürüm:</strong> {release["version"]} ({release["status"]})</span>
+      <span><strong>Commit:</strong> {payload["commit"]}</span>
       <span><strong>Çıkış Kapısı:</strong> {gate_badge}</span>
-      <span><strong>Üretim Zamanı:</strong> {payload['generated_at']}</span>
+      <span><strong>Üretim Zamanı:</strong> {payload["generated_at"]}</span>
     </div>
   </header>
 
@@ -73,9 +74,9 @@ def _render_summary_html(payload: dict[str, Any]) -> str:
       </thead>
       <tbody>
         <tr>
-          <td>{totals['total_cases']}</td><td>{totals['executed_cases']}</td>
-          <td>{totals['passed']}</td><td>{totals['failed']}</td><td>{totals['not_run']}</td>
-          <td>%{totals['execution_rate']}</td><td>%{totals['pass_rate']}</td><td>%{totals['requirement_coverage']}</td>
+          <td>{totals["total_cases"]}</td><td>{totals["executed_cases"]}</td>
+          <td>{totals["passed"]}</td><td>{totals["failed"]}</td><td>{totals["not_run"]}</td>
+          <td>%{totals["execution_rate"]}</td><td>%{totals["pass_rate"]}</td><td>%{totals["requirement_coverage"]}</td>
         </tr>
       </tbody>
     </table>
@@ -95,7 +96,7 @@ def _render_summary_html(payload: dict[str, Any]) -> str:
 
   <section>
     <h2>3. Defect Özeti (Defect Summary)</h2>
-    <p>Toplam: <strong>{defect_summary['total']}</strong> · Açık: <strong>{defect_summary['open_total']}</strong> · Kapatılan: <strong>{defect_summary['closed_total']}</strong> · Açık Critical: <strong>{defect_summary['open_critical']}</strong></p>
+    <p>Toplam: <strong>{defect_summary["total"]}</strong> · Açık: <strong>{defect_summary["open_total"]}</strong> · Kapatılan: <strong>{defect_summary["closed_total"]}</strong> · Açık Critical: <strong>{defect_summary["open_critical"]}</strong></p>
     <table>
       <thead>
         <tr><th>ID</th><th>Başlık</th><th>Önem</th><th>Durum</th><th>Test Vakası</th></tr>
@@ -113,15 +114,15 @@ def _render_summary_html(payload: dict[str, Any]) -> str:
         <tr><th>Kriter</th><th>Hedef Eşik</th><th>Ölçülen Değer</th><th>Durum</th></tr>
       </thead>
       <tbody>
-        <tr><td>Başarı Oranı (Pass Rate)</td><td>≥ %{gate['criteria']['min_pass_rate']}</td><td>%{gate['actual_pass_rate']}</td><td>{"KARŞILANDI" if gate['passed_criteria']['pass_rate'] else "EŞİK ALTINDA"}</td></tr>
-        <tr><td>Açık Critical Defect</td><td>≤ {gate['criteria']['max_open_critical']}</td><td>{gate['actual_open_critical']}</td><td>{"KARŞILANDI" if gate['passed_criteria']['open_critical'] else "LİMİT AŞILDI"}</td></tr>
-        <tr><td>Gereksinim Kapsamı</td><td>≥ %{gate['criteria']['min_req_coverage']}</td><td>%{gate['actual_req_coverage']}</td><td>{"KARŞILANDI" if gate['passed_criteria']['req_coverage'] else "EŞİK ALTINDA"}</td></tr>
+        <tr><td>Başarı Oranı (Pass Rate)</td><td>≥ %{gate["criteria"]["min_pass_rate"]}</td><td>%{gate["actual_pass_rate"]}</td><td>{"KARŞILANDI" if gate["passed_criteria"]["pass_rate"] else "EŞİK ALTINDA"}</td></tr>
+        <tr><td>Açık Critical Defect</td><td>≤ {gate["criteria"]["max_open_critical"]}</td><td>{gate["actual_open_critical"]}</td><td>{"KARŞILANDI" if gate["passed_criteria"]["open_critical"] else "LİMİT AŞILDI"}</td></tr>
+        <tr><td>Gereksinim Kapsamı</td><td>≥ %{gate["criteria"]["min_req_coverage"]}</td><td>%{gate["actual_req_coverage"]}</td><td>{"KARŞILANDI" if gate["passed_criteria"]["req_coverage"] else "EŞİK ALTINDA"}</td></tr>
       </tbody>
     </table>
   </section>
 
   <footer>
-    SDS-06 Agile Test and Defect Tracking System · IEEE 829 Test Summary Report · {release['version']} ({payload['commit']})
+    SDS-06 Agile Test and Defect Tracking System · IEEE 829 Test Summary Report · {release["version"]} ({payload["commit"]})
   </footer>
 </body>
 </html>
@@ -149,7 +150,11 @@ def build_release_bundle(output_dir: Path, version: str, commit: str) -> dict[st
         project = client.get("/api/projects", headers=headers).json()[0]
         existing_releases = client.get("/api/releases", headers=headers).json()
         rel = next(
-            (r for r in existing_releases if r["project_id"] == project["id"] and r["version"] == version),
+            (
+                r
+                for r in existing_releases
+                if r["project_id"] == project["id"] and r["version"] == version
+            ),
             None,
         )
         if rel is None:
@@ -289,9 +294,7 @@ def build_release_bundle(output_dir: Path, version: str, commit: str) -> dict[st
             )
             pdf_bytes = bytes(out)
 
-        safe_ver = "".join(
-            ch if (ch.isalnum() or ch in ("-", "_", ".")) else "_" for ch in version
-        )
+        safe_ver = "".join(ch if (ch.isalnum() or ch in ("-", "_", ".")) else "_" for ch in version)
         html_path = output_dir / f"test-summary-report-{safe_ver}.html"
         pdf_path = output_dir / f"test-summary-report-{safe_ver}.pdf"
         json_path = output_dir / f"test-summary-report-{safe_ver}.json"
@@ -330,7 +333,25 @@ def main() -> None:
     parser.add_argument("--version", default="v1.0.0")
     parser.add_argument("--commit", default="HEAD")
     parser.add_argument("--output-dir", type=Path, default=Path("release-artifacts"))
+    parser.add_argument("--junit", type=Path)
+    parser.add_argument("--coverage", type=Path)
+    parser.add_argument("--evidence", type=Path)
     args = parser.parse_args()
+    if any((args.junit, args.coverage, args.evidence)):
+        if not all((args.junit, args.coverage, args.evidence)):
+            parser.error("--junit, --coverage and --evidence are required together")
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+        from scripts.release_evidence import build_bundle
+
+        payload = build_bundle(
+            args.output_dir, args.version, args.commit, args.junit, args.coverage, args.evidence
+        )
+        if not payload["gate"]["gate_passed"]:
+            raise SystemExit(
+                "Actual test-evidence release gate failed; report retained for diagnosis"
+            )
+        print("Generated Test Summary Report from actual test evidence")
+        return
     backend = Path(__file__).resolve().parents[1]
     if str(backend) not in sys.path:
         sys.path.insert(0, str(backend))

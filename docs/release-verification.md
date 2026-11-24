@@ -1,93 +1,122 @@
-# PLN-36 — Esra Kaya: v1.0 candidate verification
+# PLN-36 — shared v1.0 release preparation
 
-Target: 26.11.2026 · ISO/IEC/IEEE 12207 Configuration Management / Release Management.
+Esra Kaya / Caner Serbest · target 26.11.2026 · ISO/IEC/IEEE 12207
+Configuration Management and Release Management.
 
-Caner/Aoreri's [PR #40](https://github.com/Aoreri/SEN0421/pull/40) supplies the
-Test Summary Report generator and publication workflow. This contribution
-provides executable candidate acceptance checks and checksum/manifest creation.
-It targets `main` independently; it does not copy or replace that PR's publisher.
+This branch integrates Caner's original PR #40 with its authorship intact,
+then completes Esra's verification/publication handoff. Its PR base is main.
+It does not create a tag, publish a Release, change live project data or
+close anyone else's PR.
 
-## What this verifies
+## Corrections in the shared candidate
 
-`scripts/verify_release.py` checks:
+- FastAPI, frontend package and both lockfile version fields now agree on
+  1.0.0. This is candidate metadata, not a claim that v1.0.0 was published.
+- The original generator's demo-project preview remains available without
+  evidence arguments. Its migrated demo statuses are unchanged. At original
+  #40 commit 2f2725614597baecd15fc0bd4c35881a987509cd its gate was false:
+  75% pass rate and 62.5% requirement coverage against 80% minima.
+- The publication path now uses the application's **actual PostgreSQL pytest
+  JUnit/Cobertura output**, not that demo preview. A full candidate SHA and
+  SHA-256 hashes bind the inputs in test-evidence.json. Changed files or
+  mismatched commit claims are rejected. The workflow creates this record
+  immediately after successfully testing its own checkout; arbitrary old
+  downloaded artifacts are not used as publication inputs.
+- No failed/skipped result is converted to Passed. Unmapped tests contribute
+  to totals but not requirement coverage. Named executed acceptance witnesses
+  define requirement coverage separately from code coverage.
 
-- Stable version syntax and a full candidate commit SHA.
-- FastAPI, frontend package and both frontend lockfile version fields agree.
-- Required Test Summary Report PDF, HTML, JSON and release notes exist as
-  nonempty regular files, with no symbolic links.
-- Report and notes identify the expected version/commit; report totals and
-  percentages are valid and internally consistent, and the exit gate passed.
-- Two actual locally built backend/frontend image IDs and versioned tags.
-- SHA-256 digests for every asset. A successful verification writes
-  `release-manifest.json` and `SHA256SUMS` only after all checks pass.
+## Report population and acceptance witnesses
 
-Use a fresh output directory: existing manifest/checksum files are rejected,
-so a failed rerun cannot silently relabel an earlier manifest.
+The new report explicitly describes SDS-06's own verification suite. It does
+not certify a real user's open Critical defects or use demo database statuses
+as proof of product quality. R1–R8 associations below are explicit project-plan
+acceptance mappings, not deductions from the seed migration's incomplete TC
+links. Full names are in backend/scripts/release_evidence.py.
 
-The manifest identifies local Docker image IDs, not registry manifest digests.
-PDF signature/EOF checks do not prove visual layout. A report from an isolated
-seed database is not evidence that the real release's tests passed. Candidate
-verification is necessary preparation, not authorization to release.
+| Requirement area | Executed witness |
+| --- | --- |
+| R1 Test Plan control | test_test_plan_crud_and_workflow |
+| R2 Cases / execution | test_test_case_crud_and_specification_fields; test_test_run_and_execution_lifecycle |
+| R3 Documents | test_test_plan_snapshots_and_html_pdf_export |
+| R4 Defect workflow | test_defect_lifecycle_and_history; test_defect_close_requires_passed_verification_execution |
+| R5 Metrics | test_release_aggregates_no_fanout_and_first_resolution |
+| R6 JUnit import | test_import_persists_metadata_mapping_outcomes_and_unmatched_report |
+| R7 Exit criteria | test_release_exit_gate_criteria_waiver_and_status |
+| R8 Access / immutable history | test_mutations_require_login_and_role; test_postgresql_history_is_append_only |
 
-## Use after both contributions merge
+A requirement is verified only if every named witness exists and all its
+reported parameter variants passed. Missing or skipped witnesses remain
+unverified. Thresholds: no failed tests, at least one passed test, ≥80% of
+requirements verified, and ≥80% code line **and** branch coverage. The pytest
+command must also exit successfully. This is a release-verification assessment;
+it never alters a project's configured release gate or defect history.
 
-Run **Actions → Release readiness (PLN-36) → Run workflow**, version `v1.0.0`.
-The manual candidate job checks out the repository's actual `main`, validates
-its metadata, invokes Caner's generator in its isolated temporary database,
-builds both production Dockerfiles locally and verifies the resulting bundle.
-It has `contents: read` only. It neither creates tags/releases nor logs in to
-or pushes images to a registry. A failed check fails the candidate job; no
-`verified-release-candidate` artifact is uploaded.
+The HTML/PDF/JSON report includes scope, candidate, full counters, per-requirement
+witnesses/missing tests, nonpassing results, separate code coverage and explicit
+exit criteria. WeasyPrint must render a real PDF in the publication path;
+render failure fails the job. The preview retains Caner's existing fallback.
 
-PR/feature-branch runs exercise the validator with explicitly synthetic unit
-fixtures. They do not attest readiness of the repository's current main.
-For a local already-built candidate:
+## Run a complete dry run before merging/publishing
+
+Use **Actions → Release v1.0 → Run workflow**, select the prepared
+`feature/pln-36-release-verification` branch and version `v1.0.0`.
+Manual runs and this feature branch's code pushes run only the candidate job.
+The publish job is skipped. The candidate:
+
+1. Validates source versions; runs ruff/mypy and all backend tests on a
+   disposable PostgreSQL 16 service with real JUnit/Cobertura output.
+2. Runs frontend npm ci, lint, typecheck and build.
+3. Generates the evidence-backed Test Summary Report and release notes.
+4. Builds backend/frontend production Dockerfiles, captures their actual local
+   image IDs and versioned tags, and saves both images in one compressed tar.
+5. Verifies source metadata, report provenance/percentages/exit gate, attachment
+   signatures and image identities. Creates release-manifest.json/SHA256SUMS.
+6. Uploads the exact bundle and image archive as verified-release-package
+   (14-day retention). It does not push to a registry or publish a Release.
+
+The separate Release verifier tests workflow tests synthetic valid/invalid
+contracts only; it is not proof that the actual candidate passed a dry run.
+
+## Publish only after approved integration into main
+
+After the necessary approved PRs merge, rerun the complete candidate checks on
+that exact final main commit, including the team's E2E/security/performance
+requirements. With the responsible release owner's approval, create v1.0.0
+on that commit. Never move/force-push a published tag.
+
+Tag-triggered publication verifies the tagged commit is an ancestor of main.
+Its candidate job runs again on that exact tagged checkout. The dependent
+publish job downloads the already verified package, rechecks every checksum,
+loads and pushes those exact saved images, and attaches those exact report
+bytes plus evidence/manifest/checksums to GitHub Release. It never regenerates
+the report or rebuilds images after verification. Publication permissions are
+restricted to that tag-only job. No latest tag is moved by this workflow.
+
+If tests, metadata, renderer, build or integrity checks fail, the candidate
+fails and publication cannot run. A dry run is not publication authorization.
+No tag or Release has been created as part of this implementation task.
+
+## Local generation and independent integrity checks
+
+From backend, after actual pytest --junitxml=junit.xml --cov=app
+--cov-report=xml:coverage.xml, create test-evidence.json with exactly commit,
+junit_sha256 and coverage_sha256 (the workflow shows the reproducible command).
+Then:
 
 ```sh
-python scripts/verify_release.py --root /path/to/candidate \
-  --bundle /path/to/report-output --images /path/to/built-images.json \
-  --version v1.0.0 --commit FULL_40_CHARACTER_SHA --output /path/to/report-output
+python scripts/generate_release_report.py --version v1.0.0 --commit FULL_CANDIDATE_SHA \
+  --junit junit.xml --coverage coverage.xml --evidence test-evidence.json \
+  --output-dir ../release-bundle
+cp junit.xml coverage.xml test-evidence.json ../release-bundle/
 ```
 
-The image JSON is a list with `component`, `tag` and `image_id`; the workflow
-creates it from `docker image inspect`, never by guessing a digest.
-Copy all four assets plus the manifest and SHA256SUMS into one directory before
-running `sha256sum --check SHA256SUMS`. Keep the original verified files intact.
+Use repository-root scripts/verify_release.py with --root, --bundle, --images,
+--version, --commit and a fresh --output directory. Image JSON must be captured
+from docker image inspect, never guessed. Existing manifest/checksum outputs
+are rejected. The manifest identifies local image IDs, not registry manifest
+digests. PDF signature checks do not establish visual/typographical equivalence.
 
-## Publication handoff
-
-1. Merge the approved PLN-36 contributions into `main`. Resolve conflicts with
-   other release dependencies there; never target another feature PR's branch.
-2. Check CI, E2E, performance/security evidence and migrations on the actual
-   chosen commit. Do not substitute an unrelated earlier green run.
-3. Run candidate verification on main. If any check fails, fix the responsible
-   contribution and repeat. Never change report values just to pass this check.
-4. With the responsible team member's release approval, tag that exact main
-   commit `v1.0.0` and run the publisher from #40. Confirm both registry images
-   and the PDF/HTML/JSON report assets and release notes are present.
-5. If the publisher regenerates reports or rebuilds images, run this verifier
-   again on those actual files and image records immediately before uploading.
-   Report generation timestamps and rebuilt image IDs can differ; never reuse
-   an earlier manifest for changed bytes. Attach the resulting manifest and
-   checksums beside those exact assets and verify the published downloads.
-   This verification
-   workflow is separate from #40 and is not automatically enforced by its
-   publisher; the release operator must check it before creating the tag.
-6. Record the actual GitHub Release URL and tag commit as delivery evidence.
-   Do not describe the release as published before this happens.
-
-The tag is created only after the final candidate is chosen. Never move or
-force-push an already published tag; correct an erroneous publication through
-an agreed new patch version. Never delete a shared database to create a report.
-
-## Current integration observations (24.11.2026)
-
-At reviewed PR #40 commit `2f2725614597baecd15fc0bd4c35881a987509cd`,
-`frontend/package.json` is changed to 1.0.0 but its package-lock version fields
-are not updated. The validator correctly treats this as a blocker. The report
-producer was run locally in its real isolated database. Its report shows
-75% pass rate against an 80% minimum, and 62.5% requirement coverage against
-an 80% minimum; `gate_passed` is false. These are demo-seed results, not the
-project CI test results. They must not be edited or described as release-ready. The current upstream main remains 0.1.0 and
-contains no report generator, so it is not yet a v1.0 release candidate.
-These observations do not modify Caner's branch or claim a release exists.
+No .env or deployment data is read. PostgreSQL test fixtures reset only the
+job's disposable database. Generated PDF/release bundles are artifacts, not
+committed course reports. Original demo preview output is diagnostic only.

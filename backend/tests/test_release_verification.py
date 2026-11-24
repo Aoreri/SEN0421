@@ -161,3 +161,51 @@ def test_execution_rate_must_match_counts(candidate):
     with pytest.raises(verifier.InvalidRelease, match="execution rate"):
         verifier.verify(**candidate)
     assert not candidate["output"].exists()
+
+
+def test_publication_rejects_demo_preview(candidate):
+    with pytest.raises(verifier.InvalidRelease, match="actual test evidence"):
+        verifier.verify(**candidate, require_test_evidence=True)
+
+
+@pytest.mark.parametrize("tampered", [False, True])
+def test_actual_report_is_recomputed_from_evidence(candidate, tampered):
+    from xml.etree.ElementTree import Element, SubElement, tostring
+
+    from scripts.release_evidence import REQUIREMENTS, summarize
+
+    bundle = candidate["bundle"]
+    root = Element("testsuite")
+    for names in REQUIREMENTS.values():
+        for name in names:
+            SubElement(root, "testcase", name=name)
+    junit, coverage, evidence = [
+        bundle / name for name in ("junit.xml", "coverage.xml", "test-evidence.json")
+    ]
+    junit.write_bytes(tostring(root))
+    coverage.write_text('<coverage line-rate="0.9" branch-rate="0.9"/>')
+    evidence.write_text(
+        json.dumps(
+            {
+                "commit": SHA,
+                "junit_sha256": hashlib.sha256(junit.read_bytes()).hexdigest(),
+                "coverage_sha256": hashlib.sha256(coverage.read_bytes()).hexdigest(),
+            }
+        )
+    )
+    report = summarize(junit, coverage, evidence, SHA)
+    report.update(
+        version="v1.0.0",
+        commit=SHA,
+        release={"version": "v1.0.0"},
+        generated_by="hash-bound-ci-test-evidence",
+    )
+    if tampered:
+        report["totals"]["passed"] += 1
+    (bundle / "test-summary-report-v1.0.0.json").write_text(json.dumps(report))
+    if tampered:
+        with pytest.raises(verifier.InvalidRelease, match="disagrees with actual"):
+            verifier.verify(**candidate, require_test_evidence=True)
+    else:
+        result = verifier.verify(**candidate, require_test_evidence=True)
+        assert len(result["assets"]) == 7

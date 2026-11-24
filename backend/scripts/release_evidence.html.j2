@@ -1,0 +1,12 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>{{ identifier }}</title>
+<style>@page {size:A4;margin:18mm}body{font:11px sans-serif}table{border-collapse:collapse;width:100%}td,th{border:1px solid #aaa;padding:5px}h1{font-size:20px}</style>
+<h1>IEEE 829 Test Summary Report — {{ identifier }}</h1>
+<p>Version: {{ version }} · Commit: {{ commit }} · Generated: {{ generated_at }}</p>
+<h2>1. Scope and environment</h2><p>{{ scope }}</p><p>Actual JUnit and Cobertura from the same candidate checkout. Evidence hashes: {{ evidence }}</p>
+<h2>2. Overall results</h2><p>{{ totals }}</p>
+<h2>3. Requirement acceptance witnesses</h2><table><tr><th>ID</th><th>Executed witnesses</th><th>Verified</th><th>Missing</th></tr>
+{% for f in feature_results %}<tr><td>{{ f.id }}</td><td>{{ f.witnesses|join(', ') }}</td><td>{{ f.verified }}</td><td>{{ f.missing|join(', ') }}</td></tr>{% endfor %}</table>
+<h2>4. Incidents and limitations</h2><p>JUnit failures are listed below. This report does not query or certify a live project's Critical defects. Skipped tests remain skipped and do not satisfy requirement witnesses. Unmapped test results count in totals but do not create requirement links.</p>
+{% for r in results if r.status != 'Passed' %}<p>{{ r.status }} — {{ r.classname }}.{{ r.name }}</p>{% endfor %}
+<h2>5. Coverage and release assessment</h2><p>Code coverage: {{ code_coverage }}. Requirement coverage is computed separately from named executed acceptance witnesses.</p><p>Exit criteria: {{ gate.criteria }}. Gate passed: <strong>{{ gate.gate_passed }}</strong>.</p>
+<p>Release approval, security/performance/E2E evidence and publication are separate responsibilities; a generated report is not a published release.</p></html>

@@ -3,6 +3,7 @@
 import argparse
 import ast
 import hashlib
+import importlib.util
 import json
 import math
 import re
@@ -51,7 +52,9 @@ def check_source(root, version):
     require(versions == [expected], "Backend FastAPI version mismatch")
 
 
-def verify(root, bundle, images_path, version, commit, output):
+def verify(
+    root, bundle, images_path, version, commit, output, require_test_evidence=False
+):
     require(
         re.fullmatch(r"v\d+\.\d+\.\d+", version),
         "Expected a stable version such as v1.0.0",
@@ -68,6 +71,14 @@ def verify(root, bundle, images_path, version, commit, output):
     check_source(root, version)
     names = [f"test-summary-report-{version}.{ext}" for ext in ("pdf", "html", "json")]
     names.append(f"release-notes-{version}.md")
+    source_report = read_json(bundle / names[2])
+    if require_test_evidence:
+        require(
+            source_report.get("generated_by") == "hash-bound-ci-test-evidence",
+            "Publication requires actual test evidence, not a demo preview",
+        )
+    if source_report.get("generated_by") == "hash-bound-ci-test-evidence":
+        names.extend(["junit.xml", "coverage.xml", "test-evidence.json"])
     assets = []
     for name in names:
         path = bundle / name
@@ -116,6 +127,47 @@ def verify(root, bundle, images_path, version, commit, output):
         report.get("gate", {}).get("gate_passed") is True,
         "Release exit gate has not passed",
     )
+    if source_report.get("generated_by") == "hash-bound-ci-test-evidence":
+        evidence = read_json(bundle / "test-evidence.json")
+        expected = {
+            "commit": commit,
+            **{
+                f"{name}_sha256": hashlib.sha256(
+                    (bundle / f"{name}.xml").read_bytes()
+                ).hexdigest()
+                for name in ("junit", "coverage")
+            },
+        }
+        require(
+            evidence == expected and report.get("evidence") == expected,
+            "Report test-evidence commit/hash mismatch",
+        )
+    if require_test_evidence:
+        source = (
+            Path(__file__).resolve().parents[1] / "backend/scripts/release_evidence.py"
+        )
+        spec = importlib.util.spec_from_file_location("release_evidence_check", source)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        actual = module.summarize(
+            bundle / "junit.xml",
+            bundle / "coverage.xml",
+            bundle / "test-evidence.json",
+            commit,
+        )
+        require(
+            all(
+                report.get(key) == actual[key]
+                for key in (
+                    "totals",
+                    "gate",
+                    "feature_results",
+                    "code_coverage",
+                    "results",
+                )
+            ),
+            "Report disagrees with actual JUnit/Cobertura evidence",
+        )
     totals = report.get("totals", {})
     for field in ("total_cases", "executed_cases", "passed", "failed", "not_run"):
         value = totals.get(field)
@@ -203,7 +255,13 @@ def main():
     args = parser.parse_args()
     try:
         manifest = verify(
-            args.root, args.bundle, args.images, args.version, args.commit, args.output
+            args.root,
+            args.bundle,
+            args.images,
+            args.version,
+            args.commit,
+            args.output,
+            require_test_evidence=True,
         )
     except (InvalidRelease, OSError, TypeError, AttributeError) as error:
         raise SystemExit(f"Release verification failed: {error}") from error
