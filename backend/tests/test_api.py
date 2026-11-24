@@ -1378,3 +1378,131 @@ def test_test_summary_report_snapshots_and_html_pdf_export(client):
     assert client.get(f"/api/releases/{rid}/summary-report/snapshots/999").status_code == 404
     assert client.get(f"/api/releases/{rid}/summary-report/export?snapshot_id=999").status_code == 404
     assert client.get("/api/releases/999/summary-report/export").status_code == 404
+
+
+def test_summary_report_includes_unlinked_defects_for_every_project(client):
+    admin = as_user("admin")
+    tester = as_user("tester")
+
+    project = client.post(
+        "/api/projects", json={"name": "P-Summary-Defects"}, headers=admin
+    ).json()
+    client.post(
+        "/api/requirements",
+        json={"id": "R-SUM-DEF", "project_id": project["id"], "title": "R-SUM-DEF"},
+        headers=admin,
+    )
+    client.post(
+        "/api/test-cases",
+        json={
+            "id": "TC-SUM-DEF",
+            "title": "TC-SUM-DEF",
+            "status": "Failed",
+            "requirements": ["R-SUM-DEF"],
+        },
+        headers=tester,
+    )
+    defect = client.post(
+        "/api/defects",
+        json={"title": "Bağlantısız kritik hata", "severity": "Critical"},
+        headers=tester,
+    ).json()
+    release = client.post(
+        "/api/releases", json={"project_id": project["id"], "version": "1.0"}, headers=admin
+    ).json()
+
+    snap = client.post(
+        f"/api/releases/{release['id']}/summary-report/snapshots", headers=tester
+    ).json()
+    summary = snap["payload"]["defect_summary"]
+    critical = next(row for row in summary["by_severity"] if row["severity"] == "Critical")
+
+    # Gate, severity table and defect list must use the same project defect filter.
+    assert snap["payload"]["gate"]["actual_open_critical"] == 1
+    assert summary["open_critical"] == snap["payload"]["gate"]["actual_open_critical"]
+    assert summary["total"] == sum(row["total"] for row in summary["by_severity"])
+    assert summary["open_total"] == sum(row["open"] for row in summary["by_severity"])
+    assert critical["total"] == 1 and critical["open"] == 1
+    assert defect["id"] in [d["id"] for d in snap["payload"]["defects"]]
+
+
+def test_summary_report_labels_release_scoped_pass_rate_and_gate_basis(client):
+    from app.summary_reports import _fallback_summary_pdf_bytes
+
+    admin = as_user("admin")
+    tester = as_user("tester")
+
+    project = client.post(
+        "/api/projects", json={"name": "P-Summary-Rate"}, headers=admin
+    ).json()
+    client.post(
+        "/api/requirements",
+        json={"id": "R-SUM-RATE", "project_id": project["id"], "title": "R-SUM-RATE"},
+        headers=admin,
+    )
+    client.post(
+        "/api/test-cases",
+        json={
+            "id": "TC-SUM-RATE",
+            "title": "TC-SUM-RATE",
+            "status": "Failed",
+            "requirements": ["R-SUM-RATE"],
+        },
+        headers=tester,
+    )
+    release_a = client.post(
+        "/api/releases", json={"project_id": project["id"], "version": "1.0"}, headers=admin
+    ).json()
+    release_b = client.post(
+        "/api/releases", json={"project_id": project["id"], "version": "2.0"}, headers=admin
+    ).json()
+
+    run_a = client.post(
+        "/api/test-runs",
+        json={
+            "name": "Run A",
+            "project_id": project["id"],
+            "release_id": release_a["id"],
+            "test_case_ids": ["TC-SUM-RATE"],
+        },
+        headers=tester,
+    ).json()
+    client.post(
+        f"/api/test-runs/{run_a['id']}/executions/{run_a['executions'][0]['id']}",
+        json={"status": "Failed"},
+        headers=tester,
+    )
+    # A later run in another release overwrites the catalogue status the gate reads.
+    run_b = client.post(
+        "/api/test-runs",
+        json={
+            "name": "Run B",
+            "project_id": project["id"],
+            "release_id": release_b["id"],
+            "test_case_ids": ["TC-SUM-RATE"],
+        },
+        headers=tester,
+    ).json()
+    client.post(
+        f"/api/test-runs/{run_b['id']}/executions/{run_b['executions'][0]['id']}",
+        json={"status": "Passed"},
+        headers=tester,
+    )
+
+    snap = client.post(
+        f"/api/releases/{release_a['id']}/summary-report/snapshots", headers=tester
+    ).json()
+    totals = snap["payload"]["totals"]
+    gate = snap["payload"]["gate"]
+
+    assert totals["pass_rate"] == 0.0
+    assert totals["pass_rate_basis"] == "release_runs_with_catalogue_fallback"
+    assert gate["actual_pass_rate"] == 100.0
+    assert gate["actual_pass_rate_basis"] == "project_catalogue_status"
+
+    # The document must state that the two rates use different sources instead of leaving them unexplained.
+    assert "sürüm kapsamlı" in snap["html_content"]
+    assert "proje kataloğundaki" in snap["html_content"]
+    pdf = _fallback_summary_pdf_bytes(snap["payload"])
+    assert b"(release-scoped" in pdf
+    assert b"\\(catalogue\\)" in pdf

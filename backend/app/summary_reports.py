@@ -75,6 +75,7 @@ def build_summary_report_data(
     assert project is not None
 
     gate = release_gate_out(db, release)
+    gate = {**gate, "actual_pass_rate_basis": "project_catalogue_status"}
     if gate["waiver"] is not None and isinstance(gate["waiver"].get("waived_at"), datetime):
         gate = {
             **gate,
@@ -158,6 +159,7 @@ def build_summary_report_data(
         "not_run": status_counts["Not Run"],
         "execution_rate": round(executed_cases / total_cases * 100, 1) if total_cases else 0.0,
         "pass_rate": round(status_counts["Passed"] / decisive * 100, 1) if decisive else 0.0,
+        "pass_rate_basis": "release_runs_with_catalogue_fallback",
         "total_requirements": len(reqs),
         "covered_requirements": covered_reqs,
         "requirement_coverage": gate["actual_req_coverage"],
@@ -241,11 +243,8 @@ def build_summary_report_data(
     defect_branches: list[Any] = [
         Defect.test_case.in_(select(TestCase.id).where(project_case_filter)),
         Defect.id.in_(project_exec_defect_ids),
+        Defect.test_case.is_(None) & ~Defect.id.in_(other_project_exec_defect_ids),
     ]
-    if release.project_id == 1:
-        defect_branches.append(
-            Defect.test_case.is_(None) & ~Defect.id.in_(other_project_exec_defect_ids)
-        )
     project_defect_filter = or_(*defect_branches) & or_(
         Defect.test_case.is_(None), ~Defect.test_case.in_(other_project_case_ids)
     )
@@ -321,7 +320,8 @@ def _fallback_summary_pdf_bytes(payload: dict[str, Any]) -> bytes:
         "1. Overall Test Totals:",
         f"  Total Cases={totals['total_cases']}, Executed={totals['executed_cases']} ({totals['execution_rate']}%)",
         f"  Passed={totals['passed']}, Failed={totals['failed']}, Blocked={totals['blocked']}, Skipped={totals['skipped']}, NotRun={totals['not_run']}",
-        f"  Pass Rate={totals['pass_rate']}% | Requirement Coverage={totals['requirement_coverage']}% ({totals['covered_requirements']}/{totals['total_requirements']})",
+        f"  Pass Rate={totals['pass_rate']}% (release-scoped, catalogue fallback for unrun cases)",
+        f"  Requirement Coverage={totals['requirement_coverage']}% ({totals['covered_requirements']}/{totals['total_requirements']})",
         "",
         "2. Results by Feature / Requirement:",
     ]
@@ -348,7 +348,7 @@ def _fallback_summary_pdf_bytes(payload: dict[str, Any]) -> bytes:
     lines.append("")
     lines.append("4. Exit Criteria & Release Gate Evaluation:")
     lines.append(
-        f"  - Pass Rate: Actual={gate['actual_pass_rate']}% vs Target>={gate['criteria']['min_pass_rate']}% "
+        f"  - Pass Rate: Actual={gate['actual_pass_rate']}% (catalogue) vs Target>={gate['criteria']['min_pass_rate']}% "
         f"({'PASS' if gate['passed_criteria']['pass_rate'] else 'FAIL'})"
     )
     lines.append(

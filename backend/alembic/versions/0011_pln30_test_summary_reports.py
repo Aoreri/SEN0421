@@ -1,7 +1,7 @@
 """IEEE 829 Test Summary Report anlık görüntü (snapshot) tablosu (PLN-30)
 
 Revision ID: 0011_pln30
-Revises: 0010
+Revises: 0011
 Create Date: 2026-11-22
 """
 import sqlalchemy as sa
@@ -9,7 +9,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision = "0011_pln30"
-down_revision = "0010"
+down_revision = "0011"
 branch_labels = None
 depends_on = None
 
