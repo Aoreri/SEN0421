@@ -62,6 +62,7 @@ export function JUnitImportsPage({ user }: { user: User | null }) {
     <h2>JUnit İçe Aktarım Raporları</h2>
     <p>Seçilen projenin son 50 içe aktarımı. Başarısız sonuçtan açılan veya yeniden kullanılan defect bağlantısı raporda korunur.</p>
     <ErrorAlert message={error} />
+    <div className="filter-group">
     <label htmlFor="import-project">Proje</label>
     <select id="import-project" value={projectId ?? ""} onChange={e => setProjectId(Number(e.target.value))}>
       {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
@@ -70,6 +71,7 @@ export function JUnitImportsPage({ user }: { user: User | null }) {
     <select id="import-report" value={importId ?? ""} onChange={e => setImportId(Number(e.target.value))} disabled={!imports.length}>
       {imports.map(r => <option key={r.id} value={r.id}>#{r.id} · {r.created_at} · {r.summary.total} sonuç</option>)}
     </select>
+    </div>
     {!imports.length && <p>Bu projede içe aktarım raporu bulunamadı.</p>}
     {loading && <p role="status">Rapor yükleniyor...</p>}
     {report && <><p>Toplam: {report.summary.total} · Eşleşen: {report.summary.matched} · Eşleşmeyen: {report.summary.unmatched}</p><ImportResultsTable results={report.results} /></>}
