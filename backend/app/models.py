@@ -191,6 +191,8 @@ class ImportedTestResult(Base):
     status: Mapped[str] = mapped_column(String(20))
     duration_seconds: Mapped[float | None]
     message: Mapped[str] = mapped_column(Text)
+    failure_signature: Mapped[str | None] = mapped_column(String(64))
+    defect_id: Mapped[int | None] = mapped_column(ForeignKey("defects.id"))
 
 
 class TestRun(Base):
@@ -281,6 +283,20 @@ class CoverageImport(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     summary: Mapped[dict] = mapped_column(JSON)
     files: Mapped[list[dict]] = mapped_column(JSON)
+
+
+class JUnitAutoDefect(Base):
+    """One persistent incident per project, stable test-case ID and error signature."""
+
+    __tablename__ = "junit_auto_defects"
+    __table_args__ = (UniqueConstraint("project_id", "test_case_id", "failure_signature",
+                                       name="uq_junit_auto_defect_key"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"))
+    test_case_id: Mapped[str] = mapped_column(ForeignKey("test_cases.id"))
+    failure_signature: Mapped[str] = mapped_column(String(64))
+    defect_id: Mapped[int] = mapped_column(ForeignKey("defects.id"), unique=True)
 
 
 class TestSummaryReportSnapshot(Base):
