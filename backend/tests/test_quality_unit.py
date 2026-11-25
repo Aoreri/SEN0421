@@ -3,6 +3,7 @@
 Session doubles supply query results. Real SQL populations and persistence are
 covered separately by the integration suite; those tests are not counted here.
 """
+from collections import namedtuple
 from datetime import UTC, datetime, timedelta, timezone
 from types import SimpleNamespace as NS
 from unittest.mock import MagicMock
@@ -12,7 +13,7 @@ from fastapi import HTTPException
 from sqlalchemy.dialects import postgresql, sqlite
 
 from app import main, metrics, runs
-from app.models import Defect, DefectHistory, DefectTransition, Project, Release, User
+from app.models import Defect, DefectHistory, DefectTransition, Project, Release, Sprint, User
 from app.models import TestCase as Case
 from app.models import TestExecution as Execution
 from app.models import TestRun as Run
@@ -255,3 +256,79 @@ def test_execution_incident_history_and_case_link():
     assert ex.defects[0].title == "Incident"
     histories = [c.args[0] for c in db.add.call_args_list if isinstance(c.args[0], DefectHistory)]
     assert len(histories) == 1 and histories[0].from_status is None
+
+
+# PLN-28 sprint scoping arrived after PLN-35; these keep the >=80% unit gate honest.
+JAN = datetime(2026, 1, 1, tzinfo=UTC)
+ZERO_TOTALS = namedtuple("Totals", "passed failed blocked skipped not_run")(0, 0, 0, 0, 0)
+
+
+@pytest.mark.parametrize("value,expected", [
+    (None, None),
+    (datetime(2026, 1, 1), JAN),
+    (datetime(2026, 1, 1, 3, tzinfo=timezone(timedelta(hours=3))), JAN),
+])
+def test_stored_utc(value, expected):
+    assert metrics.stored_utc(value) == expected
+
+
+def sprint_db(sprint, explicit_runs=None):
+    db = MagicMock()
+    db.get_bind.return_value.dialect = sqlite.dialect()
+    db.get.side_effect = lambda model, key: sprint if model is Sprint else (
+        Release(id=key, project_id=1) if model is Release else Project(id=key))
+    responses = [MagicMock() for _ in range(5)]
+    responses[0].one.return_value = ZERO_TOTALS
+    responses[1].mappings.return_value = []
+    responses[2].one.return_value = NS(total=0, reopened=0, open=0, age_count=0,
+                                       resolution_count=0, age=None, resolution=None)
+    responses[3].mappings.return_value = []
+    responses[4].mappings.return_value = []
+    db.execute.side_effect = responses
+    db.scalar.side_effect = [explicit_runs] + [0] * 10
+    return db
+
+
+@pytest.mark.parametrize("sprint,kwargs,status", [
+    (None, {"sprint_id": 5}, 404),
+    (Sprint(id=5, project_id=1, release_id=9), {"sprint_id": 5, "release_id": 2}, 422),
+    (Sprint(id=5, project_id=1, start_at=JAN + timedelta(days=1), end_at=JAN), {"sprint_id": 5}, 422),
+])
+def test_invalid_sprint_metric_scope(sprint, kwargs, status):
+    with pytest.raises(HTTPException) as error:
+        metrics.expanded_metrics(sprint_db(sprint), **kwargs)
+    assert error.value.status_code == status
+
+
+@pytest.mark.parametrize("sprint,explicit,release_id", [
+    (Sprint(id=5, project_id=1), None, None),  # undated: explicit sprint runs only
+    (Sprint(id=5, project_id=1, release_id=9, start_at=JAN, end_at=JAN + timedelta(days=14)), 77, 9),
+    (Sprint(id=5, project_id=1, release_id=9, start_at=JAN, end_at=JAN + timedelta(days=14)), None, None),
+    (Sprint(id=5, project_id=1, start_at=JAN, end_at=JAN + timedelta(days=14)), None, None),
+])
+def test_sprint_metric_scope_branches(sprint, explicit, release_id):
+    value = metrics.expanded_metrics(sprint_db(sprint, explicit), sprint_id=5, release_id=release_id)
+    assert value["scope"]["sprint_id"] == 5 and value["scope"]["project_id"] == 1
+    assert value["total_tests"] == 0 and value["pass_rate"] == 0
+
+
+@pytest.mark.parametrize("sprint", [None, Sprint(project_id=2), Sprint(project_id=1, release_id=3)])
+def test_invalid_run_sprint(sprint):
+    db = MagicMock()
+    db.get.side_effect = lambda model, key: sprint if model is Sprint else (
+        Release(project_id=1) if model is Release else Project(id=1))
+    body = runs.TestRunCreate(name="Run", project_id=1, test_case_ids=["U"], release_id=2, sprint_id=5)
+    with pytest.raises(HTTPException) as error:
+        runs.create_test_run(body, db, ADMIN)
+    assert error.value.status_code == 422
+    db.commit.assert_not_called()
+
+
+def test_run_inherits_sprint_release_before_suite_check():
+    db = MagicMock()
+    db.get.side_effect = lambda model, key: Sprint(project_id=1, release_id=3) if model is Sprint else (
+        Project(id=1) if model is Project else None)
+    body = runs.TestRunCreate(name="Run", project_id=1, test_case_ids=["U"], sprint_id=5, suite_id=4)
+    with pytest.raises(HTTPException) as error:
+        runs.create_test_run(body, db, ADMIN)
+    assert "suite" in error.value.detail.lower()
