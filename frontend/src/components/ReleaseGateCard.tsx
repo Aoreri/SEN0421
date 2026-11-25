@@ -66,8 +66,8 @@ export function ReleaseGateCard({
 
   const canManageGate =
     user !== null && (user.role === "Admin" || user.role === "Test Lead");
-  // PLN-32: muafiyet kaydı ve kaldırma ekranda yalnızca Test Lead'e açıktır.
-  const canWaive = user !== null && user.role === "Test Lead";
+  // FR-REL-03: the API lets Admin and Test Lead record or remove a waiver.
+  const canWaive = canManageGate;
 
   async function handleSaveCriteria(e: FormEvent) {
     e.preventDefault();
@@ -290,12 +290,6 @@ export function ReleaseGateCard({
             </button>
           </div>
         </form>
-      )}
-
-      {canManageGate && !canWaive && !gate.gate_passed && (
-        <p className="hint" style={{ marginTop: 8 }}>
-          Muafiyet kaydı yalnızca <strong>Test Lead</strong> rolüne açıktır.
-        </p>
       )}
 
       {canWaive && !gate.gate_passed && (

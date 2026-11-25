@@ -208,6 +208,8 @@ export type ImportedTestResult = {
   duration_seconds: number | null;
   message: string;
   unmatched_reason: "unknown_test_case" | "not_linked_to_project" | null;
+  failure_signature: string | null;
+  defect_id: number | null;
 };
 
 export type ImportedTestRun = {
@@ -753,14 +755,6 @@ export const api = {
     request<TestPlanSnapshot>(`/test-plans/${id}/snapshots`, { method: "POST" }),
   getTestPlanSnapshot: (planId: number, snapshotId: number) =>
     request<TestPlanSnapshot>(`/test-plans/${planId}/snapshots/${snapshotId}`),
-  exportTestPlanUrl: (
-    planId: number,
-    format: "html" | "pdf" = "html",
-    snapshotId?: number,
-  ) =>
-    `/api/test-plans/${planId}/export?format=${format}${
-      snapshotId !== undefined ? `&snapshot_id=${snapshotId}` : ""
-    }`,
   summaryReportSnapshots: (releaseId: number) =>
     request<TestSummaryReportSnapshotSummary[]>(
       `/releases/${releaseId}/summary-report/snapshots`,
@@ -779,5 +773,12 @@ export const api = {
         snapshotId !== undefined ? `&snapshot_id=${snapshotId}` : ""
       }`,
       `test-summary-report-${releaseId}${snapshotId !== undefined ? `-snap-${snapshotId}` : ""}.${format}`,
+    ),
+  downloadTestPlan: (planId: number, format: "html" | "pdf", snapshotId?: number) =>
+    download(
+      `/test-plans/${planId}/export?format=${format}${
+        snapshotId !== undefined ? `&snapshot_id=${snapshotId}` : ""
+      }`,
+      `test-plan-${planId}${snapshotId !== undefined ? `-snap-${snapshotId}` : ""}.${format}`,
     ),
 };

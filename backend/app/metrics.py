@@ -2,10 +2,11 @@
 from datetime import UTC, datetime
 from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import Float, case, cast, func, or_, select, union_all
 from sqlalchemy.orm import Session
 
+from .auth import current_user
 from .db import DB
 from .models import (
     Defect,
@@ -53,7 +54,7 @@ def stored_utc(value: datetime | None) -> datetime | None:
     return value.astimezone(UTC)
 
 
-@router.get("/expanded")
+@router.get("/expanded", dependencies=[Depends(current_user)])
 def expanded_metrics(db: DB,
                      project_id: Annotated[int | None, Query(ge=1)] = None,
                      release_id: Annotated[int | None, Query(ge=1)] = None,

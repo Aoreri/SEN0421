@@ -29,9 +29,11 @@ import { ReleaseGateCard } from "./components/ReleaseGateCard";
 import { StatusBadge } from "./components/StatusBadge";
 import { DefectDetailPage } from "./pages/DefectDetailPage";
 import { LoginPage } from "./pages/LoginPage";
+import { JUnitImportsPage } from "./pages/JUnitImportsPage";
 import { ProjectsPage } from "./pages/ProjectsPage";
 import { ReleasesPage } from "./pages/ReleasesPage";
 import { TestCasesPage } from "./pages/TestCasesPage";
+import { TestPlansPage } from "./pages/TestPlansPage";
 import { TestRunsPage } from "./pages/TestRunsPage";
 import {
   computePreviewExpandedMetrics,
@@ -86,6 +88,16 @@ function DashboardView({ user }: DashboardViewProps) {
     (user.role === "Admin" || user.role === "Test Lead" || user.role === "Tester");
 
   const load = useCallback(async () => {
+    if (!user) {
+      setMetrics(null);
+      setExpandedMetrics(null);
+      setTests([]);
+      setDefects([]);
+      setReleases([]);
+      setReleaseGate(null);
+      setError("");
+      return;
+    }
     try {
       const [m, t, d, projs, rels, reqs] = await Promise.all([
         api.metrics(),
@@ -184,7 +196,7 @@ function DashboardView({ user }: DashboardViewProps) {
         ),
       );
     }
-  }, [selectedReleaseId]);
+  }, [selectedReleaseId, user]);
 
   useEffect(() => {
     void load();
@@ -513,6 +525,9 @@ function DashboardView({ user }: DashboardViewProps) {
             <Link to="/test-runs" className="detail-link">
               Test Koşumu Başlat / Yürüt →
             </Link>
+            <Link to="/test-plans" className="detail-link">
+              IEEE 829 Test Planları &amp; HTML/PDF →
+            </Link>
           </div>
         </div>
         <DataTable
@@ -701,6 +716,12 @@ export default function App() {
             Test Koşumları
           </NavLink>
           <NavLink
+            to="/test-plans"
+            className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
+          >
+            Test Planları
+          </NavLink>
+          <NavLink
             to="/releases"
             className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
           >
@@ -718,6 +739,7 @@ export default function App() {
           >
             Giriş / Rol Seçimi
           </NavLink>
+          <NavLink to="/junit-imports" className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}>JUnit Raporları</NavLink>
         </nav>
       </header>
 
@@ -725,7 +747,9 @@ export default function App() {
         <Routes>
           <Route path="/" element={<DashboardView user={user} />} />
           <Route path="/test-cases" element={<TestCasesPage user={user} />} />
+          <Route path="/junit-imports" element={<JUnitImportsPage user={user} />} />
           <Route path="/test-runs" element={<TestRunsPage user={user} />} />
+          <Route path="/test-plans" element={<TestPlansPage user={user} />} />
           <Route path="/defects/:id" element={<DefectDetailPage user={user} />} />
           <Route path="/releases" element={<ReleasesPage user={user} />} />
           <Route path="/projects" element={<ProjectsPage user={user} />} />

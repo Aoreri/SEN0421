@@ -1,4 +1,6 @@
 """PLN-22: bounded, entity-safe JUnit parsing; no database side effects."""
+import hashlib
+import json
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from xml.etree.ElementTree import Element, ParseError
@@ -19,6 +21,7 @@ class JUnitResult:
     status: str
     duration_seconds: float | None
     message: str
+    failure_signature: str | None = None
 
 
 def tag(element: Element) -> str:
@@ -60,7 +63,17 @@ def parse_case(case: Element, suite: str) -> JUnitResult:
     message = "\n".join("\n".join(filter(None, [child.get("message", ""),
                                                "".join(child.itertext())])) for child in outcomes)
     bounded(message, MAX_XML_BYTES, "message")
-    return JUnitResult(name, classname, suite, key, status, duration, message)
+    signature = None
+    if failed:
+        # Retain diagnostic content and error kind/type, normalizing whitespace
+        # only. Runtime names, suite, duration and commit do not define the bug.
+        evidence = sorted((tag(child), " ".join(child.get("type", "").split()),
+                           " ".join(child.get("message", "").split()),
+                           " ".join("".join(child.itertext()).split()))
+                          for child in outcomes if tag(child) in ("failure", "error"))
+        signature = hashlib.sha256(json.dumps(evidence, ensure_ascii=False,
+                                             separators=(",", ":")).encode()).hexdigest()
+    return JUnitResult(name, classname, suite, key, status, duration, message, signature)
 
 
 def parse_junit(data: bytes) -> list[JUnitResult]:

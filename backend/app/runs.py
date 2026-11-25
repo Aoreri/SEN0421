@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field, StringConstraints
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from .auth import ADMIN, TEST_LEAD, TESTER, require_roles
+from .auth import ADMIN, TEST_LEAD, TESTER, current_user, require_roles
 from .db import DB
 from .models import (
     Defect,
@@ -24,6 +24,7 @@ from .models import (
 )
 
 router = APIRouter(prefix="/api", tags=["test-runs"])
+READ = [Depends(current_user)]
 ExecuteUser = Annotated[User, Depends(require_roles(ADMIN, TEST_LEAD, TESTER))]
 
 RunName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
@@ -106,7 +107,7 @@ def load_execution_or_404(db: Session, run_id: int, execution_id: int) -> TestEx
     return ex
 
 
-@router.get("/test-runs")
+@router.get("/test-runs", dependencies=READ)
 def list_test_runs(db: DB):
     stmt = (
         select(TestRun)
@@ -116,7 +117,7 @@ def list_test_runs(db: DB):
     return [run_out(r) for r in db.scalars(stmt)]
 
 
-@router.get("/test-runs/{run_id}")
+@router.get("/test-runs/{run_id}", dependencies=READ)
 def get_test_run(run_id: int, db: DB):
     return run_out(load_run_or_404(db, run_id))
 

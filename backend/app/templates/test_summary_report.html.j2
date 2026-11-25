@@ -111,6 +111,11 @@
       font-size: 11px;
       color: #6b7280;
     }
+    .note {
+      margin: 6px 0 0;
+      font-size: 11px;
+      color: #4b5563;
+    }
   </style>
 </head>
 <body>
@@ -156,7 +161,7 @@
         <div class="metric-value">%{{ totals.execution_rate }} ({{ totals.executed_cases }}/{{ totals.total_cases }})</div>
       </div>
       <div class="metric-card">
-        <div class="metric-label">Başarı Oranı (Pass Rate)</div>
+        <div class="metric-label">Başarı Oranı (Pass Rate — sürüm kapsamlı)</div>
         <div class="metric-value">%{{ totals.pass_rate }} ({{ totals.passed }}P / {{ totals.failed }}F)</div>
       </div>
       <div class="metric-card">
@@ -187,6 +192,12 @@
         </tr>
       </tbody>
     </table>
+    <p class="note">
+      Bu bölümdeki durum sayıları, yürütme oranı ve başarı oranı bu sürümün test koşumlarındaki son yürütme sonuçlarından hesaplanır;
+      bu sürümde koşulmamış vakalar için katalogdaki güncel test vakası durumu kullanılır.
+      Bölüm 5'teki çıkış kapısı ise proje kataloğundaki <code>TestCase.status</code> değerlerini
+      kullandığı için iki oran farklı olabilir.
+    </p>
   </section>
 
   <section>
@@ -354,6 +365,11 @@
         </tr>
       </tbody>
     </table>
+    <p class="note">
+      Çıkış kapısı değerleri proje kataloğundaki güncel test vakası durumlarından
+      (<code>TestCase.status</code>) hesaplanır ve sürüme özel koşum sonuçlarını kullanmaz.
+      Sürüm kapsamlı başarı oranı Bölüm 2'de raporlanmıştır.
+    </p>
 
     <div class="section-box">
       <p><strong>Genel Çıkış Kapısı Kararı:</strong> {{ "Çıkış Kapısı Geçti (Ready / Released uygun)" if gate.gate_passed else "Çıkış Kapısı Engelli (Kriterler sağlanmadı ve aktif muafiyet yok)" }}</p>

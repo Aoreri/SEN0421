@@ -43,7 +43,7 @@ export function DefectDetailPage({ user }: DefectDetailPageProps) {
   const [error, setError] = useState("");
 
   const loadDetail = useCallback(async () => {
-    if (!isValidId) {
+    if (!isValidId || !user) {
       setLoading(false);
       return;
     }
@@ -71,7 +71,7 @@ export function DefectDetailPage({ user }: DefectDetailPageProps) {
     } finally {
       setLoading(false);
     }
-  }, [defectId, isValidId]);
+  }, [defectId, isValidId, user]);
 
   useEffect(() => {
     setDefect(null);
