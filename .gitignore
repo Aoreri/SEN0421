@@ -34,3 +34,7 @@ htmlcov/
 # PLN-23 generated CI import evidence
 junit.xml
 dogfood-report.json
+
+# PLN-34 generated browser evidence
+frontend/test-results/
+frontend/playwright-report/

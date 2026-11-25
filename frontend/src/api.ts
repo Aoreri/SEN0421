@@ -33,6 +33,9 @@ export type Role = (typeof ROLES)[number];
 export const RELEASE_STATUSES = ["Planned", "In Test", "Ready", "Released"] as const;
 export type ReleaseStatus = (typeof RELEASE_STATUSES)[number];
 
+export const SPRINT_STATUSES = ["Planned", "Active", "Completed"] as const;
+export type SprintStatus = (typeof SPRINT_STATUSES)[number];
+
 export type User = {
   id: number;
   username: string;
@@ -56,6 +59,27 @@ export type Release = {
   project_id: number;
   version: string;
   status: ReleaseStatus;
+};
+
+export type Sprint = {
+  id: number;
+  project_id: number;
+  release_id: number | null;
+  name: string;
+  goal: string;
+  start_at: string | null;
+  end_at: string | null;
+  status: SprintStatus;
+};
+
+export type SprintInput = {
+  project_id: number;
+  release_id?: number | null;
+  name: string;
+  goal?: string;
+  start_at?: string | null;
+  end_at?: string | null;
+  status?: SprintStatus;
 };
 
 export type Requirement = {
@@ -127,6 +151,7 @@ export type TestRun = {
   name: string;
   project_id: number;
   release_id: number | null;
+  sprint_id?: number | null;
   suite_id: number | null;
   created_by: string;
   created_at: string;
@@ -137,6 +162,7 @@ export type CreateTestRunPayload = {
   name: string;
   project_id: number;
   release_id: number | null;
+  sprint_id?: number | null;
   suite_id: number | null;
   test_case_ids: string[];
 };
@@ -182,6 +208,8 @@ export type ImportedTestResult = {
   duration_seconds: number | null;
   message: string;
   unmatched_reason: "unknown_test_case" | "not_linked_to_project" | null;
+  failure_signature: string | null;
+  defect_id: number | null;
 };
 
 export type ImportedTestRun = {
@@ -314,6 +342,21 @@ export type TestPlanInput = {
   schedule_risks?: string;
 };
 
+export type TestSummaryReportSnapshotSummary = {
+  id: number;
+  release_id: number;
+  release_version: string;
+  release_status: ReleaseStatus;
+  gate_passed: boolean;
+  generated_by: string;
+  generated_at: string;
+};
+
+export type TestSummaryReportSnapshot = TestSummaryReportSnapshotSummary & {
+  html_content: string;
+  payload: Record<string, unknown>;
+};
+
 const TOKEN_STORAGE_KEY = "token";
 export const AUTH_EXPIRED_EVENT = "sds06:auth-expired";
 
@@ -393,7 +436,7 @@ export function formatErrorMessage(
   return fallback;
 }
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+async function send(path: string, options: RequestInit = {}): Promise<Response> {
   const token = getStoredToken();
   let res: Response;
   try {
@@ -417,6 +460,11 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     const payload: unknown = await res.json().catch(() => null);
     throw new ApiError(extractErrorDetail(payload, res.status, res.statusText), res.status);
   }
+  return res;
+}
+
+async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const res = await send(path, options);
 
   if (res.status === 204) {
     return undefined as T;
@@ -439,6 +487,19 @@ export type CoverageReport = CoverageImport & {
   files: (CoverageSummary & { filename: string })[];
 };
 
+/** Bearer token ile indirir; düz `<a href>` gezinmesi Authorization başlığını göndermez. */
+async function download(path: string, fallbackName: string): Promise<void> {
+  const res = await send(path);
+  const disposition = res.headers.get("Content-Disposition") ?? "";
+  const filename = /filename="([^"]+)"/.exec(disposition)?.[1] ?? fallbackName;
+  const url = URL.createObjectURL(await res.blob());
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 export const api = {
   login: (username: string, password: string) =>
     request<LoginResponse>("/auth/login", {
@@ -447,10 +508,24 @@ export const api = {
     }),
   me: () => request<User>("/auth/me"),
   metrics: () => request<Metrics>("/metrics"),
-  expandedMetrics: (releaseId?: number | null) =>
-    request<ExpandedMetrics>(
-      releaseId ? `/metrics/expanded?release_id=${releaseId}` : "/metrics/expanded",
-    ),
+  expandedMetrics: (
+    releaseId?: number | null,
+    options: {
+      projectId?: number | null;
+      sprintId?: number | null;
+      startAt?: string | null;
+      endAt?: string | null;
+    } = {},
+  ) => {
+    const params = new URLSearchParams();
+    if (options.projectId) params.set("project_id", String(options.projectId));
+    if (releaseId) params.set("release_id", String(releaseId));
+    if (options.sprintId) params.set("sprint_id", String(options.sprintId));
+    if (options.startAt) params.set("start_at", options.startAt);
+    if (options.endAt) params.set("end_at", options.endAt);
+    const qs = params.toString();
+    return request<ExpandedMetrics>(qs ? `/metrics/expanded?${qs}` : "/metrics/expanded");
+  },
   testSuites: () => request<TestSuite[]>("/test-suites"),
   getTestSuite: (id: number) => request<TestSuite>(`/test-suites/${id}`),
   createTestSuite: (project_id: number, name: string, description = "") =>
@@ -555,6 +630,33 @@ export const api = {
       body: JSON.stringify({ project_id, version: version.trim() }),
     }),
   deleteRelease: (id: number) => request<void>(`/releases/${id}`, { method: "DELETE" }),
+  sprints: (filters: { projectId?: number | null; releaseId?: number | null } = {}) => {
+    const params = new URLSearchParams();
+    if (filters.projectId) params.set("project_id", String(filters.projectId));
+    if (filters.releaseId) params.set("release_id", String(filters.releaseId));
+    const qs = params.toString();
+    return request<Sprint[]>(qs ? `/sprints?${qs}` : "/sprints");
+  },
+  getSprint: (id: number) => request<Sprint>(`/sprints/${id}`),
+  createSprint: (input: SprintInput) =>
+    request<Sprint>("/sprints", {
+      method: "POST",
+      body: JSON.stringify({
+        ...input,
+        name: input.name.trim(),
+        goal: (input.goal ?? "").trim(),
+      }),
+    }),
+  updateSprint: (id: number, input: SprintInput) =>
+    request<Sprint>(`/sprints/${id}`, {
+      method: "PUT",
+      body: JSON.stringify({
+        ...input,
+        name: input.name.trim(),
+        goal: (input.goal ?? "").trim(),
+      }),
+    }),
+  deleteSprint: (id: number) => request<void>(`/sprints/${id}`, { method: "DELETE" }),
   releaseGate: (releaseId: number) => request<ReleaseGateStatus>(`/releases/${releaseId}/gate`),
   updateReleaseStatus: (releaseId: number, status: ReleaseStatus) =>
     request<ReleaseGateStatus>(`/releases/${releaseId}/status`, {
@@ -653,12 +755,30 @@ export const api = {
     request<TestPlanSnapshot>(`/test-plans/${id}/snapshots`, { method: "POST" }),
   getTestPlanSnapshot: (planId: number, snapshotId: number) =>
     request<TestPlanSnapshot>(`/test-plans/${planId}/snapshots/${snapshotId}`),
-  exportTestPlanUrl: (
-    planId: number,
-    format: "html" | "pdf" = "html",
-    snapshotId?: number,
-  ) =>
-    `/api/test-plans/${planId}/export?format=${format}${
-      snapshotId !== undefined ? `&snapshot_id=${snapshotId}` : ""
-    }`,
+  summaryReportSnapshots: (releaseId: number) =>
+    request<TestSummaryReportSnapshotSummary[]>(
+      `/releases/${releaseId}/summary-report/snapshots`,
+    ),
+  createSummaryReportSnapshot: (releaseId: number) =>
+    request<TestSummaryReportSnapshot>(`/releases/${releaseId}/summary-report/snapshots`, {
+      method: "POST",
+    }),
+  getSummaryReportSnapshot: (releaseId: number, snapshotId: number) =>
+    request<TestSummaryReportSnapshot>(
+      `/releases/${releaseId}/summary-report/snapshots/${snapshotId}`,
+    ),
+  downloadSummaryReport: (releaseId: number, format: "html" | "pdf", snapshotId?: number) =>
+    download(
+      `/releases/${releaseId}/summary-report/export?format=${format}${
+        snapshotId !== undefined ? `&snapshot_id=${snapshotId}` : ""
+      }`,
+      `test-summary-report-${releaseId}${snapshotId !== undefined ? `-snap-${snapshotId}` : ""}.${format}`,
+    ),
+  downloadTestPlan: (planId: number, format: "html" | "pdf", snapshotId?: number) =>
+    download(
+      `/test-plans/${planId}/export?format=${format}${
+        snapshotId !== undefined ? `&snapshot_id=${snapshotId}` : ""
+      }`,
+      `test-plan-${planId}${snapshotId !== undefined ? `-snap-${snapshotId}` : ""}.${format}`,
+    ),
 };

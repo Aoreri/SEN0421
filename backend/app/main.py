@@ -11,9 +11,9 @@ from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from . import auth, coverage_imports, junit_imports, projects, runs, test_plans
+from . import auth, coverage_imports, junit_imports, projects, runs, summary_reports, test_plans
 from . import metrics as expanded_metrics
-from .auth import ADMIN, TEST_LEAD, TESTER, CurrentUser, OptionalUser, require_roles
+from .auth import ADMIN, TEST_LEAD, TESTER, CurrentUser, current_user, require_roles
 from .db import DB
 from .models import (
     Defect,
@@ -38,6 +38,7 @@ app.include_router(projects.router)
 app.include_router(junit_imports.router)
 app.include_router(runs.router)
 app.include_router(test_plans.router)
+app.include_router(summary_reports.router)
 app.include_router(coverage_imports.router)
 app.include_router(expanded_metrics.router)
 
@@ -71,7 +72,7 @@ def health():
 
 
 @app.get("/api/defects")
-def list_defects(db: DB, user: OptionalUser):
+def list_defects(db: DB, user: CurrentUser):
     rules = transition_rules(db)
     return [defect_out(d, rules, user) for d in db.scalars(select(Defect).order_by(Defect.id))]
 
@@ -144,7 +145,7 @@ def transition_defect(defect_id: int, body: Transition, db: DB, user: CurrentUse
     return defect_out(defect, transition_rules(db), user)
 
 
-@app.get("/api/defects/{defect_id}/history")
+@app.get("/api/defects/{defect_id}/history", dependencies=[Depends(current_user)])
 def defect_history(defect_id: int, db: DB):
     rows = db.scalars(select(DefectHistory).where(DefectHistory.defect_id == defect_id)
                       .order_by(DefectHistory.id))
@@ -152,7 +153,7 @@ def defect_history(defect_id: int, db: DB):
             for h in rows]
 
 
-@app.get("/api/metrics")
+@app.get("/api/metrics", dependencies=[Depends(current_user)])
 def metrics(db: DB):
     statuses = list(db.scalars(select(TestCase.status)))
     total = len(statuses)

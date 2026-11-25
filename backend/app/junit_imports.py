@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from .auth import ADMIN, TEST_LEAD, TESTER, CurrentUser, require_roles
 from .db import DB
 from .junit import MAX_XML_BYTES, parse_junit
+from .junit_defects import failure_defect
 from .models import ImportedTestResult, ImportedTestRun, Project, Requirement, TestCase, User
 from .projects import get_or_404
 
@@ -28,7 +29,8 @@ def detail(db: Session, run: ImportedTestRun) -> dict:
     results = [{"position": r.position, "name": r.name, "classname": r.classname,
                 "suite": r.suite, "reported_key": r.reported_key, "test_case_id": r.test_case_id,
                 "status": r.status, "duration_seconds": r.duration_seconds, "message": r.message,
-                "unmatched_reason": r.unmatched_reason}
+                "unmatched_reason": r.unmatched_reason, "failure_signature": r.failure_signature,
+                "defect_id": r.defect_id}
                for r in db.scalars(select(ImportedTestResult)
                                    .where(ImportedTestResult.run_id == run.id)
                                    .order_by(ImportedTestResult.position))]
@@ -74,11 +76,14 @@ async def import_junit(project_id: int, request: Request, db: DB, user: Importer
             matched = result.key in linked
             reason = (None if matched else "not_linked_to_project" if result.key in known
                       else "unknown_test_case")
+            defect_id = (failure_defect(db, project_id, result.key, result)
+                         if matched and result.status == "Failed" else None)
             db.add(ImportedTestResult(
                 run_id=run.id, position=position, name=result.name, classname=result.classname,
                 suite=result.suite, reported_key=result.key,
                 test_case_id=result.key if matched else None, unmatched_reason=reason,
                 status=result.status, duration_seconds=result.duration_seconds, message=result.message,
+                failure_signature=result.failure_signature, defect_id=defect_id,
             ))
         db.commit()
     except IntegrityError:
