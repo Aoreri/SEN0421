@@ -23,6 +23,9 @@ jobs:
         working-directory: backend
     steps:
       - uses: actions/checkout@v4
+      - name: Record the exact checked-out commit
+        id: checkout
+        run: echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -38,7 +41,7 @@ jobs:
         run: python -m pytest -q --cov=app --cov-report=term-missing --cov-report=xml:coverage.xml --junitxml=junit.xml -o junit_family=legacy
       - name: Import CI reports into isolated SDS-06 (PLN-23)
         env:
-          REPORT_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+          REPORT_COMMIT: ${{ steps.checkout.outputs.commit }}
           REPORT_BRANCH: ${{ github.head_ref || github.ref_name }}
         run: python scripts/dogfood_ci.py --junit junit.xml --coverage coverage.xml --commit "$REPORT_COMMIT" --branch "$REPORT_BRANCH"
       - name: Upload CI import evidence
@@ -85,6 +88,9 @@ jobs:
         working-directory: backend
     steps:
       - uses: actions/checkout@v4
+      - name: Record the exact checked-out commit
+        id: checkout
+        run: echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -112,6 +118,9 @@ jobs:
         working-directory: frontend
     steps:
       - uses: actions/checkout@v4
+      - name: Record the exact checked-out commit
+        id: checkout
+        run: echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -125,3 +134,59 @@ jobs:
         run: npm run typecheck
       - name: Production build
         run: npm run build
+
+  e2e:
+    name: Playwright E2E (Docker Compose)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      COMPOSE_FILE: frontend/e2e/compose.yml
+      COMPOSE_PROJECT_NAME: sds06-e2e-${{ github.run_id }}-${{ github.run_attempt }}
+      E2E_BASE_URL: http://127.0.0.1:5173
+      E2E_DISPOSABLE: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Record the exact checked-out commit
+        id: checkout
+        run: echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install browser test dependencies
+        working-directory: frontend
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Start disposable application
+        run: docker compose up --build -d --wait --wait-timeout 180
+      - name: Run browser acceptance tests
+        id: browser-tests
+        working-directory: frontend
+        run: npm run test:e2e
+      - name: Import real Playwright JUnit results into the running application
+        if: ${{ !cancelled() && steps.browser-tests.outcome != 'skipped' }}
+        working-directory: frontend
+        env:
+          REPORT_COMMIT: ${{ steps.checkout.outputs.commit }}
+          REPORT_BRANCH: ${{ github.head_ref || github.ref_name }}
+        run: npm run test:e2e:report
+      - name: Collect application logs
+        if: always()
+        run: |
+          mkdir -p frontend/test-results
+          docker compose logs --no-color > frontend/test-results/compose.log 2>&1
+      - name: Upload browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-e2e-evidence
+          path: |
+            frontend/test-results/
+            frontend/playwright-report/
+          retention-days: 14
+          if-no-files-found: warn
+      - name: Remove only the disposable E2E stack
+        if: always()
+        run: docker compose down --volumes --remove-orphans

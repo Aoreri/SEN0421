@@ -42,13 +42,14 @@ Errors use FastAPI's format: `{ "detail": "<message>" }`.
 | --- | --- |
 | `POST /api/defects` | `Admin`, `Test Lead`, `Tester` |
 | `POST /api/defects/{id}/transition` | depends on the transition, see below |
-| `POST`, `PUT`, `DELETE` on `/api/projects`, `/api/releases`, `/api/requirements`, `/api/test-suites` | `Admin`, `Test Lead` |
+| `POST`, `PUT`, `DELETE` on `/api/projects`, `/api/releases`, `/api/sprints`, `/api/requirements`, `/api/test-suites` | `Admin`, `Test Lead` |
 | `PUT /api/releases/{id}/criteria`, `POST`/`DELETE /api/releases/{id}/waiver`, `PUT /api/releases/{id}/status` | `Admin`, `Test Lead` |
 | `POST`, `PUT`, `DELETE` on `/api/test-cases` | `Admin`, `Test Lead`, `Tester` |
 | `PUT /api/requirements/{id}/test-cases`, `PUT /api/test-cases/{id}/requirements` | `Admin`, `Test Lead`, `Tester` |
 | `POST /api/test-runs`, `POST`/`PUT /api/test-runs/{id}/executions/{exec_id}`, `POST /api/test-runs/{id}/executions/{exec_id}/defects` | `Admin`, `Test Lead`, `Tester` |
 | `POST`, `PUT`, `DELETE` on `/api/test-plans`, `PUT /api/test-plans/{id}/status` | `Admin`, `Test Lead` |
 | `POST /api/test-plans/{id}/snapshots` | `Admin`, `Test Lead`, `Tester` |
+| `POST /api/releases/{id}/summary-report/snapshots` | `Admin`, `Test Lead`, `Tester` |
 
 `GET` endpoints stay public. A token is optional on them, but an invalid or expired one gets `401`.
 

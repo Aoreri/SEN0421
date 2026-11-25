@@ -86,11 +86,11 @@ td button { font-size: .8rem; padding: 3px 8px; margin-right: 4px; }
 .checkbox-inline { display: inline-flex; align-items: center; gap: 8px; font-size: .88rem; cursor: pointer; }
 .badge-list { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
 .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: .8rem; background: #e5e7eb; color: #374151; }
-.passed, .closed, .low, .tester, .auto-yes, .released { background: #d1fae5; color: #065f46; }
+.passed, .closed, .low, .tester, .auto-yes, .released, .approved { background: #d1fae5; color: #065f46; }
 .failed, .open, .critical, .high, .admin, .gap-badge { background: #fee2e2; color: #991b1b; }
-.blocked, .in-progress, .medium, .test-lead, .in-test { background: #fef3c7; color: #92400e; }
+.blocked, .in-progress, .medium, .test-lead, .in-test, .in-review { background: #fef3c7; color: #92400e; }
 .resolved, .developer, .ready { background: #dbeafe; color: #1e40af; }
-.not-run, .skipped, .auto-no, .planned { background: #e5e7eb; color: #4b5563; }
+.not-run, .skipped, .auto-no, .planned, .draft { background: #e5e7eb; color: #4b5563; }
 .hint { font-size: .8rem; color: #666; margin-bottom: 0; }
 .role-inline-hint { margin-top: 0; margin-bottom: 10px; }
 .role-notice, .session-card { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #eff6ff; color: #1e3a8a; border: 1px solid #bfdbfe; border-radius: 8px; padding: 12px 16px; font-size: .9rem; }

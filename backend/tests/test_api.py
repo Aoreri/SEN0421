@@ -199,6 +199,176 @@ def test_release_crud(client):
     assert client.get(url).status_code == 404
 
 
+def test_sprint_crud_validation_roles_and_dependents(client):
+    lead = as_user("testlead")
+    admin = as_user("admin")
+    tester = as_user("tester")
+    dev = as_user("developer")
+
+    rel = client.post("/api/releases", json={"project_id": 1, "version": "v1.0"}, headers=lead).json()
+    sprint_in = {
+        "project_id": 1,
+        "release_id": rel["id"],
+        "name": "  Sprint 1  ",
+        "goal": "  Temel altyapı ve doğrulama  ",
+        "start_at": "2026-11-01T00:00:00Z",
+        "end_at": "2026-11-15T00:00:00Z",
+        "status": "Active",
+    }
+    created = client.post("/api/sprints", json=sprint_in, headers=lead)
+    assert created.status_code == 201
+    sprint = created.json()
+    sid = sprint["id"]
+    assert sprint["name"] == "Sprint 1"
+    assert sprint["goal"] == "Temel altyapı ve doğrulama"
+    assert sprint["project_id"] == 1
+    assert sprint["release_id"] == rel["id"]
+    assert sprint["status"] == "Active"
+    assert datetime.fromisoformat(sprint["start_at"]) == datetime(2026, 11, 1, tzinfo=UTC)
+    assert datetime.fromisoformat(sprint["end_at"]) == datetime(2026, 11, 15, tzinfo=UTC)
+
+    # Get and list with filters
+    assert client.get(f"/api/sprints/{sid}").json() == sprint
+    assert client.get("/api/sprints").json() == [sprint]
+    assert client.get("/api/sprints", params={"project_id": 1}).json() == [sprint]
+    assert client.get("/api/sprints", params={"release_id": rel["id"]}).json() == [sprint]
+    assert client.get("/api/sprints", params={"release_id": 999}).json() == []
+    assert client.get("/api/sprints/999").status_code == 404
+
+    # Duplicate sprint name in same project -> 409
+    assert client.post("/api/sprints", json=sprint_in, headers=lead).status_code == 409
+
+    # Update sprint
+    updated = client.put(
+        f"/api/sprints/{sid}",
+        json={
+            "project_id": 1,
+            "release_id": None,
+            "name": "Sprint 1 Güncel",
+            "goal": "Tamamlandı",
+            "start_at": "2026-11-01T00:00:00+03:00",
+            "end_at": "2026-11-16T00:00:00+03:00",
+            "status": "Completed",
+        },
+        headers=admin,
+    )
+    assert updated.status_code == 200
+    assert updated.json()["name"] == "Sprint 1 Güncel"
+    assert updated.json()["release_id"] is None
+    assert updated.json()["status"] == "Completed"
+
+    # Role checks: 401 unauthenticated, 403 for Tester/Developer
+    for method, url, payload in [
+        ("post", "/api/sprints", {"project_id": 1, "name": "S2"}),
+        ("put", f"/api/sprints/{sid}", {"project_id": 1, "name": "S2"}),
+        ("delete", f"/api/sprints/{sid}", None),
+    ]:
+        send = getattr(client, method)
+        kwargs = {"json": payload} if payload is not None else {}
+        assert send(url, **kwargs).status_code == 401
+        for denied in (tester, dev):
+            assert send(url, headers=denied, **kwargs).status_code == 403
+
+    # Validation checks (422)
+    p2 = client.post("/api/projects", json={"name": "P2-Sprint"}, headers=admin).json()
+    r2 = client.post("/api/releases", json={"project_id": p2["id"], "version": "v2"}, headers=admin).json()
+    for bad_body in [
+        {"project_id": 999, "name": "S-BadProj"},
+        {"project_id": 1, "release_id": 999, "name": "S-BadRel"},
+        {"project_id": 1, "release_id": r2["id"], "name": "S-CrossRel"},
+        {"project_id": 1, "name": "   "},
+        {"project_id": 1, "name": "S-BadStatus", "status": "Invalid"},
+        {"project_id": 1, "name": "S-NaiveDate", "start_at": "2026-11-01T00:00:00"},
+        {
+            "project_id": 1,
+            "name": "S-InvertedDates",
+            "start_at": "2026-11-10T00:00:00Z",
+            "end_at": "2026-11-05T00:00:00Z",
+        },
+    ]:
+        assert client.post("/api/sprints", json=bad_body, headers=admin).status_code == 422
+
+    # Link sprint to r2 in p2, create test run in that sprint, and verify dependency protections
+    s_p2 = client.post(
+        "/api/sprints",
+        json={"project_id": p2["id"], "release_id": r2["id"], "name": "P2 Sprint 1"},
+        headers=admin,
+    ).json()
+    # Release with linked sprint cannot be deleted or moved to another project -> 409
+    assert client.delete(f"/api/releases/{r2['id']}", headers=admin).status_code == 409
+    assert (
+        client.put(
+            f"/api/releases/{r2['id']}",
+            json={"project_id": 1, "version": "v2"},
+            headers=admin,
+        ).status_code
+        == 409
+    )
+    # Project with linked sprint cannot be deleted -> 409
+    assert client.delete(f"/api/projects/{p2['id']}", headers=admin).status_code == 409
+
+    # Test run linked to sprint inherits release_id if omitted and rejects mismatched release/project
+    assert (
+        client.post(
+            "/api/test-runs",
+            json={
+                "name": "Cross project sprint run",
+                "project_id": 1,
+                "sprint_id": s_p2["id"],
+                "test_case_ids": ["TC-001"],
+            },
+            headers=tester,
+        ).status_code
+        == 422
+    )
+    r2_other = client.post(
+        "/api/releases", json={"project_id": p2["id"], "version": "v3"}, headers=admin
+    ).json()
+    assert (
+        client.post(
+            "/api/test-runs",
+            json={
+                "name": "Mismatched release sprint run",
+                "project_id": p2["id"],
+                "release_id": r2_other["id"],
+                "sprint_id": s_p2["id"],
+                "test_case_ids": ["TC-001"],
+            },
+            headers=tester,
+        ).status_code
+        == 422
+    )
+
+    run = client.post(
+        "/api/test-runs",
+        json={
+            "name": "Sprint Run",
+            "project_id": p2["id"],
+            "sprint_id": s_p2["id"],
+            "test_case_ids": ["TC-001"],
+        },
+        headers=tester,
+    )
+    assert run.status_code == 201
+    assert run.json()["sprint_id"] == s_p2["id"]
+    assert run.json()["release_id"] == r2["id"]
+
+    # Sprint with linked test run cannot be deleted or moved to another project -> 409
+    assert client.delete(f"/api/sprints/{s_p2['id']}", headers=admin).status_code == 409
+    assert (
+        client.put(
+            f"/api/sprints/{s_p2['id']}",
+            json={"project_id": 1, "name": "P2 Sprint 1"},
+            headers=admin,
+        ).status_code
+        == 409
+    )
+
+    # Unlinked sprint can be deleted -> 204
+    assert client.delete(f"/api/sprints/{sid}", headers=admin).status_code == 204
+    assert client.get(f"/api/sprints/{sid}").status_code == 404
+
+
 def test_release_exit_gate_criteria_waiver_and_status(client):
     lead = as_user("testlead")
     admin = as_user("admin")
@@ -1114,3 +1284,230 @@ def test_test_plan_snapshot_isolates_projects(client):
     assert snap2["payload"]["metrics"]["pass_rate"] == 0.0
     assert snap2["payload"]["metrics"]["open_defects"] == 1
     assert "TC-001" not in snap2["html_content"]
+
+
+def test_test_summary_report_snapshots_and_html_pdf_export(client):
+    from app.summary_reports import _fallback_summary_pdf_bytes
+
+    lead = as_user("testlead")
+    tester = as_user("tester")
+    dev = as_user("developer")
+
+    rel = client.post("/api/releases", json={"project_id": 1, "version": "v1.0.0"}, headers=lead).json()
+    rid = rel["id"]
+
+    # Role checks on snapshot creation: 401 unauthenticated, 403 for Developer, 201 for Tester
+    snap_url = f"/api/releases/{rid}/summary-report/snapshots"
+    assert client.post(snap_url).status_code == 401
+    assert client.post(snap_url, headers=dev).status_code == 403
+    assert client.post("/api/releases/999/summary-report/snapshots", headers=tester).status_code == 404
+
+    snap1_res = client.post(snap_url, headers=tester)
+    assert snap1_res.status_code == 201
+    snap1 = snap1_res.json()
+    assert snap1["release_id"] == rid
+    assert snap1["release_version"] == "v1.0.0"
+    assert snap1["release_status"] == "Planned"
+    assert snap1["gate_passed"] is False
+    assert snap1["generated_by"] == "tester"
+    assert "TSR-SDS-06-v1.0.0" in snap1["html_content"]
+    assert snap1["payload"]["totals"]["total_cases"] == 6
+    assert snap1["payload"]["totals"]["pass_rate"] == 75.0
+    assert snap1["payload"]["totals"]["requirement_coverage"] == 62.5
+    assert len(snap1["payload"]["feature_results"]) == 8
+    assert snap1["payload"]["defect_summary"]["open_total"] == 3
+    assert snap1["payload"]["gate"]["gate_passed"] is False
+
+    # Release with a summary report snapshot cannot be deleted -> 409
+    assert client.delete(f"/api/releases/{rid}", headers=lead).status_code == 409
+
+    # Record waiver and move release to Ready, then verify snapshot #1 remains immutable
+    client.post(
+        f"/api/releases/{rid}/waiver",
+        json={"reason": "Ara dönem demosu muafiyeti"},
+        headers=lead,
+    )
+    client.put(f"/api/releases/{rid}/status", json={"status": "Ready"}, headers=lead)
+
+    stored_snap1 = client.get(f"/api/releases/{rid}/summary-report/snapshots/{snap1['id']}").json()
+    assert stored_snap1["release_status"] == "Planned"
+    assert stored_snap1["gate_passed"] is False
+    assert stored_snap1["payload"]["gate"]["waiver"] is None
+
+    # Live HTML export shows Ready and active waiver, whereas snapshot HTML preserves Planned
+    live_html = client.get(f"/api/releases/{rid}/summary-report/export?format=html")
+    assert live_html.status_code == 200
+    assert "text/html" in live_html.headers["content-type"]
+    assert "Ara dönem demosu muafiyeti" in live_html.text
+    assert "GEÇTİ (PASSED)" in live_html.text
+
+    snap_html = client.get(
+        f"/api/releases/{rid}/summary-report/export?format=html&snapshot_id={snap1['id']}"
+    )
+    assert snap_html.status_code == 200
+    assert "Ara dönem demosu muafiyeti" not in snap_html.text
+    assert "ENGELLİ (BLOCKED)" in snap_html.text
+
+    # PDF export (live and snapshot) and fallback PDF verification
+    live_pdf = client.get(f"/api/releases/{rid}/summary-report/export?format=pdf")
+    assert live_pdf.status_code == 200
+    assert live_pdf.headers["content-type"] == "application/pdf"
+    assert f'filename="test-summary-report-{rid}-v1.0.0.pdf"' in live_pdf.headers["content-disposition"]
+    assert live_pdf.content.startswith(b"%PDF-1.")
+    assert live_pdf.content.strip().endswith(b"%%EOF")
+
+    snap2 = client.post(snap_url, headers=lead).json()
+    assert snap2["release_status"] == "Ready"
+    assert snap2["gate_passed"] is True
+    fallback_bytes = _fallback_summary_pdf_bytes(snap2["payload"])
+    assert fallback_bytes.startswith(b"%PDF-1.4")
+    assert b"TEST SUMMARY REPORT: TSR-SDS-06-v1.0.0" in fallback_bytes
+    assert b"4. Exit Criteria & Release Gate Evaluation:" in fallback_bytes
+    assert b"Active Waiver by testlead" in fallback_bytes
+
+    snap_pdf = client.get(
+        f"/api/releases/{rid}/summary-report/export?format=pdf&snapshot_id={snap1['id']}"
+    )
+    assert snap_pdf.status_code == 200
+    assert snap_pdf.content.startswith(b"%PDF-1.")
+
+    # List snapshots and 404 checks
+    snaps = client.get(snap_url).json()
+    assert len(snaps) == 2
+    assert client.get("/api/releases/999/summary-report/snapshots").status_code == 404
+    assert client.get(f"/api/releases/{rid}/summary-report/snapshots/999").status_code == 404
+    assert client.get(f"/api/releases/{rid}/summary-report/export?snapshot_id=999").status_code == 404
+    assert client.get("/api/releases/999/summary-report/export").status_code == 404
+
+
+def test_summary_report_includes_unlinked_defects_for_every_project(client):
+    admin = as_user("admin")
+    tester = as_user("tester")
+
+    project = client.post(
+        "/api/projects", json={"name": "P-Summary-Defects"}, headers=admin
+    ).json()
+    client.post(
+        "/api/requirements",
+        json={"id": "R-SUM-DEF", "project_id": project["id"], "title": "R-SUM-DEF"},
+        headers=admin,
+    )
+    client.post(
+        "/api/test-cases",
+        json={
+            "id": "TC-SUM-DEF",
+            "title": "TC-SUM-DEF",
+            "status": "Failed",
+            "requirements": ["R-SUM-DEF"],
+        },
+        headers=tester,
+    )
+    defect = client.post(
+        "/api/defects",
+        json={"title": "Bağlantısız kritik hata", "severity": "Critical"},
+        headers=tester,
+    ).json()
+    # The API accepts free-text severities; the table must still count them.
+    client.post(
+        "/api/defects", json={"title": "Serbest önem", "severity": "Blocker"}, headers=tester
+    )
+    release = client.post(
+        "/api/releases", json={"project_id": project["id"], "version": "1.0"}, headers=admin
+    ).json()
+
+    snap = client.post(
+        f"/api/releases/{release['id']}/summary-report/snapshots", headers=tester
+    ).json()
+    summary = snap["payload"]["defect_summary"]
+    assert any(row["severity"] == "Blocker" for row in summary["by_severity"])
+    critical = next(row for row in summary["by_severity"] if row["severity"] == "Critical")
+
+    # Gate, severity table and defect list must use the same project defect filter.
+    assert snap["payload"]["gate"]["actual_open_critical"] == 1
+    assert summary["open_critical"] == snap["payload"]["gate"]["actual_open_critical"]
+    assert summary["total"] == sum(row["total"] for row in summary["by_severity"])
+    assert summary["open_total"] == sum(row["open"] for row in summary["by_severity"])
+    assert critical["total"] == 1 and critical["open"] == 1
+    assert defect["id"] in [d["id"] for d in snap["payload"]["defects"]]
+
+
+def test_summary_report_labels_release_scoped_pass_rate_and_gate_basis(client):
+    from app.summary_reports import _fallback_summary_pdf_bytes
+
+    admin = as_user("admin")
+    tester = as_user("tester")
+
+    project = client.post(
+        "/api/projects", json={"name": "P-Summary-Rate"}, headers=admin
+    ).json()
+    client.post(
+        "/api/requirements",
+        json={"id": "R-SUM-RATE", "project_id": project["id"], "title": "R-SUM-RATE"},
+        headers=admin,
+    )
+    client.post(
+        "/api/test-cases",
+        json={
+            "id": "TC-SUM-RATE",
+            "title": "TC-SUM-RATE",
+            "status": "Failed",
+            "requirements": ["R-SUM-RATE"],
+        },
+        headers=tester,
+    )
+    release_a = client.post(
+        "/api/releases", json={"project_id": project["id"], "version": "1.0"}, headers=admin
+    ).json()
+    release_b = client.post(
+        "/api/releases", json={"project_id": project["id"], "version": "2.0"}, headers=admin
+    ).json()
+
+    run_a = client.post(
+        "/api/test-runs",
+        json={
+            "name": "Run A",
+            "project_id": project["id"],
+            "release_id": release_a["id"],
+            "test_case_ids": ["TC-SUM-RATE"],
+        },
+        headers=tester,
+    ).json()
+    client.post(
+        f"/api/test-runs/{run_a['id']}/executions/{run_a['executions'][0]['id']}",
+        json={"status": "Failed"},
+        headers=tester,
+    )
+    # A later run in another release overwrites the catalogue status the gate reads.
+    run_b = client.post(
+        "/api/test-runs",
+        json={
+            "name": "Run B",
+            "project_id": project["id"],
+            "release_id": release_b["id"],
+            "test_case_ids": ["TC-SUM-RATE"],
+        },
+        headers=tester,
+    ).json()
+    client.post(
+        f"/api/test-runs/{run_b['id']}/executions/{run_b['executions'][0]['id']}",
+        json={"status": "Passed"},
+        headers=tester,
+    )
+
+    snap = client.post(
+        f"/api/releases/{release_a['id']}/summary-report/snapshots", headers=tester
+    ).json()
+    totals = snap["payload"]["totals"]
+    gate = snap["payload"]["gate"]
+
+    assert totals["pass_rate"] == 0.0
+    assert totals["pass_rate_basis"] == "release_runs_with_catalogue_fallback"
+    assert gate["actual_pass_rate"] == 100.0
+    assert gate["actual_pass_rate_basis"] == "project_catalogue_status"
+
+    # The document must state that the two rates use different sources instead of leaving them unexplained.
+    assert "sürüm kapsamlı" in snap["html_content"]
+    assert "proje kataloğundaki" in snap["html_content"]
+    pdf = _fallback_summary_pdf_bytes(snap["payload"])
+    assert b"(release-scoped" in pdf
+    assert b"\\(catalogue\\)" in pdf
