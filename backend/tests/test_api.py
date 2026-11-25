@@ -1325,6 +1325,12 @@ def test_test_plan_snapshot_isolates_projects(client):
         "/api/releases/1/summary-report/snapshots",
         "/api/releases/1/summary-report/snapshots/1",
         "/api/releases/1/summary-report/export",
+        "/api/defects/1/incident-report/snapshots",
+        "/api/defects/1/incident-report/snapshots/1",
+        "/api/defects/1/incident-report/export",
+        "/api/test-runs/1/test-log/snapshots",
+        "/api/test-runs/1/test-log/snapshots/1",
+        "/api/test-runs/1/test-log/export",
     ],
 )
 def test_read_endpoints_require_authentication(client, url):
@@ -1561,3 +1567,193 @@ def test_summary_report_labels_release_scoped_pass_rate_and_gate_basis(client):
     pdf = _fallback_summary_pdf_bytes(snap["payload"])
     assert b"(release-scoped" in pdf
     assert b"\\(catalogue\\)" in pdf
+
+
+def test_incident_report_snapshots_and_html_pdf_export(client):
+    from app.test_reports import _fallback_incident_pdf_bytes
+
+    tester = as_user("tester")
+    dev = as_user("developer")
+
+    # Create a run and failed execution linked to defect #1 (TC-003)
+    run = client.post(
+        "/api/test-runs",
+        json={"name": "Olay Doğrulama Koşumu", "project_id": 1, "test_case_ids": ["TC-003"]},
+        headers=tester,
+    ).json()
+    ex_id = run["executions"][0]["id"]
+    client.post(
+        f"/api/test-runs/{run['id']}/executions/{ex_id}",
+        json={"status": "Failed", "actual_result": "HTTP 500 döndü", "notes": "Stacktrace logda", "defect_ids": [1]},
+        headers=tester,
+    )
+
+    # Role checks on snapshot creation: 401 unauthenticated, 403 for Developer, 201 for Tester
+    snap_url = "/api/defects/1/incident-report/snapshots"
+    assert client.post(snap_url).status_code == 401
+    assert client.post(snap_url, headers=dev).status_code == 403
+    assert client.post("/api/defects/999/incident-report/snapshots", headers=tester).status_code == 404
+
+    snap1_res = client.post(snap_url, headers=tester)
+    assert snap1_res.status_code == 201
+    snap1 = snap1_res.json()
+    assert snap1["defect_id"] == 1
+    assert snap1["status"] == "Open"
+    assert snap1["severity"] == "High"
+    assert snap1["generated_by"] == "tester"
+    assert "TIR-DEF-0001" in snap1["html_content"]
+    assert "HTTP 500 döndü" in snap1["html_content"]
+    assert snap1["payload"]["test_case"]["id"] == "TC-003"
+    assert len(snap1["payload"]["executions"]) == 1
+
+    # Transition defect #1 to In Progress, then verify snapshot #1 remains immutable at status Open
+    client.post("/api/defects/1/transition", json={"to": "In Progress"}, headers=dev)
+
+    stored_snap1 = client.get(f"/api/defects/1/incident-report/snapshots/{snap1['id']}", headers=as_user("tester")).json()
+    assert stored_snap1["status"] == "Open"
+    assert stored_snap1["payload"]["defect"]["status"] == "Open"
+    assert len(stored_snap1["payload"]["history"]) == 1
+
+    # Live export reflects "In Progress" and 2 history rows, while snapshot export preserves "Open"
+    live_html = client.get("/api/defects/1/incident-report/export?format=html", headers=as_user("tester"))
+    assert live_html.status_code == 200
+    assert "text/html" in live_html.headers["content-type"]
+    assert "In Progress" in live_html.text
+
+    snap_html = client.get(f"/api/defects/1/incident-report/export?format=html&snapshot_id={snap1['id']}", headers=as_user("tester"))
+    assert snap_html.status_code == 200
+    assert "TIR-DEF-0001" in snap_html.text
+    assert "In Progress" not in snap_html.text
+
+    # PDF export (live and snapshot) and fallback PDF verification
+    live_pdf = client.get("/api/defects/1/incident-report/export?format=pdf", headers=as_user("tester"))
+    assert live_pdf.status_code == 200
+    assert live_pdf.headers["content-type"] == "application/pdf"
+    assert 'filename="test-incident-report-1.pdf"' in live_pdf.headers["content-disposition"]
+    assert live_pdf.content.startswith(b"%PDF-1.")
+    assert live_pdf.content.strip().endswith(b"%%EOF")
+
+    fallback_bytes = _fallback_incident_pdf_bytes(snap1["payload"])
+    assert fallback_bytes.startswith(b"%PDF-1.4")
+    assert b"TEST INCIDENT REPORT: TIR-DEF-0001" in fallback_bytes
+    assert b"4. Immutable Defect History Timeline:" in fallback_bytes
+
+    snap_pdf = client.get(f"/api/defects/1/incident-report/export?format=pdf&snapshot_id={snap1['id']}", headers=as_user("tester"))
+    assert snap_pdf.status_code == 200
+    assert f'filename="test-incident-report-1-snap-{snap1["id"]}.pdf"' in snap_pdf.headers["content-disposition"]
+
+    # List snapshots and 404 checks
+    snaps = client.get("/api/defects/1/incident-report/snapshots", headers=as_user("tester")).json()
+    assert len(snaps) == 1 and snaps[0]["id"] == snap1["id"]
+    assert client.get("/api/defects/999/incident-report/snapshots", headers=as_user("tester")).status_code == 404
+    assert client.get("/api/defects/1/incident-report/snapshots/999", headers=as_user("tester")).status_code == 404
+    assert client.get("/api/defects/1/incident-report/export?snapshot_id=999", headers=as_user("tester")).status_code == 404
+    assert client.get("/api/defects/999/incident-report/export", headers=as_user("tester")).status_code == 404
+
+
+def test_test_log_snapshots_and_html_pdf_export(client):
+    from app.test_reports import _fallback_test_log_pdf_bytes
+
+    lead = as_user("testlead")
+    tester = as_user("tester")
+    dev = as_user("developer")
+
+    rel = client.post("/api/releases", json={"project_id": 1, "version": "v1.2"}, headers=lead).json()
+    suite = client.post("/api/test-suites", json={"project_id": 1, "name": "Log Suite"}, headers=lead).json()
+    run = client.post(
+        "/api/test-runs",
+        json={
+            "name": "Sprint 5 Test Koşumu",
+            "project_id": 1,
+            "release_id": rel["id"],
+            "suite_id": suite["id"],
+            "test_case_ids": ["TC-001", "TC-003", "TC-005"],
+        },
+        headers=tester,
+    ).json()
+    rid = run["id"]
+    ex1, ex2, ex3 = run["executions"]
+
+    client.post(
+        f"/api/test-runs/{rid}/executions/{ex1['id']}",
+        json={"status": "Passed", "actual_result": "Giriş başarılı", "notes": "Smoke ok"},
+        headers=tester,
+    )
+    client.post(
+        f"/api/test-runs/{rid}/executions/{ex2['id']}",
+        json={"status": "Failed", "actual_result": "Doğrulama hatası", "notes": "Defect #1", "defect_ids": [1]},
+        headers=tester,
+    )
+
+    # Role checks on test-log snapshot creation: 401 unauthenticated, 403 for Developer, 201 for Tester
+    snap_url = f"/api/test-runs/{rid}/test-log/snapshots"
+    assert client.post(snap_url).status_code == 401
+    assert client.post(snap_url, headers=dev).status_code == 403
+    assert client.post("/api/test-runs/999/test-log/snapshots", headers=tester).status_code == 404
+
+    snap1_res = client.post(snap_url, headers=tester)
+    assert snap1_res.status_code == 201
+    snap1 = snap1_res.json()
+    assert snap1["test_run_id"] == rid
+    assert snap1["generated_by"] == "tester"
+    assert f"TL-RUN-{rid:04d}" in snap1["html_content"]
+    assert "Sprint 5 Test Koşumu" in snap1["html_content"]
+    assert snap1["payload"]["summary"] == {
+        "total": 3,
+        "executed": 2,
+        "passed": 1,
+        "failed": 1,
+        "blocked": 0,
+        "skipped": 0,
+        "not_run": 1,
+        "execution_rate": 66.7,
+        "pass_rate": 50.0,
+    }
+    assert len(snap1["payload"]["defects"]) == 1
+    assert snap1["payload"]["defects"][0]["id"] == 1
+
+    # Record third execution as Passed, then verify snapshot #1 remains immutable
+    client.post(
+        f"/api/test-runs/{rid}/executions/{ex3['id']}",
+        json={"status": "Passed", "actual_result": "Rapor üretildi"},
+        headers=tester,
+    )
+
+    stored_snap1 = client.get(f"/api/test-runs/{rid}/test-log/snapshots/{snap1['id']}", headers=as_user("tester")).json()
+    assert stored_snap1["payload"]["summary"]["executed"] == 2
+    assert stored_snap1["payload"]["summary"]["not_run"] == 1
+
+    # Live export reflects all 3 executed, snapshot export preserves 2 executed
+    live_html = client.get(f"/api/test-runs/{rid}/test-log/export?format=html", headers=as_user("tester"))
+    assert live_html.status_code == 200
+    assert "text/html" in live_html.headers["content-type"]
+    assert "Rapor üretildi" in live_html.text
+
+    snap_html = client.get(f"/api/test-runs/{rid}/test-log/export?format=html&snapshot_id={snap1['id']}", headers=as_user("tester"))
+    assert snap_html.status_code == 200
+    assert "Rapor üretildi" not in snap_html.text
+
+    # PDF export (live and snapshot) and fallback PDF verification
+    live_pdf = client.get(f"/api/test-runs/{rid}/test-log/export?format=pdf", headers=as_user("tester"))
+    assert live_pdf.status_code == 200
+    assert live_pdf.headers["content-type"] == "application/pdf"
+    assert f'filename="test-log-{rid}.pdf"' in live_pdf.headers["content-disposition"]
+    assert live_pdf.content.startswith(b"%PDF-1.")
+    assert live_pdf.content.strip().endswith(b"%%EOF")
+
+    fallback_bytes = _fallback_test_log_pdf_bytes(snap1["payload"])
+    assert fallback_bytes.startswith(b"%PDF-1.4")
+    assert b"TEST LOG: TL-RUN-" in fallback_bytes
+    assert b"3. Linked Anomalies & Defects:" in fallback_bytes
+
+    snap_pdf = client.get(f"/api/test-runs/{rid}/test-log/export?format=pdf&snapshot_id={snap1['id']}", headers=as_user("tester"))
+    assert snap_pdf.status_code == 200
+    assert f'filename="test-log-{rid}-snap-{snap1["id"]}.pdf"' in snap_pdf.headers["content-disposition"]
+
+    # List snapshots and 404 checks
+    snaps = client.get(f"/api/test-runs/{rid}/test-log/snapshots", headers=as_user("tester")).json()
+    assert len(snaps) == 1 and snaps[0]["id"] == snap1["id"]
+    assert client.get("/api/test-runs/999/test-log/snapshots", headers=as_user("tester")).status_code == 404
+    assert client.get(f"/api/test-runs/{rid}/test-log/snapshots/999", headers=as_user("tester")).status_code == 404
+    assert client.get(f"/api/test-runs/{rid}/test-log/export?snapshot_id=999", headers=as_user("tester")).status_code == 404
+    assert client.get("/api/test-runs/999/test-log/export", headers=as_user("tester")).status_code == 404

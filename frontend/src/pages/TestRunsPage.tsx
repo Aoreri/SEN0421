@@ -246,6 +246,15 @@ export function TestRunsPage({ user }: TestRunsPageProps) {
     }
   }
 
+  // Export routes require the bearer token, so a plain <a href> would get 401.
+  async function handleDownloadTestLog(runId: number, format: "html" | "pdf") {
+    try {
+      await api.downloadTestLog(runId, format);
+    } catch (err) {
+      setError(formatErrorMessage(err, "Test Log indirilemedi."));
+    }
+  }
+
   async function handleCreateRun(e: FormEvent) {
     e.preventDefault();
     const validationErrors = validateTestRunForm({
@@ -665,6 +674,24 @@ export function TestRunsPage({ user }: TestRunsPageProps) {
               <span className="badge skipped">Skipped: {activeSummary.counts.Skipped}</span>
               <span className="badge not-run">Not Run: {activeSummary.counts["Not Run"]}</span>
               <span className="badge">Başarı: {activeSummary.passRate}%</span>
+              {!previewMode && (
+                <>
+                  <button
+                    type="button"
+                    className="detail-link"
+                    onClick={() => void handleDownloadTestLog(activeRun.id, "html")}
+                  >
+                    Test Log (HTML)
+                  </button>
+                  <button
+                    type="button"
+                    className="detail-link"
+                    onClick={() => void handleDownloadTestLog(activeRun.id, "pdf")}
+                  >
+                    Test Log (PDF)
+                  </button>
+                </>
+              )}
             </div>
           </div>
 
