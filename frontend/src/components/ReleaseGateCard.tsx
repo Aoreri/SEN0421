@@ -1,6 +1,8 @@
 import { FormEvent, useEffect, useState } from "react";
 import {
+  api,
   ExitCriteriaConfig,
+  formatErrorMessage,
   RELEASE_STATUSES,
   ReleaseGateStatus,
   ReleaseStatus,
@@ -41,6 +43,17 @@ export function ReleaseGateCard({
 
   const [waiverReason, setWaiverReason] = useState("");
   const [waiverError, setWaiverError] = useState("");
+  const [downloadError, setDownloadError] = useState("");
+
+  // Export routes require the bearer token, so a plain <a href> would get 401.
+  async function downloadReport(releaseId: number, format: "html" | "pdf") {
+    setDownloadError("");
+    try {
+      await api.downloadSummaryReport(releaseId, format);
+    } catch (err) {
+      setDownloadError(formatErrorMessage(err, "Test Summary Report indirilemedi."));
+    }
+  }
 
   useEffect(() => {
     if (!gate) return;
@@ -218,6 +231,20 @@ export function ReleaseGateCard({
             {editingCriteria ? "Eşikleri Gizle" : "Çıkış Eşikleri Düzenle"}
           </button>
         )}
+
+        <div className="row-actions">
+          <button type="button" className="detail-link" onClick={() => void downloadReport(gate.release_id, "html")}>
+            Test Summary Report (HTML)
+          </button>
+          <button type="button" className="detail-link" onClick={() => void downloadReport(gate.release_id, "pdf")}>
+            Test Summary Report (PDF)
+          </button>
+          {downloadError && (
+            <span className="field-error" role="alert">
+              {downloadError}
+            </span>
+          )}
+        </div>
       </div>
 
       {!canManageGate && (
