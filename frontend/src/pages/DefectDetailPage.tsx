@@ -46,7 +46,7 @@ export function DefectDetailPage({ user }: DefectDetailPageProps) {
   const [error, setError] = useState("");
 
   const loadDetail = useCallback(async () => {
-    if (!isValidId) {
+    if (!isValidId || !user) {
       setLoading(false);
       return;
     }
@@ -76,7 +76,7 @@ export function DefectDetailPage({ user }: DefectDetailPageProps) {
     } finally {
       setLoading(false);
     }
-  }, [defectId, isValidId]);
+  }, [defectId, isValidId, user]);
 
   useEffect(() => {
     setDefect(null);
@@ -107,6 +107,15 @@ export function DefectDetailPage({ user }: DefectDetailPageProps) {
   const canCreateSnapshot =
     user !== null &&
     (user.role === "Admin" || user.role === "Test Lead" || user.role === "Tester");
+
+  // Export routes require the bearer token, so a plain <a href> would get 401.
+  async function handleDownload(defectId: number, format: "html" | "pdf", snapshotId?: number) {
+    try {
+      await api.downloadIncidentReport(defectId, format, snapshotId);
+    } catch (err) {
+      setError(formatErrorMessage(err, "Test Incident Report indirilemedi."));
+    }
+  }
 
   async function handleCreateSnapshot() {
     if (!defect || !canCreateSnapshot) return;
@@ -254,20 +263,20 @@ export function DefectDetailPage({ user }: DefectDetailPageProps) {
               </p>
             </div>
             <div className="row-actions">
-              <a
-                href={api.exportIncidentReportUrl(defect.id, "html")}
-                target="_blank"
-                rel="noreferrer"
+              <button
+                type="button"
                 className="btn-link secondary-btn"
+                onClick={() => void handleDownload(defect.id, "html")}
               >
                 Canlı HTML
-              </a>
-              <a
-                href={api.exportIncidentReportUrl(defect.id, "pdf")}
+              </button>
+              <button
+                type="button"
                 className="btn-link secondary-btn"
+                onClick={() => void handleDownload(defect.id, "pdf")}
               >
                 Canlı PDF İndir
-              </a>
+              </button>
               {canCreateSnapshot && (
                 <button
                   type="button"
@@ -286,17 +295,21 @@ export function DefectDetailPage({ user }: DefectDetailPageProps) {
                 <span key={snap.id} className="badge">
                   Snapshot #{snap.id} ({snap.status} · {snap.generated_by} ·{" "}
                   {formatTimestamp(snap.generated_at)}){" "}
-                  <a
-                    href={api.exportIncidentReportUrl(defect.id, "html", snap.id)}
-                    target="_blank"
-                    rel="noreferrer"
+                  <button
+                    type="button"
+                    className="detail-link"
+                    onClick={() => void handleDownload(defect.id, "html", snap.id)}
                   >
                     HTML
-                  </a>{" "}
+                  </button>{" "}
                   |{" "}
-                  <a href={api.exportIncidentReportUrl(defect.id, "pdf", snap.id)}>
+                  <button
+                    type="button"
+                    className="detail-link"
+                    onClick={() => void handleDownload(defect.id, "pdf", snap.id)}
+                  >
                     PDF
-                  </a>
+                  </button>
                 </span>
               ))}
             </div>

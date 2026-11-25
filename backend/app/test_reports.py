@@ -26,6 +26,7 @@ from .models import (
     User,
     execution_defects,
 )
+from .projects import READ
 from .test_plans import _pdf_escape
 
 router = APIRouter(prefix="/api", tags=["test-reports"])
@@ -396,7 +397,7 @@ def create_incident_report_snapshot(defect_id: int, db: DB, user: SnapshotUser):
     return incident_snapshot_detail_out(snap)
 
 
-@router.get("/defects/{defect_id}/incident-report/snapshots")
+@router.get("/defects/{defect_id}/incident-report/snapshots", dependencies=READ)
 def list_incident_report_snapshots(defect_id: int, db: DB):
     get_defect_or_404(db, defect_id)
     rows = db.scalars(
@@ -407,7 +408,7 @@ def list_incident_report_snapshots(defect_id: int, db: DB):
     return [incident_snapshot_summary_out(s) for s in rows]
 
 
-@router.get("/defects/{defect_id}/incident-report/snapshots/{snapshot_id}")
+@router.get("/defects/{defect_id}/incident-report/snapshots/{snapshot_id}", dependencies=READ)
 def get_incident_report_snapshot(defect_id: int, snapshot_id: int, db: DB):
     get_defect_or_404(db, defect_id)
     snap = db.scalar(
@@ -421,7 +422,7 @@ def get_incident_report_snapshot(defect_id: int, snapshot_id: int, db: DB):
     return incident_snapshot_detail_out(snap)
 
 
-@router.get("/defects/{defect_id}/incident-report/export")
+@router.get("/defects/{defect_id}/incident-report/export", dependencies=READ)
 def export_incident_report(
     defect_id: int,
     db: DB,
@@ -593,7 +594,7 @@ def create_test_log_snapshot(run_id: int, db: DB, user: SnapshotUser):
     return test_log_snapshot_detail_out(snap)
 
 
-@router.get("/test-runs/{run_id}/test-log/snapshots")
+@router.get("/test-runs/{run_id}/test-log/snapshots", dependencies=READ)
 def list_test_log_snapshots(run_id: int, db: DB):
     get_run_for_log_or_404(db, run_id)
     rows = db.scalars(
@@ -604,7 +605,7 @@ def list_test_log_snapshots(run_id: int, db: DB):
     return [test_log_snapshot_summary_out(s) for s in rows]
 
 
-@router.get("/test-runs/{run_id}/test-log/snapshots/{snapshot_id}")
+@router.get("/test-runs/{run_id}/test-log/snapshots/{snapshot_id}", dependencies=READ)
 def get_test_log_snapshot(run_id: int, snapshot_id: int, db: DB):
     get_run_for_log_or_404(db, run_id)
     snap = db.scalar(
@@ -618,7 +619,7 @@ def get_test_log_snapshot(run_id: int, snapshot_id: int, db: DB):
     return test_log_snapshot_detail_out(snap)
 
 
-@router.get("/test-runs/{run_id}/test-log/export")
+@router.get("/test-runs/{run_id}/test-log/export", dependencies=READ)
 def export_test_log(
     run_id: int,
     db: DB,

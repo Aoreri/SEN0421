@@ -124,6 +124,18 @@ export function TestRunsPage({ user }: TestRunsPageProps) {
   );
 
   const loadData = useCallback(async () => {
+    if (!user) {
+      setProjects([]);
+      setReleases([]);
+      setSuites([]);
+      setRawServerCases([]);
+      setTestCases([]);
+      setDefects([]);
+      setRuns([]);
+      setError("");
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const [projs, rels, cases, defs] = await Promise.all([
@@ -178,7 +190,7 @@ export function TestRunsPage({ user }: TestRunsPageProps) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     void loadData();
@@ -231,6 +243,15 @@ export function TestRunsPage({ user }: TestRunsPageProps) {
       if (runFormErrors.testCaseIds) {
         setRunFormErrors((prev) => ({ ...prev, testCaseIds: undefined }));
       }
+    }
+  }
+
+  // Export routes require the bearer token, so a plain <a href> would get 401.
+  async function handleDownloadTestLog(runId: number, format: "html" | "pdf") {
+    try {
+      await api.downloadTestLog(runId, format);
+    } catch (err) {
+      setError(formatErrorMessage(err, "Test Log indirilemedi."));
     }
   }
 
@@ -655,20 +676,20 @@ export function TestRunsPage({ user }: TestRunsPageProps) {
               <span className="badge">Başarı: {activeSummary.passRate}%</span>
               {!previewMode && (
                 <>
-                  <a
-                    href={api.exportTestLogUrl(activeRun.id, "html")}
-                    target="_blank"
-                    rel="noreferrer"
+                  <button
+                    type="button"
                     className="detail-link"
+                    onClick={() => void handleDownloadTestLog(activeRun.id, "html")}
                   >
                     Test Log (HTML)
-                  </a>
-                  <a
-                    href={api.exportTestLogUrl(activeRun.id, "pdf")}
+                  </button>
+                  <button
+                    type="button"
                     className="detail-link"
+                    onClick={() => void handleDownloadTestLog(activeRun.id, "pdf")}
                   >
                     Test Log (PDF)
-                  </a>
+                  </button>
                 </>
               )}
             </div>
