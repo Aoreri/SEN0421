@@ -301,7 +301,7 @@ export function TestRunsPage({ user }: TestRunsPageProps) {
         setRunFormErrors({});
         setSelectedRunId(created.id);
         setNotice(
-          `PLN-17 uç noktası bekleniyor: "${created.name}" yerel önizleme koşumu olarak oluşturuldu.`,
+          `"${created.name}" önizleme koşumu olarak bu tarayıcıda oluşturuldu.`,
         );
         setError("");
         await loadData();
@@ -493,11 +493,9 @@ export function TestRunsPage({ user }: TestRunsPageProps) {
       {previewMode && (
         <section className="info-banner" role="note">
           <div>
-            <strong>Önizleme Modu (PLN-17 Backend Bekleniyor):</strong>{" "}
-            Test koşumu ve yürütme kayıtları PLN-17 uç noktaları (<code>/api/test-runs</code>)
-            birleşene kadar yerel tarayıcı deposunda çalışır. Başarısız yürütmeden açtığınız
-            defect kayıtları ise doğrudan gerçek <code>POST /api/defects</code> API&apos;sine
-            yazılır ve veritabanında kalıcı olur.
+            <strong>Önizleme Modu:</strong> Test koşumu ve yürütme kayıtları şimdilik yalnızca
+            bu tarayıcıda saklanır. Başarısız yürütmeden açtığınız defect kayıtları ise kalıcı
+            olarak kaydedilir.
           </div>
         </section>
       )}
@@ -525,7 +523,7 @@ export function TestRunsPage({ user }: TestRunsPageProps) {
         <section>
           <h2>Yeni Test Koşumu Başlat</h2>
           <p className="section-desc">
-            ISO/IEC/IEEE 29119-2 · Test Yürütme ve Test Olay Raporlama (R2, R4)
+            Test Yürütme ve Test Olay Raporlama
           </p>
           <form onSubmit={handleCreateRun} noValidate className="stacked-form">
             <div className="form-grid">
@@ -785,7 +783,7 @@ export function TestRunsPage({ user }: TestRunsPageProps) {
 
                   {relatedResolvedDefects.length > 0 && (
                     <p className="hint" style={{ margin: "6px 0" }}>
-                      Doğrulama Notu (R4): İlişkili{" "}
+                      Doğrulama Notu: İlişkili{" "}
                       {relatedResolvedDefects.map((d) => `#${d.id}`).join(", ")} defect
                       kayıtları <strong>Resolved</strong> durumda. Burada{" "}
                       <strong>Passed</strong> yürütmesi kaydetmek doğrulama kanıtı oluşturur.

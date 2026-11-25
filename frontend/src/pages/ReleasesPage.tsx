@@ -230,9 +230,9 @@ export function ReleasesPage({ user }: ReleasesPageProps) {
       <section>
         <div className="section-header">
           <div>
-            <h2>Sürüm Yönetimi (R5, R7)</h2>
+            <h2>Sürüm Yönetimi</h2>
             <p className="section-desc">
-              ISO/IEC/IEEE 29119-2 · Test Tamamlama · Sürüm durumu, çıkış kriterleri, muafiyet ve
+              Test Tamamlama · Sürüm durumu, çıkış kriterleri, muafiyet ve
               IEEE 829 Test Summary Report
             </p>
           </div>
@@ -285,7 +285,7 @@ export function ReleasesPage({ user }: ReleasesPageProps) {
             <div>
               <h2>Metrik Paneli{activeSprint ? ` · ${activeSprint.name}` : ""}</h2>
               <p className="section-desc">
-                ISO/IEC/IEEE 29119-2 · Test İzleme ve Kontrol · Seçili sürüm
+                Test İzleme ve Kontrol · Seçili sürüm
                 {activeSprint ? " ve sprint" : ""} kapsamında
               </p>
             </div>
@@ -328,7 +328,7 @@ export function ReleasesPage({ user }: ReleasesPageProps) {
             <div>
               <h2>IEEE 829 Test Summary Report</h2>
               <p className="section-desc">
-                ISO/IEC/IEEE 29119-3 · Test Completion Report · Canlı rapor veya saklanmış anlık
+                Canlı rapor veya saklanmış anlık
                 görüntü (snapshot)
               </p>
             </div>

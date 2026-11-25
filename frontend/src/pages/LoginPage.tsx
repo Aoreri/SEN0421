@@ -73,7 +73,7 @@ export function LoginPage({ user, onLogin, onLogout }: LoginPageProps) {
       )}
 
       <section>
-        <h2>Kullanıcı Girişi (JWT Kimlik Doğrulama)</h2>
+        <h2>Kullanıcı Girişi</h2>
         <p className="section-desc">
           Rol tabanlı işlemleri (defect oluşturma, durum geçişleri, proje/sürüm/gereksinim yönetimi
           ve izlenebilirlik) gerçekleştirmek için giriş yapın.
@@ -124,7 +124,7 @@ export function LoginPage({ user, onLogin, onLogout }: LoginPageProps) {
       </section>
 
       <section>
-        <h2>Demo Hesapları (Varsayılan Parola: <code>demo1234</code>)</h2>
+        <h2>Demo Hesapları</h2>
         <table aria-label="Demo Kullanıcıları">
           <thead>
             <tr>

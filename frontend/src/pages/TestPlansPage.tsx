@@ -491,7 +491,7 @@ export function TestPlansPage({ user }: TestPlansPageProps) {
       {!user && (
         <section className="role-notice">
           <span>
-            IEEE 829 / ISO/IEC/IEEE 29119-3 Test Plan kayıtlarını görüntülüyorsunuz ve HTML/PDF
+            IEEE 829 Test Plan kayıtlarını görüntülüyorsunuz ve HTML/PDF
             olarak indirebilirsiniz. Taslak oluşturmak, düzenlemek veya durum geçişi yapmak için
             giriş yapın.
           </span>
@@ -522,7 +522,7 @@ export function TestPlansPage({ user }: TestPlansPageProps) {
                   : "Yeni IEEE 829 Test Plan Taslağı Oluştur"}
               </h2>
               <p className="section-desc">
-                IEEE 829 Test Plan · ISO/IEC/IEEE 29119-3 Test Plan (R1, R3) · Yeni planlar{" "}
+                IEEE 829 Test Plan · Yeni planlar{" "}
                 <strong>Draft</strong> durumunda başlar; <strong>Approved</strong> durumundaki
                 planlar tekrar <strong>Draft</strong> durumuna alınmadan düzenlenemez veya
                 silinemez.
@@ -747,7 +747,7 @@ export function TestPlansPage({ user }: TestPlansPageProps) {
       <section>
         <div className="section-header">
           <div>
-            <h2>Kayıtlı Test Planları (IEEE 829 / ISO/IEC/IEEE 29119-3)</h2>
+            <h2>Kayıtlı Test Planları</h2>
             <p className="section-desc">
               Yaşam döngüsü: <strong>Draft → In Review → Approved</strong> (Onaylı planı yeniden
               düzenlemek için <strong>Approved → Draft</strong> geçişi kullanılır). Yalnızca
@@ -834,7 +834,7 @@ export function TestPlansPage({ user }: TestPlansPageProps) {
               <div>
                 <h3>İzin Verilen Durum Geçişleri (Draft → In Review → Approved)</h3>
                 <p className="hint" style={{ marginTop: 2 }}>
-                  API kuralları gereği doğrudan <code>Draft → Approved</code> geçişi yapılamaz;
+                  Doğrudan <code>Draft → Approved</code> geçişi yapılamaz;
                   önce <code>In Review</code> durumuna geçirilmelidir.
                 </p>
               </div>

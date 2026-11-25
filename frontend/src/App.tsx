@@ -460,9 +460,9 @@ function DashboardView({ user }: DashboardViewProps) {
         <section>
           <div className="section-header">
             <div>
-              <h2>Grafikli Metrik Paneli (R5)</h2>
+              <h2>Grafikli Metrik Paneli</h2>
               <p className="section-desc">
-                ISO/IEC/IEEE 29119-2 · Test İzleme ve Kontrol · Koşum trendi, defect burn-up ve
+                Test İzleme ve Kontrol · Koşum trendi, defect burn-up ve
                 önem dağılımı
               </p>
             </div>
@@ -491,11 +491,9 @@ function DashboardView({ user }: DashboardViewProps) {
 
           {analyticsPreviewMode && (
             <div className="info-banner" style={{ marginBottom: 12 }} role="note">
-              <strong>Önizleme Modu (PLN-18 / PLN-24 Backend Bekleniyor):</strong>{" "}
-              Genişletilmiş metrikler ve sürüm çıkış kapısı değerleri mevcut canlı{" "}
-              <code>/api/defects</code>, <code>/api/requirements</code>,{" "}
-              <code>/api/test-cases</code> verileri ile önizleme test koşumlarından
-              hesaplanır.
+              <strong>Önizleme Modu:</strong> Genişletilmiş metrikler ve sürüm çıkış kapısı
+              değerleri canlı defect, gereksinim ve test vakası verileriyle önizleme test
+              koşumlarından hesaplanır.
             </div>
           )}
 
@@ -694,7 +692,6 @@ export default function App() {
         <div className="header-inner">
           <div>
             <h1>SDS-06 · Agile Test and Defect Tracking System</h1>
-            <p>ISO/IEC/IEEE 12207 · IEEE 829 · ISO/IEC/IEEE 29119-2 / 29119-3</p>
           </div>
 
           <div className="auth-bar">
@@ -752,12 +749,6 @@ export default function App() {
             className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
           >
             Projeler &amp; Gereksinimler
-          </NavLink>
-          <NavLink
-            to="/login"
-            className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
-          >
-            Giriş / Rol Seçimi
           </NavLink>
           <NavLink to="/junit-imports" className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}>JUnit Raporları</NavLink>
         </nav>
