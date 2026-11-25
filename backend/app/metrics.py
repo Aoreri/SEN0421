@@ -1,4 +1,4 @@
-"""PLN-24/R5: SQL aggregates over scoped runs, links and immutable history."""
+"""PLN-24/PLN-28/R5: SQL aggregates over scoped runs, sprints, links and immutable history."""
 from datetime import UTC, datetime
 from typing import Annotated
 
@@ -14,6 +14,7 @@ from .models import (
     Project,
     Release,
     Requirement,
+    Sprint,
     TestExecution,
     TestRun,
     execution_defects,
@@ -45,17 +46,43 @@ def event_day(db: Session, timestamp):
     return func.date(func.timezone("UTC", timestamp)) if db.get_bind().dialect.name == "postgresql" else func.date(timestamp)
 
 
+def stored_utc(value: datetime | None) -> datetime | None:
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        return value.replace(tzinfo=UTC)
+    return value.astimezone(UTC)
+
+
 @router.get("/expanded", dependencies=[Depends(current_user)])
 def expanded_metrics(db: DB,
                      project_id: Annotated[int | None, Query(ge=1)] = None,
                      release_id: Annotated[int | None, Query(ge=1)] = None,
-                     start_at: datetime | None = None, end_at: datetime | None = None,
-                     sprint_id: str | None = None):
-    if sprint_id is not None:
-        raise HTTPException(422, "Sprint model is not available; use start_at/end_at for a sprint window")
+                     sprint_id: Annotated[int | None, Query(ge=1)] = None,
+                     start_at: datetime | None = None, end_at: datetime | None = None):
     start, end = utc(start_at), utc(end_at)
     if start is not None and end is not None and start >= end:
         raise HTTPException(422, "start_at must precede end_at")
+    sprint: Sprint | None = None
+    if sprint_id is not None:
+        sprint = get_or_404(db, Sprint, sprint_id)
+        if project_id is not None and project_id != sprint.project_id:
+            raise HTTPException(422, "Sprint belongs to another project")
+        if (
+            release_id is not None
+            and sprint.release_id is not None
+            and release_id != sprint.release_id
+        ):
+            raise HTTPException(422, "Sprint belongs to another release")
+        project_id = sprint.project_id
+        sprint_start = stored_utc(sprint.start_at)
+        sprint_end = stored_utc(sprint.end_at)
+        if start is None and sprint_start is not None:
+            start = sprint_start
+        if end is None and sprint_end is not None:
+            end = sprint_end
+        if start is not None and end is not None and start >= end:
+            raise HTTPException(422, "start_at must precede end_at")
     if release_id is not None:
         release = get_or_404(db, Release, release_id)
         if project_id is not None and project_id != release.project_id:
@@ -69,6 +96,15 @@ def expanded_metrics(db: DB,
         run_query = run_query.where(TestRun.project_id == project_id)
     if release_id is not None:
         run_query = run_query.where(TestRun.release_id == release_id)
+    if sprint is not None:
+        has_explicit_sprint_runs = (
+            db.scalar(select(TestRun.id).where(TestRun.sprint_id == sprint.id).limit(1))
+            is not None
+        )
+        if has_explicit_sprint_runs or (sprint.start_at is None and sprint.end_at is None):
+            run_query = run_query.where(TestRun.sprint_id == sprint.id)
+        elif release_id is None and sprint.release_id is not None:
+            run_query = run_query.where(TestRun.release_id == sprint.release_id)
     if start is not None:
         run_query = run_query.where(TestRun.created_at >= start)
     if end is not None:
@@ -107,10 +143,45 @@ def expanded_metrics(db: DB,
         select(test_case_requirements.c.test_case_id)
         .where(test_case_requirements.c.requirement_id == reqs.c.id).exists())) or 0
 
-    # Release membership is evidenced by explicit execution↔defect links.
+    # Release or sprint membership is evidenced by explicit execution↔defect links.
     # A case belonging to the same project does not prove release membership.
     defects_query = select(Defect.id, Defect.severity)
-    if release_id is not None:
+    if sprint is not None:
+        if has_explicit_sprint_runs or (sprint.start_at is None and sprint.end_at is None):
+            linked_defects = (
+                select(execution_defects.c.defect_id)
+                .join(TestExecution, TestExecution.id == execution_defects.c.execution_id)
+                .join(TestRun, TestRun.id == TestExecution.run_id)
+                .where(TestRun.sprint_id == sprint.id)
+            )
+            if release_id is not None:
+                linked_defects = linked_defects.where(TestRun.release_id == release_id)
+            defects_query = defects_query.where(Defect.id.in_(linked_defects))
+        elif release_id is not None or sprint.release_id is not None:
+            eff_release_id = release_id if release_id is not None else sprint.release_id
+            linked_defects = (
+                select(execution_defects.c.defect_id)
+                .join(TestExecution, TestExecution.id == execution_defects.c.execution_id)
+                .join(TestRun, TestRun.id == TestExecution.run_id)
+                .where(TestRun.release_id == eff_release_id)
+            )
+            defects_query = defects_query.where(Defect.id.in_(linked_defects))
+        else:
+            linked_cases = (
+                select(test_case_requirements.c.test_case_id)
+                .join(Requirement, Requirement.id == test_case_requirements.c.requirement_id)
+                .where(Requirement.project_id == project_id)
+            )
+            linked_defects = (
+                select(execution_defects.c.defect_id)
+                .join(TestExecution, TestExecution.id == execution_defects.c.execution_id)
+                .join(TestRun, TestRun.id == TestExecution.run_id)
+                .where(TestRun.project_id == project_id)
+            )
+            defects_query = defects_query.where(
+                or_(Defect.test_case.in_(linked_cases), Defect.id.in_(linked_defects))
+            )
+    elif release_id is not None:
         linked_defects = select(execution_defects.c.defect_id).join(
             TestExecution, TestExecution.id == execution_defects.c.execution_id).join(
             TestRun, TestRun.id == TestExecution.run_id).where(TestRun.release_id == release_id)
@@ -208,9 +279,9 @@ def expanded_metrics(db: DB,
         "avg_defect_age_hours": round(float(stats.age), 2) if stats.age is not None else None,
         "avg_resolution_hours": round(float(stats.resolution), 2) if stats.resolution is not None else None,
         "run_series": series, "defect_burnup": burnup, "severity_distribution": distribution,
-        "scope": {"project_id": project_id, "release_id": release_id,
+        "scope": {"project_id": project_id, "release_id": release_id, "sprint_id": sprint_id,
                   "start_at": start, "end_at": end, "as_of": as_of,
-                  "execution_source": "current interactive execution snapshots", "sprint_available": False,
+                  "execution_source": "current interactive execution snapshots", "sprint_available": True,
                   "requirement_scope": "project catalogue links", "run_count": run_count,
                   "run_series_truncated": run_count > 1000},
         "denominators": {"decisive_executions": totals.passed + totals.failed,

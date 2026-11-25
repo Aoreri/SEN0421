@@ -1,8 +1,8 @@
-"""Proje, sürüm, gereksinim, test suite ve test vakası CRUD uçları, izlenebilirlik ve sürüm çıkış kapısı (PLN-06, PLN-16, PLN-18)."""
+"""Proje, sürüm, sprint, gereksinim, test suite ve test vakası CRUD uçları, izlenebilirlik ve sürüm çıkış kapısı (PLN-06, PLN-16, PLN-18, PLN-28)."""
 from datetime import UTC, datetime
 from typing import Annotated, Any, Literal
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field, StringConstraints
 from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
@@ -17,6 +17,7 @@ from .models import (
     Project,
     Release,
     Requirement,
+    Sprint,
     TestCase,
     TestExecution,
     TestPlan,
@@ -33,6 +34,7 @@ TRACE = [Depends(require_roles(ADMIN, TEST_LEAD, TESTER))]
 GateManager = Annotated[User, Depends(require_roles(ADMIN, TEST_LEAD))]
 
 ReleaseStatus = Literal["Planned", "In Test", "Ready", "Released"]
+SprintStatus = Literal["Planned", "Active", "Completed"]
 
 
 Title = StringConstraints(strip_whitespace=True, min_length=1, max_length=200)
@@ -68,6 +70,16 @@ class ReleaseWaiverIn(BaseModel):
 
 class ReleaseStatusIn(BaseModel):
     status: ReleaseStatus
+
+
+class SprintIn(BaseModel):
+    project_id: int
+    release_id: int | None = None
+    name: Annotated[str, Short]
+    goal: Description = ""
+    start_at: datetime | None = None
+    end_at: datetime | None = None
+    status: SprintStatus = "Planned"
 
 
 class RequirementIn(BaseModel):
@@ -148,6 +160,48 @@ def project_out(p: Project) -> dict:
 
 def release_out(r: Release) -> dict:
     return {"id": r.id, "project_id": r.project_id, "version": r.version, "status": r.status}
+
+
+def normalize_utc(value: datetime | None) -> datetime | None:
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        raise HTTPException(422, "Sprint tarihleri zaman dilimi (timezone) içermelidir")
+    return value.astimezone(UTC)
+
+
+def format_utc(value: datetime | None) -> datetime | None:
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        return value.replace(tzinfo=UTC)
+    return value.astimezone(UTC)
+
+
+def sprint_out(s: Sprint) -> dict:
+    return {
+        "id": s.id,
+        "project_id": s.project_id,
+        "release_id": s.release_id,
+        "name": s.name,
+        "goal": s.goal,
+        "start_at": format_utc(s.start_at),
+        "end_at": format_utc(s.end_at),
+        "status": s.status,
+    }
+
+
+def validate_sprint(db: Session, body: SprintIn) -> tuple[datetime | None, datetime | None]:
+    require_project(db, body.project_id)
+    if body.release_id is not None:
+        release = db.get(Release, body.release_id)
+        if release is None or release.project_id != body.project_id:
+            raise HTTPException(422, "Sürüm bulunamadı veya projeye ait değil")
+    start = normalize_utc(body.start_at)
+    end = normalize_utc(body.end_at)
+    if start is not None and end is not None and start >= end:
+        raise HTTPException(422, "start_at değeri end_at değerinden önce olmalıdır")
+    return start, end
 
 
 def release_gate_out(db: Session, r: Release) -> dict:
@@ -308,11 +362,20 @@ def update_project(project_id: int, body: ProjectIn, db: DB):
 @router.delete("/projects/{project_id}", status_code=204, dependencies=WRITE)
 def delete_project(project_id: int, db: DB):
     project = get_or_404(db, Project, project_id)
-    for model in (Release, Requirement, TestSuite, TestRun, TestPlan, ImportedTestRun, CoverageImport):
+    for model in (
+        Release,
+        Sprint,
+        Requirement,
+        TestSuite,
+        TestRun,
+        TestPlan,
+        ImportedTestRun,
+        CoverageImport,
+    ):
         if db.scalar(select(model.id).where(model.project_id == project_id).limit(1)) is not None:
             raise HTTPException(
                 409,
-                "Projeye bağlı sürüm, gereksinim, test suite, test koşumu, test planı veya içe aktarım kayıtları var",
+                "Projeye bağlı sürüm, sprint, gereksinim, test suite, test koşumu, test planı veya içe aktarım kayıtları var",
             )
     remove(db, project)
 
@@ -338,12 +401,18 @@ def get_release(release_id: int, db: DB):
 def update_release(release_id: int, body: ReleaseIn, db: DB):
     release = get_or_404(db, Release, release_id)
     require_project(db, body.project_id)
+    if release.project_id != body.project_id:
+        for model in (Sprint, TestRun, TestPlan):
+            if db.scalar(select(model.id).where(model.release_id == release_id).limit(1)) is not None:
+                raise HTTPException(409, "Bağlı kayıtları olan sürümün projesi değiştirilemez")
     return release_out(save(db, release, body))
 
 
 @router.delete("/releases/{release_id}", status_code=204, dependencies=WRITE)
 def delete_release(release_id: int, db: DB):
     release = get_or_404(db, Release, release_id)
+    if db.scalar(select(Sprint.id).where(Sprint.release_id == release_id).limit(1)) is not None:
+        raise HTTPException(409, "Sürüme bağlı sprint kayıtları var")
     if db.scalar(select(TestRun.id).where(TestRun.release_id == release_id).limit(1)) is not None:
         raise HTTPException(409, "Sürüme bağlı test koşumları var")
     if db.scalar(select(TestPlan.id).where(TestPlan.release_id == release_id).limit(1)) is not None:
@@ -399,6 +468,73 @@ def update_release_status(release_id: int, body: ReleaseStatusIn, db: DB):
     db.add(release)
     commit_or_409(db)
     return release_gate_out(db, release)
+
+
+# --- Sprintler (PLN-28) -------------------------------------------------------
+@router.get("/sprints", dependencies=READ)
+def list_sprints(
+    db: DB,
+    project_id: Annotated[int | None, Query(ge=1)] = None,
+    release_id: Annotated[int | None, Query(ge=1)] = None,
+):
+    stmt = select(Sprint).order_by(Sprint.id)
+    if project_id is not None:
+        stmt = stmt.where(Sprint.project_id == project_id)
+    if release_id is not None:
+        stmt = stmt.where(Sprint.release_id == release_id)
+    return [sprint_out(s) for s in db.scalars(stmt)]
+
+
+@router.post("/sprints", status_code=201, dependencies=WRITE)
+def create_sprint(body: SprintIn, db: DB):
+    start, end = validate_sprint(db, body)
+    sprint = Sprint(
+        project_id=body.project_id,
+        release_id=body.release_id,
+        name=body.name,
+        goal=body.goal,
+        start_at=start,
+        end_at=end,
+        status=body.status,
+    )
+    db.add(sprint)
+    commit_or_409(db)
+    return sprint_out(sprint)
+
+
+@router.get("/sprints/{sprint_id}", dependencies=READ)
+def get_sprint(sprint_id: int, db: DB):
+    return sprint_out(get_or_404(db, Sprint, sprint_id))
+
+
+@router.put("/sprints/{sprint_id}", dependencies=WRITE)
+def update_sprint(sprint_id: int, body: SprintIn, db: DB):
+    sprint = get_or_404(db, Sprint, sprint_id)
+    start, end = validate_sprint(db, body)
+    if (
+        sprint.project_id != body.project_id
+        and db.scalar(select(TestRun.id).where(TestRun.sprint_id == sprint_id).limit(1))
+        is not None
+    ):
+        raise HTTPException(409, "Test koşumları bağlıyken sprint projesi değiştirilemez")
+    sprint.project_id = body.project_id
+    sprint.release_id = body.release_id
+    sprint.name = body.name
+    sprint.goal = body.goal
+    sprint.start_at = start
+    sprint.end_at = end
+    sprint.status = body.status
+    db.add(sprint)
+    commit_or_409(db)
+    return sprint_out(sprint)
+
+
+@router.delete("/sprints/{sprint_id}", status_code=204, dependencies=WRITE)
+def delete_sprint(sprint_id: int, db: DB):
+    sprint = get_or_404(db, Sprint, sprint_id)
+    if db.scalar(select(TestRun.id).where(TestRun.sprint_id == sprint_id).limit(1)) is not None:
+        raise HTTPException(409, "Sprinte bağlı test koşumları var")
+    remove(db, sprint)
 
 
 # --- Gereksinimler ------------------------------------------------------------

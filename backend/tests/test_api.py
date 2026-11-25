@@ -202,6 +202,176 @@ def test_release_crud(client):
     assert client.get(url, headers=lead).status_code == 404
 
 
+def test_sprint_crud_validation_roles_and_dependents(client):
+    lead = as_user("testlead")
+    admin = as_user("admin")
+    tester = as_user("tester")
+    dev = as_user("developer")
+
+    rel = client.post("/api/releases", json={"project_id": 1, "version": "v1.0"}, headers=lead).json()
+    sprint_in = {
+        "project_id": 1,
+        "release_id": rel["id"],
+        "name": "  Sprint 1  ",
+        "goal": "  Temel altyapı ve doğrulama  ",
+        "start_at": "2026-11-01T00:00:00Z",
+        "end_at": "2026-11-15T00:00:00Z",
+        "status": "Active",
+    }
+    created = client.post("/api/sprints", json=sprint_in, headers=lead)
+    assert created.status_code == 201
+    sprint = created.json()
+    sid = sprint["id"]
+    assert sprint["name"] == "Sprint 1"
+    assert sprint["goal"] == "Temel altyapı ve doğrulama"
+    assert sprint["project_id"] == 1
+    assert sprint["release_id"] == rel["id"]
+    assert sprint["status"] == "Active"
+    assert datetime.fromisoformat(sprint["start_at"]) == datetime(2026, 11, 1, tzinfo=UTC)
+    assert datetime.fromisoformat(sprint["end_at"]) == datetime(2026, 11, 15, tzinfo=UTC)
+
+    # Get and list with filters
+    assert client.get(f"/api/sprints/{sid}", headers=admin).json() == sprint
+    assert client.get("/api/sprints", headers=admin).json() == [sprint]
+    assert client.get("/api/sprints", params={"project_id": 1}, headers=admin).json() == [sprint]
+    assert client.get("/api/sprints", params={"release_id": rel["id"]}, headers=admin).json() == [sprint]
+    assert client.get("/api/sprints", params={"release_id": 999}, headers=admin).json() == []
+    assert client.get("/api/sprints/999", headers=admin).status_code == 404
+
+    # Duplicate sprint name in same project -> 409
+    assert client.post("/api/sprints", json=sprint_in, headers=lead).status_code == 409
+
+    # Update sprint
+    updated = client.put(
+        f"/api/sprints/{sid}",
+        json={
+            "project_id": 1,
+            "release_id": None,
+            "name": "Sprint 1 Güncel",
+            "goal": "Tamamlandı",
+            "start_at": "2026-11-01T00:00:00+03:00",
+            "end_at": "2026-11-16T00:00:00+03:00",
+            "status": "Completed",
+        },
+        headers=admin,
+    )
+    assert updated.status_code == 200
+    assert updated.json()["name"] == "Sprint 1 Güncel"
+    assert updated.json()["release_id"] is None
+    assert updated.json()["status"] == "Completed"
+
+    # Role checks: 401 unauthenticated, 403 for Tester/Developer
+    for method, url, payload in [
+        ("post", "/api/sprints", {"project_id": 1, "name": "S2"}),
+        ("put", f"/api/sprints/{sid}", {"project_id": 1, "name": "S2"}),
+        ("delete", f"/api/sprints/{sid}", None),
+    ]:
+        send = getattr(client, method)
+        kwargs = {"json": payload} if payload is not None else {}
+        assert send(url, **kwargs).status_code == 401
+        for denied in (tester, dev):
+            assert send(url, headers=denied, **kwargs).status_code == 403
+
+    # Validation checks (422)
+    p2 = client.post("/api/projects", json={"name": "P2-Sprint"}, headers=admin).json()
+    r2 = client.post("/api/releases", json={"project_id": p2["id"], "version": "v2"}, headers=admin).json()
+    for bad_body in [
+        {"project_id": 999, "name": "S-BadProj"},
+        {"project_id": 1, "release_id": 999, "name": "S-BadRel"},
+        {"project_id": 1, "release_id": r2["id"], "name": "S-CrossRel"},
+        {"project_id": 1, "name": "   "},
+        {"project_id": 1, "name": "S-BadStatus", "status": "Invalid"},
+        {"project_id": 1, "name": "S-NaiveDate", "start_at": "2026-11-01T00:00:00"},
+        {
+            "project_id": 1,
+            "name": "S-InvertedDates",
+            "start_at": "2026-11-10T00:00:00Z",
+            "end_at": "2026-11-05T00:00:00Z",
+        },
+    ]:
+        assert client.post("/api/sprints", json=bad_body, headers=admin).status_code == 422
+
+    # Link sprint to r2 in p2, create test run in that sprint, and verify dependency protections
+    s_p2 = client.post(
+        "/api/sprints",
+        json={"project_id": p2["id"], "release_id": r2["id"], "name": "P2 Sprint 1"},
+        headers=admin,
+    ).json()
+    # Release with linked sprint cannot be deleted or moved to another project -> 409
+    assert client.delete(f"/api/releases/{r2['id']}", headers=admin).status_code == 409
+    assert (
+        client.put(
+            f"/api/releases/{r2['id']}",
+            json={"project_id": 1, "version": "v2"},
+            headers=admin,
+        ).status_code
+        == 409
+    )
+    # Project with linked sprint cannot be deleted -> 409
+    assert client.delete(f"/api/projects/{p2['id']}", headers=admin).status_code == 409
+
+    # Test run linked to sprint inherits release_id if omitted and rejects mismatched release/project
+    assert (
+        client.post(
+            "/api/test-runs",
+            json={
+                "name": "Cross project sprint run",
+                "project_id": 1,
+                "sprint_id": s_p2["id"],
+                "test_case_ids": ["TC-001"],
+            },
+            headers=tester,
+        ).status_code
+        == 422
+    )
+    r2_other = client.post(
+        "/api/releases", json={"project_id": p2["id"], "version": "v3"}, headers=admin
+    ).json()
+    assert (
+        client.post(
+            "/api/test-runs",
+            json={
+                "name": "Mismatched release sprint run",
+                "project_id": p2["id"],
+                "release_id": r2_other["id"],
+                "sprint_id": s_p2["id"],
+                "test_case_ids": ["TC-001"],
+            },
+            headers=tester,
+        ).status_code
+        == 422
+    )
+
+    run = client.post(
+        "/api/test-runs",
+        json={
+            "name": "Sprint Run",
+            "project_id": p2["id"],
+            "sprint_id": s_p2["id"],
+            "test_case_ids": ["TC-001"],
+        },
+        headers=tester,
+    )
+    assert run.status_code == 201
+    assert run.json()["sprint_id"] == s_p2["id"]
+    assert run.json()["release_id"] == r2["id"]
+
+    # Sprint with linked test run cannot be deleted or moved to another project -> 409
+    assert client.delete(f"/api/sprints/{s_p2['id']}", headers=admin).status_code == 409
+    assert (
+        client.put(
+            f"/api/sprints/{s_p2['id']}",
+            json={"project_id": 1, "name": "P2 Sprint 1"},
+            headers=admin,
+        ).status_code
+        == 409
+    )
+
+    # Unlinked sprint can be deleted -> 204
+    assert client.delete(f"/api/sprints/{sid}", headers=admin).status_code == 204
+    assert client.get(f"/api/sprints/{sid}", headers=admin).status_code == 404
+
+
 def test_release_exit_gate_criteria_waiver_and_status(client):
     lead = as_user("testlead")
     admin = as_user("admin")
@@ -1150,6 +1320,8 @@ def test_test_plan_snapshot_isolates_projects(client):
         "/api/projects/1/runs/imports/1",
         "/api/projects/1/coverage/imports",
         "/api/projects/1/coverage/imports/1",
+        "/api/sprints",
+        "/api/sprints/1",
     ],
 )
 def test_read_endpoints_require_authentication(client, url):

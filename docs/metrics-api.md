@@ -1,8 +1,8 @@
-# PLN-24 — SQL metrics API
+# PLN-24 / PLN-28 — SQL metrics API and sprint filtering
 
-Owner: Esra Kaya · target: 19 November 2026 · R5.
+Owner: Esra Kaya (PLN-24) · Caner Serbest (PLN-28 sprint entity & filter) · R5.
 Standards: ISO/IEC/IEEE 29119-2 — Test Monitoring and Control;
-ISO/IEC/IEEE 12207 — Measurement.
+ISO/IEC/IEEE 12207 — Measurement and Project Planning.
 
 ## Dependency and boundary
 
@@ -27,15 +27,16 @@ Optional query parameters:
 - `project_id`: positive existing project ID.
 - `release_id`: positive existing release ID; implies its project. A conflicting
   project filter returns 422. Unknown resources return 404.
+- `sprint_id`: positive existing sprint ID (`GET/POST /api/sprints`, PLN-28);
+  implies its project (and release when the sprint is linked to a release).
+  Conflicting `project_id` or `release_id` filters return 422; unknown sprint IDs
+  return 404. When the sprint has explicit `TestRun.sprint_id` runs (or has no
+  configured date bounds), runs and execution-linked defects are scoped by
+  `TestRun.sprint_id = sprint_id`; otherwise, if the sprint defines `start_at` /
+  `end_at` bounds, those bounds (and the sprint's `release_id` if present) are
+  applied automatically unless overridden by explicit query timestamps.
 - `start_at`, `end_at`: ISO-8601 timezone-aware timestamps, with inclusive start
   and exclusive end. Values are normalized to UTC. Start must precede end.
-
-Use the real sprint's known date bounds to obtain a period report, for example
-`?release_id=1&start_at=2026-11-05T00:00:00Z&end_at=2026-11-19T00:00:00Z`.
-There is no Sprint entity or sprint-membership relationship in main or PLN-17.
-An explicit `sprint_id` therefore returns 422 with this explanation instead of
-inventing membership. Stored sprint-ID reporting remains unavailable until that
-model and its links are provided by the team.
 
 Run scope uses `TestRun.created_at`; result counts use the current execution
 snapshots for those runs. They are not a historical reconstruction of execution
