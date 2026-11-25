@@ -69,6 +69,7 @@ test vakası ↔ gereksinim izlenebilirliği.
 | Sürüm durumları (`Planned`, `In Test`, `Ready`, `Released`), yapılandırılabilir çıkış kriterleri (başarı oranı, açık kritik defect, gereksinim kapsama) ve Test Lead / Admin muafiyet kaydı | R7 | 29119-2 Test Tamamlama; 12207 Kalite Güvence |
 | IEEE 829 Test Plan kaydı (`Draft` / `In Review` / `Approved`), anlık görüntü (snapshot) saklama ve Jinja2 + WeasyPrint/PDF + HTML üretimi | R1, R3 | IEEE 829 Test Plan; 29119-3 Test Plan; 12207 Uygulama |
 | IEEE 829 Test Summary Report üretimi: sürüm verisinden toplamlar, özellik/gereksinim bazında sonuçlar, defect özeti ve çıkış kriteri değerlendirmesi; HTML + PDF ve anlık görüntü (snapshot) saklama | R3, R7 | IEEE 829 Test Summary Report; 29119-3 Test Completion Report |
+| Test Plan yönetim ekranı (`/test-plans`): taslak oluşturma/düzenleme, yalnızca API'nin izin verdiği `Draft → In Review → Approved` durum geçişleri, sürüm geçmişi (snapshot) ve HTML / PDF indirme | R1, R3 | IEEE 829 Test Plan; 29119-3 Test Plan |
 
 **Planlanan:** Test Incident Report üretimi (Jinja2 + WeasyPrint).
 
@@ -194,3 +195,9 @@ kapsam: [Metrik API sözleşmesi](docs/metrics-api.md).
 açıklaması `.github/pull_request_template.md` bölümlerini ve bir `Agent:` satırını
 içermelidir; `PR description` CI kontrolü bunu denetler. Ajan kuralları:
 [AGENTS.md](AGENTS.md).
+
+## Playwright E2E (PLN-34)
+
+Login, defect lifecycle, test runs and Test Plan downloads are covered by the
+[Playwright acceptance suite](frontend/e2e/README.md). The CI job runs a disposable
+Docker Compose stack and imports its real JUnit results back into SDS-06.
