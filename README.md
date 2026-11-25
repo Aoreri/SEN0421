@@ -175,6 +175,13 @@ Cobertura raporlarını geçici bir SDS-06 örneğine aktarır; sonuçlar **Arti
 ci-import-evidence** altında 14 gün saklanır. Canlı proje veritabanına yazılmaz.
 Sınırlar, doğrulama, API ve migrasyon: [Cobertura sözleşmesi](docs/cobertura-import.md).
 
+## Performans ve birim test kapsamı (PLN-35)
+
+10.000 yürütmeyle gerçek tarayıcı panel süresi ve Test Plan üretimi ölçülür.
+İş akışı/metrik modüllerinin her birinde satır ve dal birim test kapsamı en az
+%80 olmalıdır. [Çalıştırma yönergesi](quality/README.md) ·
+[Ölçüm raporu ve ISO/IEC 25010 girdileri](docs/pln35-quality-measurements.md).
+
 ## SQL metrikleri ve sprint yönetimi (PLN-24 — Esra Kaya; PLN-28 — Caner Serbest)
 
 `GET /api/metrics/expanded`: proje, sürüm, sprint (`sprint_id`) ve UTC tarih aralığına göre

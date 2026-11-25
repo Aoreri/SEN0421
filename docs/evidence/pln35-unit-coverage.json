@@ -1,0 +1,32 @@
+{
+  "source_commit": "61999d7fb48dae8dd3f201490af296e8cdfa6f6f",
+  "workflow_run": "https://github.com/esrakaya38/SEN0421/actions/runs/45410293086",
+  "selection": "pytest -m unit (database-free)",
+  "tests_passed": 96,
+  "modules": {
+    "app/main.py": {
+      "covered_lines": 93,
+      "num_statements": 93,
+      "covered_branches": 26,
+      "num_branches": 26,
+      "missing_lines": 0,
+      "missing_branches": 0
+    },
+    "app/runs.py": {
+      "covered_lines": 108,
+      "num_statements": 108,
+      "covered_branches": 24,
+      "num_branches": 24,
+      "missing_lines": 0,
+      "missing_branches": 0
+    },
+    "app/metrics.py": {
+      "covered_lines": 102,
+      "num_statements": 102,
+      "covered_branches": 40,
+      "num_branches": 40,
+      "missing_lines": 0,
+      "missing_branches": 0
+    }
+  }
+}

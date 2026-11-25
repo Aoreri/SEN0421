@@ -1,4 +1,4 @@
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { Link, NavLink, Route, Routes, useNavigate } from "react-router-dom";
 import {
   api,
@@ -70,6 +70,9 @@ function DashboardView({ user }: DashboardViewProps) {
   const [defects, setDefects] = useState<Defect[]>([]);
   const [releases, setReleases] = useState<Release[]>([]);
   const [selectedReleaseId, setSelectedReleaseId] = useState<number | null>(null);
+  // Updating the default selection must not trigger a second full dashboard load.
+  const selectedReleaseRef = useRef<number | null>(null);
+  const loadSequence = useRef(0);
   const [releaseGate, setReleaseGate] = useState<ReleaseGateStatus | null>(null);
   const [analyticsPreviewMode, setAnalyticsPreviewMode] = useState(false);
   const [gateSaving, setGateSaving] = useState(false);
@@ -88,14 +91,12 @@ function DashboardView({ user }: DashboardViewProps) {
     (user.role === "Admin" || user.role === "Test Lead" || user.role === "Tester");
 
   const load = useCallback(async () => {
+    const selectedReleaseId = selectedReleaseRef.current;
+    const sequence = ++loadSequence.current;
     if (!user) {
-      setMetrics(null);
-      setExpandedMetrics(null);
-      setTests([]);
-      setDefects([]);
-      setReleases([]);
-      setReleaseGate(null);
-      setError("");
+      setMetrics(null); setExpandedMetrics(null); setTests([]); setDefects([]);
+      setReleases([]); setReleaseGate(null); setAnalyticsPreviewMode(false);
+      selectedReleaseRef.current = null; setSelectedReleaseId(null); setError("");
       return;
     }
     try {
@@ -121,6 +122,15 @@ function DashboardView({ user }: DashboardViewProps) {
           ? selectedReleaseId
           : (selectableReleases[0]?.id ?? null);
       const activeRelease = selectableReleases.find((r) => r.id === activeReleaseId) ?? null;
+
+      // Gate and expanded metrics depend on the selected release, not on each other.
+      // Capture rejection immediately; the existing fallback still waits for metrics.
+      const gateRequest = activeRelease && !activeRelease.version.startsWith("Mevcut projeler:")
+        ? api.releaseGate(activeRelease.id).then(
+            (value) => ({ value, error: null }),
+            (error: unknown) => ({ value: null, error }),
+          )
+        : null;
 
       let isAnalyticsPreview = false;
       let loadedExpanded: ExpandedMetrics;
@@ -168,7 +178,9 @@ function DashboardView({ user }: DashboardViewProps) {
       let loadedGate: ReleaseGateStatus | null = null;
       if (activeRelease && !activeRelease.version.startsWith("Mevcut projeler:")) {
         try {
-          loadedGate = await api.releaseGate(activeRelease.id);
+          const gate = await gateRequest;
+          if (gate?.error) throw gate.error;
+          loadedGate = gate?.value ?? null;
         } catch (err) {
           if (isEndpointUnavailableError(err)) {
             isAnalyticsPreview = true;
@@ -179,16 +191,19 @@ function DashboardView({ user }: DashboardViewProps) {
         }
       }
 
+      if (sequence !== loadSequence.current) return;
       setMetrics(loadedExpanded);
       setExpandedMetrics(loadedExpanded);
       setTests(t);
       setDefects(d);
       setReleases(selectableReleases);
+      selectedReleaseRef.current = activeReleaseId;
       setSelectedReleaseId(activeReleaseId);
       setReleaseGate(loadedGate);
       setAnalyticsPreviewMode(isAnalyticsPreview);
       setError("");
     } catch (err) {
+      if (sequence !== loadSequence.current) return;
       setError(
         formatErrorMessage(
           err,
@@ -196,7 +211,7 @@ function DashboardView({ user }: DashboardViewProps) {
         ),
       );
     }
-  }, [selectedReleaseId, user]);
+  }, [user]);
 
   useEffect(() => {
     void load();
@@ -457,9 +472,12 @@ function DashboardView({ user }: DashboardViewProps) {
                 <select
                   id="dashboard-release-select"
                   value={selectedReleaseId ? String(selectedReleaseId) : ""}
-                  onChange={(e) =>
-                    setSelectedReleaseId(e.target.value ? Number(e.target.value) : null)
-                  }
+                  onChange={(e) => {
+                    const releaseId = e.target.value ? Number(e.target.value) : null;
+                    selectedReleaseRef.current = releaseId;
+                    setSelectedReleaseId(releaseId);
+                    void load();
+                  }}
                 >
                   {releases.map((r) => (
                     <option key={r.id} value={String(r.id)}>
@@ -639,6 +657,7 @@ function DashboardView({ user }: DashboardViewProps) {
 export default function App() {
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
+  const [authReady, setAuthReady] = useState(() => !getStoredToken());
 
   useEffect(() => {
     const token = getStoredToken();
@@ -651,7 +670,8 @@ export default function App() {
           clearStoredToken();
         }
         setUser(null);
-      });
+      })
+      .finally(() => setAuthReady(true));
   }, []);
 
   useEffect(() => {
@@ -745,7 +765,7 @@ export default function App() {
 
       <main>
         <Routes>
-          <Route path="/" element={<DashboardView user={user} />} />
+          <Route path="/" element={authReady ? <DashboardView user={user} /> : <p role="status">Oturum doğrulanıyor...</p>} />
           <Route path="/test-cases" element={<TestCasesPage user={user} />} />
           <Route path="/junit-imports" element={<JUnitImportsPage user={user} />} />
           <Route path="/test-runs" element={<TestRunsPage user={user} />} />

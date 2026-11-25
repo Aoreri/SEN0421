@@ -8,6 +8,11 @@ __pycache__/
 .venv/
 venv/
 
+# PLN-35 generated quality evidence
+quality/results/
+backend/unit-coverage.json
+backend/unit-coverage.xml
+
 # Node
 node_modules/
 dist/
@@ -30,6 +35,7 @@ images.sha256
 # Generated test coverage
 .coverage
 .coverage.*
+.coverage-*
 coverage.xml
 htmlcov/
 

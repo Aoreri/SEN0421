@@ -41,6 +41,19 @@ jobs:
         run: bandit -r app -ll
       - name: Pytest and Cobertura coverage
         run: python -m pytest -q --cov=app --cov-report=term-missing --cov-report=xml:coverage.xml --junitxml=junit.xml -o junit_family=legacy
+      - name: Workflow and metrics unit coverage (PLN-35)
+        run: |
+          COVERAGE_FILE=.coverage-unit python -m pytest -q -m unit --cov=app.main --cov=app.runs --cov=app.metrics --cov-report=term-missing --cov-report=json:unit-coverage.json --cov-report=xml:unit-coverage.xml
+          python scripts/check_unit_coverage.py unit-coverage.json
+      - name: Upload unit coverage evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: workflow-metrics-unit-coverage
+          path: |
+            backend/unit-coverage.json
+            backend/unit-coverage.xml
+          retention-days: 14
       - name: Import CI reports into isolated SDS-06 (PLN-23)
         env:
           REPORT_COMMIT: ${{ steps.checkout.outputs.commit }}
