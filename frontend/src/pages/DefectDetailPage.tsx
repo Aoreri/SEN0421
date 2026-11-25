@@ -6,6 +6,7 @@ import {
   DefectHistoryEntry,
   formatErrorMessage,
   TestCase,
+  TestIncidentReportSnapshotSummary,
   User,
 } from "../api";
 import { ErrorAlert } from "../components/ErrorAlert";
@@ -38,6 +39,8 @@ export function DefectDetailPage({ user }: DefectDetailPageProps) {
   const [defect, setDefect] = useState<Defect | null>(null);
   const [history, setHistory] = useState<DefectHistoryEntry[]>([]);
   const [linkedTestCase, setLinkedTestCase] = useState<TestCase | null>(null);
+  const [snapshots, setSnapshots] = useState<TestIncidentReportSnapshotSummary[]>([]);
+  const [creatingSnapshot, setCreatingSnapshot] = useState(false);
   const [loading, setLoading] = useState(true);
   const [transitioning, setTransitioning] = useState(false);
   const [error, setError] = useState("");
@@ -50,14 +53,16 @@ export function DefectDetailPage({ user }: DefectDetailPageProps) {
 
     setLoading(true);
     try {
-      const [allDefects, hist, allTestCases] = await Promise.all([
+      const [allDefects, hist, allTestCases, snaps] = await Promise.all([
         api.defects(),
         api.defectHistory(defectId),
         api.testCases(),
+        api.incidentReportSnapshots(defectId).catch(() => []),
       ]);
       const found = allDefects.find((d) => d.id === defectId) ?? null;
       setDefect(found);
       setHistory(hist);
+      setSnapshots(snaps);
       if (found?.test_case) {
         setLinkedTestCase(allTestCases.find((t) => t.id === found.test_case) ?? null);
       } else {
@@ -77,6 +82,7 @@ export function DefectDetailPage({ user }: DefectDetailPageProps) {
     setDefect(null);
     setHistory([]);
     setLinkedTestCase(null);
+    setSnapshots([]);
     setError("");
   }, [defectId]);
 
@@ -95,6 +101,33 @@ export function DefectDetailPage({ user }: DefectDetailPageProps) {
       setError(formatErrorMessage(err, "Durum geçişi sırasında bir hata oluştu."));
     } finally {
       setTransitioning(false);
+    }
+  }
+
+  const canCreateSnapshot =
+    user !== null &&
+    (user.role === "Admin" || user.role === "Test Lead" || user.role === "Tester");
+
+  // Export routes require the bearer token, so a plain <a href> would get 401.
+  async function handleDownload(defectId: number, format: "html" | "pdf", snapshotId?: number) {
+    try {
+      await api.downloadIncidentReport(defectId, format, snapshotId);
+    } catch (err) {
+      setError(formatErrorMessage(err, "Test Incident Report indirilemedi."));
+    }
+  }
+
+  async function handleCreateSnapshot() {
+    if (!defect || !canCreateSnapshot) return;
+    setCreatingSnapshot(true);
+    try {
+      await api.createIncidentReportSnapshot(defect.id);
+      setError("");
+      await loadDetail();
+    } catch (err) {
+      setError(formatErrorMessage(err, "Test Incident Report anlık görüntüsü oluşturulamadı."));
+    } finally {
+      setCreatingSnapshot(false);
     }
   }
 
@@ -218,6 +251,71 @@ export function DefectDetailPage({ user }: DefectDetailPageProps) {
           </>
         )}
       </section>
+
+      {defect && (
+        <section>
+          <div className="section-header">
+            <div>
+              <h2>IEEE 829 Test Incident Report Çıktısı &amp; Anlık Görüntüler (PLN-39)</h2>
+              <p className="section-desc">
+                ISO/IEC/IEEE 29119-3 · Test Incident Report · Canlı veya saklanmış anlık görüntüden
+                (snapshot) HTML ve PDF rapor üretimi
+              </p>
+            </div>
+            <div className="row-actions">
+              <button
+                type="button"
+                className="btn-link secondary-btn"
+                onClick={() => void handleDownload(defect.id, "html")}
+              >
+                Canlı HTML
+              </button>
+              <button
+                type="button"
+                className="btn-link secondary-btn"
+                onClick={() => void handleDownload(defect.id, "pdf")}
+              >
+                Canlı PDF İndir
+              </button>
+              {canCreateSnapshot && (
+                <button
+                  type="button"
+                  disabled={creatingSnapshot}
+                  onClick={() => void handleCreateSnapshot()}
+                >
+                  {creatingSnapshot ? "Kaydediliyor..." : "Anlık Görüntü (Snapshot) Al"}
+                </button>
+              )}
+            </div>
+          </div>
+
+          {snapshots.length > 0 && (
+            <div className="badge-list" style={{ marginTop: 8 }}>
+              {snapshots.map((snap) => (
+                <span key={snap.id} className="badge">
+                  Snapshot #{snap.id} ({snap.status} · {snap.generated_by} ·{" "}
+                  {formatTimestamp(snap.generated_at)}){" "}
+                  <button
+                    type="button"
+                    className="detail-link"
+                    onClick={() => void handleDownload(defect.id, "html", snap.id)}
+                  >
+                    HTML
+                  </button>{" "}
+                  |{" "}
+                  <button
+                    type="button"
+                    className="detail-link"
+                    onClick={() => void handleDownload(defect.id, "pdf", snap.id)}
+                  >
+                    PDF
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
 
       {defect && (
         <section>
