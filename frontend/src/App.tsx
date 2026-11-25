@@ -86,6 +86,16 @@ function DashboardView({ user }: DashboardViewProps) {
     (user.role === "Admin" || user.role === "Test Lead" || user.role === "Tester");
 
   const load = useCallback(async () => {
+    if (!user) {
+      setMetrics(null);
+      setExpandedMetrics(null);
+      setTests([]);
+      setDefects([]);
+      setReleases([]);
+      setReleaseGate(null);
+      setError("");
+      return;
+    }
     try {
       const [m, t, d, projs, rels, reqs] = await Promise.all([
         api.metrics(),
@@ -184,7 +194,7 @@ function DashboardView({ user }: DashboardViewProps) {
         ),
       );
     }
-  }, [selectedReleaseId]);
+  }, [selectedReleaseId, user]);
 
   useEffect(() => {
     void load();

@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useState } from "react";
 import {
   api,
   ExitCriteriaConfig,
+  formatErrorMessage,
   RELEASE_STATUSES,
   ReleaseGateStatus,
   ReleaseStatus,
@@ -42,6 +43,17 @@ export function ReleaseGateCard({
 
   const [waiverReason, setWaiverReason] = useState("");
   const [waiverError, setWaiverError] = useState("");
+  const [downloadError, setDownloadError] = useState("");
+
+  // Export routes require the bearer token, so a plain <a href> would get 401.
+  async function downloadReport(releaseId: number, format: "html" | "pdf") {
+    setDownloadError("");
+    try {
+      await api.downloadSummaryReport(releaseId, format);
+    } catch (err) {
+      setDownloadError(formatErrorMessage(err, "Test Summary Report indirilemedi."));
+    }
+  }
 
   useEffect(() => {
     if (!gate) return;
@@ -221,20 +233,17 @@ export function ReleaseGateCard({
         )}
 
         <div className="row-actions">
-          <a
-            href={api.exportSummaryReportUrl(gate.release_id, "html")}
-            target="_blank"
-            rel="noreferrer"
-            className="detail-link"
-          >
+          <button type="button" className="detail-link" onClick={() => void downloadReport(gate.release_id, "html")}>
             Test Summary Report (HTML)
-          </a>
-          <a
-            href={api.exportSummaryReportUrl(gate.release_id, "pdf")}
-            className="detail-link"
-          >
+          </button>
+          <button type="button" className="detail-link" onClick={() => void downloadReport(gate.release_id, "pdf")}>
             Test Summary Report (PDF)
-          </a>
+          </button>
+          {downloadError && (
+            <span className="field-error" role="alert">
+              {downloadError}
+            </span>
+          )}
         </div>
       </div>
 

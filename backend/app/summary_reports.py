@@ -25,7 +25,7 @@ from .models import (
     User,
     execution_defects,
 )
-from .projects import get_or_404, release_gate_out
+from .projects import READ, get_or_404, release_gate_out
 from .test_plans import _pdf_escape
 
 router = APIRouter(prefix="/api/releases", tags=["test-summary-reports"])
@@ -469,7 +469,7 @@ def create_summary_report_snapshot(release_id: int, db: DB, user: SnapshotUser):
     return snapshot_detail_out(snap)
 
 
-@router.get("/{release_id}/summary-report/snapshots")
+@router.get("/{release_id}/summary-report/snapshots", dependencies=READ)
 def list_summary_report_snapshots(release_id: int, db: DB):
     get_or_404(db, Release, release_id)
     rows = db.scalars(
@@ -480,7 +480,7 @@ def list_summary_report_snapshots(release_id: int, db: DB):
     return [snapshot_summary_out(s) for s in rows]
 
 
-@router.get("/{release_id}/summary-report/snapshots/{snapshot_id}")
+@router.get("/{release_id}/summary-report/snapshots/{snapshot_id}", dependencies=READ)
 def get_summary_report_snapshot(release_id: int, snapshot_id: int, db: DB):
     get_or_404(db, Release, release_id)
     snap = db.scalar(
@@ -494,7 +494,7 @@ def get_summary_report_snapshot(release_id: int, snapshot_id: int, db: DB):
     return snapshot_detail_out(snap)
 
 
-@router.get("/{release_id}/summary-report/export")
+@router.get("/{release_id}/summary-report/export", dependencies=READ)
 def export_summary_report(
     release_id: int,
     db: DB,

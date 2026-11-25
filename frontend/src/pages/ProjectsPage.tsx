@@ -70,6 +70,14 @@ export function ProjectsPage({ user }: ProjectsPageProps) {
     (user.role === "Admin" || user.role === "Test Lead" || user.role === "Tester");
 
   const loadAll = useCallback(async () => {
+    if (!user) {
+      setProjects([]);
+      setReleases([]);
+      setRequirements([]);
+      setTestCases([]);
+      setError("");
+      return;
+    }
     try {
       const [p, rel, req, tc] = await Promise.all([
         api.projects(),
@@ -95,7 +103,7 @@ export function ProjectsPage({ user }: ProjectsPageProps) {
         ),
       );
     }
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     void loadAll();

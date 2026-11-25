@@ -56,7 +56,7 @@ test vakası ↔ gereksinim izlenebilirliği.
 | --- | --- | --- |
 | Defect yaşam döngüsü `Open → In Progress → Resolved → Closed` (+ Reopen); geçiş kuralları ve rol kısıtları veritabanında (`defect_transitions`), geçersiz geçiş 409, yetkisiz rol 403 | R4 | 12207 Problem Çözümleme; 29119-2 Test Olay Raporlama |
 | Değiştirilemez defect geçmişi (`defect_history`, PostgreSQL trigger ile yalnızca ekleme) | R4, R8 | 12207 Konfigürasyon Yönetimi |
-| JWT ile giriş ve rol tabanlı erişim: Admin, Test Lead, Tester, Developer | R8 | 12207 Uygulama |
+| JWT ile giriş, tüm okuma (`GET`) ve yazma uç noktalarında kimlik doğrulama ve rol tabanlı erişim: Admin, Test Lead, Tester, Developer; CI üzerinde `bandit` ve `npm audit` güvenlik taraması (PLN-29) | R8 | 12207 Uygulama; Güvenlik |
 | Proje, sürüm, sprint ve gereksinim yönetimi; test vakası ↔ gereksinim izlenebilirliği (çoka çok) | R2, R5, R7 | 29119-2 Test Tasarımı ve Gerçekleştirme; 12207 Proje Planlama |
 | Test vakası (adımlar, beklenen sonuç, öncelik, otomasyon bayrağı, kararlı anahtar) ve test suite CRUD API'si | R2 | 29119-2 Test Tasarımı ve Gerçekleştirme; 29119-3 Test Case Specification |
 | Test vakası / suite yönetimi (`/test-cases`) ve etkileşimli gereksinim – test izlenebilirlik matrisi | R2 | 29119-2 Test Tasarımı ve Gerçekleştirme |

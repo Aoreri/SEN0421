@@ -765,14 +765,13 @@ export const api = {
     request<TestSummaryReportSnapshot>(
       `/releases/${releaseId}/summary-report/snapshots/${snapshotId}`,
     ),
-  exportSummaryReportUrl: (
-    releaseId: number,
-    format: "html" | "pdf" = "html",
-    snapshotId?: number,
-  ) =>
-    `/api/releases/${releaseId}/summary-report/export?format=${format}${
-      snapshotId !== undefined ? `&snapshot_id=${snapshotId}` : ""
-    }`,
+  downloadSummaryReport: (releaseId: number, format: "html" | "pdf", snapshotId?: number) =>
+    download(
+      `/releases/${releaseId}/summary-report/export?format=${format}${
+        snapshotId !== undefined ? `&snapshot_id=${snapshotId}` : ""
+      }`,
+      `test-summary-report-${releaseId}${snapshotId !== undefined ? `-snap-${snapshotId}` : ""}.${format}`,
+    ),
   downloadTestPlan: (planId: number, format: "html" | "pdf", snapshotId?: number) =>
     download(
       `/test-plans/${planId}/export?format=${format}${
