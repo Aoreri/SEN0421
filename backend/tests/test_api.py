@@ -1407,6 +1407,10 @@ def test_summary_report_includes_unlinked_defects_for_every_project(client):
         json={"title": "Bağlantısız kritik hata", "severity": "Critical"},
         headers=tester,
     ).json()
+    # The API accepts free-text severities; the table must still count them.
+    client.post(
+        "/api/defects", json={"title": "Serbest önem", "severity": "Blocker"}, headers=tester
+    )
     release = client.post(
         "/api/releases", json={"project_id": project["id"], "version": "1.0"}, headers=admin
     ).json()
@@ -1415,6 +1419,7 @@ def test_summary_report_includes_unlinked_defects_for_every_project(client):
         f"/api/releases/{release['id']}/summary-report/snapshots", headers=tester
     ).json()
     summary = snap["payload"]["defect_summary"]
+    assert any(row["severity"] == "Blocker" for row in summary["by_severity"])
     critical = next(row for row in summary["by_severity"] if row["severity"] == "Critical")
 
     # Gate, severity table and defect list must use the same project defect filter.

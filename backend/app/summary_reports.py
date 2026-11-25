@@ -262,7 +262,9 @@ def build_summary_report_data(
     ]
 
     by_severity: list[dict[str, Any]] = []
-    for sev in SEVERITIES:
+    # The API accepts any severity string, so list non-standard ones after the canonical four.
+    extra_severities = sorted({d.severity for d in defects} - set(SEVERITIES))
+    for sev in (*SEVERITIES, *extra_severities):
         sev_defs = [d for d in defects if d.severity == sev]
         open_cnt = sum(1 for d in sev_defs if d.status != "Closed")
         closed_cnt = sum(1 for d in sev_defs if d.status == "Closed")
