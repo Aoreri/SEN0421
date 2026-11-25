@@ -8,7 +8,15 @@ from sqlalchemy import delete, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
-from .access import allowed_projects, case_projects, case_visible, require_access, scoped, visible
+from .access import (
+    allowed_projects,
+    can_change,
+    case_projects,
+    case_visible,
+    require_access,
+    scoped,
+    visible,
+)
 from .auth import ADMIN, TEST_LEAD, TESTER, CurrentUser, require_roles
 from .db import DB
 from .models import (
@@ -344,9 +352,11 @@ def resolve_case_relations(
     return suite, requirements
 
 
-def get_case(db: Session, user: User, test_case_id: str) -> TestCase:
+def get_case(db: Session, user: User, test_case_id: str, change: bool = False) -> TestCase:
     case = get_or_404(db, TestCase, test_case_id)
-    require_access(db, user, case_projects(case))
+    allowed = allowed_projects(db, user)
+    if not case_visible(allowed, case) or (change and not can_change(allowed, case_projects(case))):
+        raise HTTPException(404, "Kayıt bulunamadı")
     return case
 
 
@@ -618,6 +628,12 @@ def set_requirement_test_cases(requirement_id: str, body: TraceLinks, db: DB, us
     for tc in test_cases:
         if tc.suite is not None and tc.suite.project_id != requirement.project_id:
             raise HTTPException(422, "Test vakasının suite'i ile gereksinim aynı projede olmalıdır")
+    removed = [tc for tc in requirement.test_cases if tc.id not in ids]
+    if not all(can_change(allowed, case_projects(tc)) for tc in [*test_cases, *removed]):
+        raise HTTPException(422, "Test vakası bulunamadı")
+    # Projesiz kalan test vakası erişim denetiminin dışına düşer.
+    if any(tc.suite is None and [r.id for r in tc.requirements] == [requirement.id] for tc in removed):
+        raise HTTPException(422, "Test vakası en az bir gereksinime bağlı kalmalıdır")
     requirement.test_cases = test_cases
     commit_or_409(db)
     return requirement_out(requirement)
@@ -700,7 +716,7 @@ def get_test_case(test_case_id: str, db: DB, user: CurrentUser):
 
 @router.put("/test-cases/{test_case_id}")
 def update_test_case(test_case_id: str, body: TestCaseIn, db: DB, user: Tracer):
-    case = get_case(db, user, test_case_id)
+    case = get_case(db, user, test_case_id, change=True)
     _, requirements = resolve_case_relations(db, user, body.suite_id, body.requirements)
     reqs = sorted(r.id for r in requirements)
     case.suite_id = body.suite_id
@@ -718,7 +734,7 @@ def update_test_case(test_case_id: str, body: TestCaseIn, db: DB, user: Tracer):
 
 @router.delete("/test-cases/{test_case_id}", status_code=204)
 def delete_test_case(test_case_id: str, db: DB, user: Tracer):
-    case = get_case(db, user, test_case_id)
+    case = get_case(db, user, test_case_id, change=True)
     if db.scalar(select(Defect.id).where(Defect.test_case == test_case_id).limit(1)) is not None:
         raise HTTPException(409, "Test vakasına bağlı defect'ler var")
     if (
@@ -735,7 +751,7 @@ def delete_test_case(test_case_id: str, db: DB, user: Tracer):
 @router.put("/test-cases/{test_case_id}/requirements")
 def set_test_case_requirements(test_case_id: str, body: RequirementLinks, db: DB, user: Tracer):
     """Test vakasının gereksinim bağlantılarını verilen listeyle değiştirir (en az 1 gereksinim şart)."""
-    case = get_case(db, user, test_case_id)
+    case = get_case(db, user, test_case_id, change=True)
     _, requirements = resolve_case_relations(db, user, case.suite_id, body.requirements)
     case.requirements = requirements
     case.requirement = sorted(r.id for r in requirements)[0]

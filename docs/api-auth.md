@@ -44,6 +44,7 @@ Errors use FastAPI's format: `{ "detail": "<message>" }`.
 | All other `GET` read endpoints (`/api/defects`, `/api/defects/{id}/history`, `/api/metrics`, `/api/metrics/expanded`, `/api/projects*`, `/api/releases*`, `/api/requirements*`, `/api/test-suites*`, `/api/test-cases*`, `/api/test-runs*`, `/api/test-plans*`) | Any authenticated role (`Admin`, `Test Lead`, `Tester`, `Developer`) |
 | `POST /api/defects` | `Admin`, `Test Lead`, `Tester` |
 | `GET /api/users`, `GET /api/projects/{id}/members`, `PUT`/`DELETE /api/projects/{id}/members/{user_id}` | `Admin`, `Test Lead` |
+| `POST /api/users`, `DELETE /api/users/{id}` | `Admin` |
 | `POST /api/defects/{id}/transition` | depends on the transition, see below |
 | `POST`, `PUT`, `DELETE` on `/api/projects`, `/api/releases`, `/api/sprints`, `/api/requirements`, `/api/test-suites` | `Admin`, `Test Lead` |
 | `PUT /api/releases/{id}/criteria`, `POST`/`DELETE /api/releases/{id}/waiver`, `PUT /api/releases/{id}/status` | `Admin`, `Test Lead` |
@@ -88,6 +89,16 @@ defect with no test case and no run belongs to no project and stays visible to e
 `DELETE` removes one. Both return the project's member list. Adding an `Admin` or `Test Lead`
 returns `422`, because those roles already see every project. Migration `0012_pln40` made every
 existing Tester and Developer a member of every existing project, so no access was lost.
+
+Changing a record needs membership of every project it belongs to; seeing it needs only one.
+A test case cannot lose its last requirement link (`422`), because a case with no project
+would escape these checks.
+
+`POST /api/users` (`username` 3–50 of `A-Z a-z 0-9 _ . -`, `password` 8–72 bytes, `role`)
+creates `Test Lead`, `Tester` or `Developer` accounts; `Admin` is rejected with `422` and only
+comes from the seed. A duplicate username returns `409`. A new account sees no project until it
+is added as a member. `DELETE /api/users/{id}` removes the account and its memberships; it
+returns `422` for an `Admin` and `409` if the user has JUnit or Cobertura imports.
 
 ## Server configuration
 

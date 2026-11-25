@@ -95,3 +95,54 @@ def test_project_with_members_can_still_be_deleted(client):
     project = client.post("/api/projects", json={"name": "Members only"}, headers=admin).json()
     grant(client, project["id"])
     assert client.delete(f"/api/projects/{project['id']}", headers=admin).status_code == 204
+
+
+def test_admin_creates_accounts_but_never_another_admin(client):
+    admin = as_user("admin")
+    body = {"username": "new.tester", "password": "s3cret-pass", "role": "Tester"}
+    created = client.post("/api/users", json=body, headers=admin)
+    assert created.status_code == 201 and created.json()["role"] == "Tester"
+    assert client.post("/api/users", json=body, headers=admin).status_code == 409
+    assert client.post("/api/users", json={**body, "username": "boss", "role": "Admin"},
+                       headers=admin).status_code == 422
+    assert client.post("/api/users", json={**body, "username": "short", "password": "x"},
+                       headers=admin).status_code == 422
+    for username in ("testlead", "tester", "developer"):
+        assert client.post("/api/users", json={**body, "username": f"by-{username}"},
+                           headers=as_user(username)).status_code == 403
+    login = client.post("/api/auth/login", json={"username": "new.tester", "password": "s3cret-pass"})
+    token = {"Authorization": f"Bearer {login.json()['access_token']}"}
+    # Yeni hesap üye yapılana kadar hiçbir projeyi görmez.
+    assert client.get("/api/projects", headers=token).json() == []
+
+
+def test_admin_deletes_accounts_except_admins(client):
+    admin = as_user("admin")
+    new = client.post("/api/users", json={"username": "temp.dev", "password": "s3cret-pass",
+                                          "role": "Developer"}, headers=admin).json()
+    grant(client, 1, "temp.dev")
+    assert client.delete(f"/api/users/{new['id']}", headers=admin).status_code == 204
+    assert "temp.dev" not in [u["username"] for u in client.get("/api/users", headers=admin).json()]
+    assert client.delete(f"/api/users/{user_id(client, 'admin')}", headers=admin).status_code == 422
+    assert client.delete(f"/api/users/{user_id(client, 'tester')}",
+                         headers=as_user("testlead")).status_code == 403
+
+
+def test_shared_test_case_needs_every_project_to_change(client, other):
+    admin, tester = as_user("admin"), as_user("tester")
+    seed_req = next(r["id"] for r in client.get("/api/requirements", headers=admin).json()
+                    if r["project_id"] == 1)
+    assert client.post("/api/test-cases", json={"id": "TX-1", "title": "Shared",
+                                                "requirements": [seed_req, "RH-1"]},
+                       headers=admin).status_code == 201
+    assert client.get("/api/test-cases/TX-1", headers=tester).status_code == 200
+    assert client.put("/api/test-cases/TX-1", json={"title": "Moved", "requirements": [seed_req]},
+                      headers=tester).status_code == 404
+    assert client.delete("/api/test-cases/TX-1", headers=tester).status_code == 404
+
+
+def test_test_case_cannot_lose_its_last_project_link(client, other):
+    response = client.put("/api/requirements/RH-1/test-cases", json={"test_cases": []},
+                          headers=as_user("admin"))
+    assert response.status_code == 422
+    assert "TH-1" in [t["id"] for t in client.get("/api/test-cases", headers=as_user("admin")).json()]

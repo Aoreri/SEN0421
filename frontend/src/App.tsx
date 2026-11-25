@@ -35,6 +35,7 @@ import { ReleasesPage } from "./pages/ReleasesPage";
 import { TestCasesPage } from "./pages/TestCasesPage";
 import { TestPlansPage } from "./pages/TestPlansPage";
 import { TestRunsPage } from "./pages/TestRunsPage";
+import { UsersPage } from "./pages/UsersPage";
 import {
   computePreviewExpandedMetrics,
   createPreviewReleaseWaiver,
@@ -759,6 +760,11 @@ export default function App() {
           >
             Giriş / Rol Seçimi
           </NavLink>
+          {user?.role === "Admin" && (
+            <NavLink to="/users" className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}>
+              Kullanıcılar
+            </NavLink>
+          )}
           <NavLink to="/junit-imports" className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}>JUnit Raporları</NavLink>
         </nav>
       </header>
@@ -773,6 +779,7 @@ export default function App() {
           <Route path="/defects/:id" element={<DefectDetailPage user={user} />} />
           <Route path="/releases" element={<ReleasesPage user={user} />} />
           <Route path="/projects" element={<ProjectsPage user={user} />} />
+          <Route path="/users" element={<UsersPage user={user} />} />
           <Route
             path="/login"
             element={<LoginPage user={user} onLogin={setUser} onLogout={handleLogout} />}

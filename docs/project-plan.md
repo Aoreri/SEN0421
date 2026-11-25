@@ -105,7 +105,7 @@ The task assignments above reproduce the project progress report. They do not tr
 | PLN-13 | Backend tests and Cobertura CI coverage | Esra Kaya | 13.11.2026 | PR #10 merged. |
 | PLN-14 | Design document (architecture and data model) and first successful CI pipeline | Emirhan Ulutürk, Esra Kaya | 13.11.2026 | SDD is this document package's companion; current CI success is recorded below. |
 | PLN-15 | Repository governance, PR template/review and issue/project setup | Caner Serbest | 06.11.2026 | PR #3 merged. |
-| PLN-40 | Project membership: Tester/Developer access limited to member projects; Admin/Test Lead manage members | Caner Serbest | 25.11.2026 | Added after Report #1; in review. |
+| PLN-40 | Project membership: Tester/Developer access limited to member projects; Admin/Test Lead manage members; Admin creates non-Admin accounts | Caner Serbest | 25.11.2026 | Added after Report #1; in review. |
 
 Target dates and owners are copied from Bi-Weekly Progress Report #1. PR states are based on repository history checked on 11 November 2026; they should be refreshed if the repository changes.
 

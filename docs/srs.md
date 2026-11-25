@@ -110,6 +110,7 @@ The backend is authoritative for authorization. A user interface control is not 
 | FR-AUTH-02 | The system shall validate a bearer token and return the authenticated user's identity. | High | Implemented: `GET /api/auth/me`. |
 | FR-AUTH-03 | The system shall enforce role checks on protected write and workflow operations at the backend. | High | Implemented for current protected operations. Read-endpoint authentication hardening is in PR #39 and remains a separate integration item. |
 | FR-AUTH-04 | The system shall restrict Tester and Developer users to the projects they are members of, and shall let Admin and Test Lead users add and remove project members. | Medium | Implemented: PLN-40, `app/access.py`, `/api/projects/{id}/members`. |
+| FR-AUTH-05 | The system shall let an Admin create Test Lead, Tester, and Developer accounts and delete non-Admin accounts; Admin accounts shall not be created through the system. | Medium | Implemented: PLN-40, `POST`/`DELETE /api/users`, Users screen. |
 
 ### 3.2 Project, release, and requirement catalogue
 

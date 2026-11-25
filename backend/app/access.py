@@ -5,16 +5,20 @@ oldukları projelerin kayıtlarını görür ve değiştirir. Hiçbir projeye ba
 (ör. test vakası seçilmeden açılmış defect) herkese görünür.
 """
 from collections.abc import Iterable
-from typing import Annotated
+from typing import Annotated, Literal
 
+import bcrypt
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, StringConstraints
 from sqlalchemy import Select, delete, select
 from sqlalchemy.orm import Session
 
 from .auth import ADMIN, TEST_LEAD, CurrentUser, require_roles, user_out
 from .db import DB
 from .models import (
+    CoverageImport,
     Defect,
+    ImportedTestRun,
     Project,
     TestCase,
     TestExecution,
@@ -27,6 +31,15 @@ from .models import (
 GLOBAL_ROLES = (ADMIN, TEST_LEAD)
 router = APIRouter(prefix="/api", tags=["project-members"])
 Manager = Annotated[User, Depends(require_roles(*GLOBAL_ROLES))]
+AdminUser = Annotated[User, Depends(require_roles(ADMIN))]
+
+
+class UserCreate(BaseModel):
+    username: Annotated[str, StringConstraints(strip_whitespace=True, min_length=3, max_length=50,
+                                               pattern=r"^[A-Za-z0-9_.-]+$")]
+    password: Annotated[str, StringConstraints(min_length=8, max_length=72)]
+    # Admin hesabı arayüzden veya API'den açılamaz; yalnızca seed ile gelir.
+    role: Literal["Test Lead", "Tester", "Developer"]
 
 
 def allowed_projects(db: Session, user: User) -> set[int] | None:
@@ -70,16 +83,26 @@ def defect_projects(db: Session, defect: Defect) -> set[int]:
 
 
 def case_visible(allowed: set[int] | None, tc: TestCase) -> bool:
-    return allowed is None or visible(allowed, case_projects(tc))
+    # Projesi kalmamış test vakası yalnızca Admin ve Test Lead'e görünür.
+    return allowed is None or bool(case_projects(tc) & allowed)
+
+
+def can_change(allowed: set[int] | None, project_ids: Iterable[int]) -> bool:
+    """Değişiklik için kaydın bağlı olduğu projelerin hepsine üyelik gerekir."""
+    return allowed is None or set(project_ids) <= allowed
 
 
 def defect_visible(db: Session, allowed: set[int] | None, defect: Defect) -> bool:
     return allowed is None or visible(allowed, defect_projects(db, defect))
 
 
-def require_defect_access(db: Session, user: User, defect: Defect) -> None:
-    if user.role not in GLOBAL_ROLES:
-        require_access(db, user, defect_projects(db, defect))
+def require_defect_access(db: Session, user: User, defect: Defect, change: bool = False) -> None:
+    if user.role in GLOBAL_ROLES:
+        return
+    ids = defect_projects(db, defect)
+    require_access(db, user, ids)
+    if change and not can_change(allowed_projects(db, user), ids):
+        raise HTTPException(404, "Kayıt bulunamadı")
 
 
 # --- Üye yönetimi -------------------------------------------------------------
@@ -102,6 +125,36 @@ def project_and_user(db: Session, project_id: int, user_id: int) -> User:
 @router.get("/users")
 def list_users(db: DB, _: Manager):
     return [user_out(u) for u in db.scalars(select(User).order_by(User.username))]
+
+
+@router.post("/users", status_code=201)
+def create_user(body: UserCreate, db: DB, _: AdminUser):
+    password = body.password.encode()
+    # bcrypt 72 bayttan sonrasını yok sayar; çok baytlı karakterlerle aşılmasın.
+    if len(password) > 72:
+        raise HTTPException(422, "Parola en fazla 72 bayt olabilir")
+    if db.scalar(select(User.id).where(User.username == body.username)) is not None:
+        raise HTTPException(409, "Bu kullanıcı adı zaten kullanılıyor")
+    user = User(username=body.username, role=body.role,
+                password_hash=bcrypt.hashpw(password, bcrypt.gensalt()).decode())
+    db.add(user)
+    db.commit()
+    return user_out(user)
+
+
+@router.delete("/users/{user_id}", status_code=204)
+def delete_user(user_id: int, db: DB, _: AdminUser):
+    user = db.get(User, user_id)
+    if user is None:
+        raise HTTPException(404, "Kullanıcı bulunamadı")
+    if user.role == ADMIN:
+        raise HTTPException(422, "Admin hesabı silinemez")
+    for model in (ImportedTestRun, CoverageImport):
+        if db.scalar(select(model.id).where(model.imported_by == user_id).limit(1)) is not None:
+            raise HTTPException(409, "Kullanıcının içe aktarım kayıtları var; hesap silinemez")
+    db.execute(delete(project_members).where(project_members.c.user_id == user_id))
+    db.delete(user)
+    db.commit()
 
 
 @router.get("/projects/{project_id}/members")

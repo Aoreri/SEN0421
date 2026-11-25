@@ -149,7 +149,7 @@ def transition_defect(defect_id: int, body: Transition, db: DB, user: CurrentUse
     defect = db.get(Defect, defect_id, with_for_update=True)
     if not defect:
         raise HTTPException(404, "Defect bulunamadı")
-    require_defect_access(db, user, defect)
+    require_defect_access(db, user, defect, change=True)
     rule = db.get(DefectTransition, (defect.status, body.to))
     if rule is None:
         raise HTTPException(409, f"Geçersiz geçiş: {defect.status} -> {body.to}")
