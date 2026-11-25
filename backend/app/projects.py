@@ -4,11 +4,12 @@ from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field, StringConstraints
-from sqlalchemy import func, or_, select
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
-from .auth import ADMIN, TEST_LEAD, TESTER, current_user, require_roles
+from .access import allowed_projects, case_projects, case_visible, require_access, scoped, visible
+from .auth import ADMIN, TEST_LEAD, TESTER, CurrentUser, require_roles
 from .db import DB
 from .models import (
     CoverageImport,
@@ -26,12 +27,12 @@ from .models import (
     TestSummaryReportSnapshot,
     User,
     execution_defects,
+    project_members,
 )
 
 router = APIRouter(prefix="/api", tags=["projects"])
-READ = [Depends(current_user)]
 WRITE = [Depends(require_roles(ADMIN, TEST_LEAD))]
-TRACE = [Depends(require_roles(ADMIN, TEST_LEAD, TESTER))]
+Tracer = Annotated[User, Depends(require_roles(ADMIN, TEST_LEAD, TESTER))]
 GateManager = Annotated[User, Depends(require_roles(ADMIN, TEST_LEAD))]
 
 ReleaseStatus = Literal["Planned", "In Test", "Ready", "Released"]
@@ -323,7 +324,7 @@ def test_case_out(t: TestCase) -> dict:
 
 
 def resolve_case_relations(
-    db: Session, suite_id: int | None, req_ids: list[str]
+    db: Session, user: User, suite_id: int | None, req_ids: list[str]
 ) -> tuple[TestSuite | None, list[Requirement]]:
     suite = None
     if suite_id is not None:
@@ -336,13 +337,24 @@ def resolve_case_relations(
         raise HTTPException(422, "Gereksinim bulunamadı")
     if suite is not None and any(r.project_id != suite.project_id for r in requirements):
         raise HTTPException(422, "Test suite ve gereksinimler aynı projede olmalıdır")
+    allowed = allowed_projects(db, user)
+    touched = {r.project_id for r in requirements} | ({suite.project_id} if suite else set())
+    if not all(visible(allowed, [p]) for p in touched):
+        raise HTTPException(422, "Gereksinim bulunamadı")
     return suite, requirements
 
 
+def get_case(db: Session, user: User, test_case_id: str) -> TestCase:
+    case = get_or_404(db, TestCase, test_case_id)
+    require_access(db, user, case_projects(case))
+    return case
+
+
 # --- Projeler -----------------------------------------------------------------
-@router.get("/projects", dependencies=READ)
-def list_projects(db: DB):
-    return [project_out(p) for p in db.scalars(select(Project).order_by(Project.id))]
+@router.get("/projects")
+def list_projects(db: DB, user: CurrentUser):
+    stmt = scoped(select(Project).order_by(Project.id), Project.id, allowed_projects(db, user))
+    return [project_out(p) for p in db.scalars(stmt)]
 
 
 @router.post("/projects", status_code=201, dependencies=WRITE)
@@ -350,8 +362,9 @@ def create_project(body: ProjectIn, db: DB):
     return project_out(save(db, Project(), body))
 
 
-@router.get("/projects/{project_id}", dependencies=READ)
-def get_project(project_id: int, db: DB):
+@router.get("/projects/{project_id}")
+def get_project(project_id: int, db: DB, user: CurrentUser):
+    require_access(db, user, [project_id])
     return project_out(get_or_404(db, Project, project_id))
 
 
@@ -378,13 +391,15 @@ def delete_project(project_id: int, db: DB):
                 409,
                 "Projeye bağlı sürüm, sprint, gereksinim, test suite, test koşumu, test planı veya içe aktarım kayıtları var",
             )
+    db.execute(delete(project_members).where(project_members.c.project_id == project_id))
     remove(db, project)
 
 
 # --- Sürümler -----------------------------------------------------------------
-@router.get("/releases", dependencies=READ)
-def list_releases(db: DB):
-    return [release_out(r) for r in db.scalars(select(Release).order_by(Release.id))]
+@router.get("/releases")
+def list_releases(db: DB, user: CurrentUser):
+    stmt = scoped(select(Release).order_by(Release.id), Release.project_id, allowed_projects(db, user))
+    return [release_out(r) for r in db.scalars(stmt)]
 
 
 @router.post("/releases", status_code=201, dependencies=WRITE)
@@ -393,9 +408,11 @@ def create_release(body: ReleaseIn, db: DB):
     return release_out(save(db, Release(), body))
 
 
-@router.get("/releases/{release_id}", dependencies=READ)
-def get_release(release_id: int, db: DB):
-    return release_out(get_or_404(db, Release, release_id))
+@router.get("/releases/{release_id}")
+def get_release(release_id: int, db: DB, user: CurrentUser):
+    release = get_or_404(db, Release, release_id)
+    require_access(db, user, [release.project_id])
+    return release_out(release)
 
 
 @router.put("/releases/{release_id}", dependencies=WRITE)
@@ -430,9 +447,10 @@ def delete_release(release_id: int, db: DB):
     remove(db, release)
 
 
-@router.get("/releases/{release_id}/gate", dependencies=READ)
-def get_release_gate(release_id: int, db: DB):
+@router.get("/releases/{release_id}/gate")
+def get_release_gate(release_id: int, db: DB, user: CurrentUser):
     release = get_or_404(db, Release, release_id)
+    require_access(db, user, [release.project_id])
     return release_gate_out(db, release)
 
 
@@ -481,13 +499,14 @@ def update_release_status(release_id: int, body: ReleaseStatusIn, db: DB):
 
 
 # --- Sprintler (PLN-28) -------------------------------------------------------
-@router.get("/sprints", dependencies=READ)
+@router.get("/sprints")
 def list_sprints(
     db: DB,
+    user: CurrentUser,
     project_id: Annotated[int | None, Query(ge=1)] = None,
     release_id: Annotated[int | None, Query(ge=1)] = None,
 ):
-    stmt = select(Sprint).order_by(Sprint.id)
+    stmt = scoped(select(Sprint).order_by(Sprint.id), Sprint.project_id, allowed_projects(db, user))
     if project_id is not None:
         stmt = stmt.where(Sprint.project_id == project_id)
     if release_id is not None:
@@ -512,9 +531,11 @@ def create_sprint(body: SprintIn, db: DB):
     return sprint_out(sprint)
 
 
-@router.get("/sprints/{sprint_id}", dependencies=READ)
-def get_sprint(sprint_id: int, db: DB):
-    return sprint_out(get_or_404(db, Sprint, sprint_id))
+@router.get("/sprints/{sprint_id}")
+def get_sprint(sprint_id: int, db: DB, user: CurrentUser):
+    sprint = get_or_404(db, Sprint, sprint_id)
+    require_access(db, user, [sprint.project_id])
+    return sprint_out(sprint)
 
 
 @router.put("/sprints/{sprint_id}", dependencies=WRITE)
@@ -548,10 +569,10 @@ def delete_sprint(sprint_id: int, db: DB):
 
 
 # --- Gereksinimler ------------------------------------------------------------
-@router.get("/requirements", dependencies=READ)
-def list_requirements(db: DB):
-    rows = db.scalars(select(Requirement).options(selectinload(Requirement.test_cases))
-                      .order_by(Requirement.id))
+@router.get("/requirements")
+def list_requirements(db: DB, user: CurrentUser):
+    stmt = select(Requirement).options(selectinload(Requirement.test_cases)).order_by(Requirement.id)
+    rows = db.scalars(scoped(stmt, Requirement.project_id, allowed_projects(db, user)))
     return [requirement_out(r) for r in rows]
 
 
@@ -561,9 +582,11 @@ def create_requirement(body: RequirementCreate, db: DB):
     return requirement_out(save(db, Requirement(), body))
 
 
-@router.get("/requirements/{requirement_id}", dependencies=READ)
-def get_requirement(requirement_id: str, db: DB):
-    return requirement_out(get_or_404(db, Requirement, requirement_id))
+@router.get("/requirements/{requirement_id}")
+def get_requirement(requirement_id: str, db: DB, user: CurrentUser):
+    requirement = get_or_404(db, Requirement, requirement_id)
+    require_access(db, user, [requirement.project_id])
+    return requirement_out(requirement)
 
 
 @router.put("/requirements/{requirement_id}", dependencies=WRITE)
@@ -581,12 +604,15 @@ def delete_requirement(requirement_id: str, db: DB):
     remove(db, requirement)
 
 
-@router.put("/requirements/{requirement_id}/test-cases", dependencies=TRACE)
-def set_requirement_test_cases(requirement_id: str, body: TraceLinks, db: DB):
+@router.put("/requirements/{requirement_id}/test-cases")
+def set_requirement_test_cases(requirement_id: str, body: TraceLinks, db: DB, user: Tracer):
     """Gereksinimin test vakası bağlantılarını verilen listeyle değiştirir (boş liste: tümünü kaldırır)."""
     requirement = get_or_404(db, Requirement, requirement_id)
+    require_access(db, user, [requirement.project_id])
+    allowed = allowed_projects(db, user)
     ids = set(body.test_cases)
-    test_cases = list(db.scalars(select(TestCase).where(TestCase.id.in_(ids))))
+    test_cases = [tc for tc in db.scalars(select(TestCase).where(TestCase.id.in_(ids)))
+                  if case_visible(allowed, tc)]
     if len(test_cases) != len(ids):
         raise HTTPException(422, "Test vakası bulunamadı")
     for tc in test_cases:
@@ -598,10 +624,10 @@ def set_requirement_test_cases(requirement_id: str, body: TraceLinks, db: DB):
 
 
 # --- Test Suite'leri ----------------------------------------------------------
-@router.get("/test-suites", dependencies=READ)
-def list_test_suites(db: DB):
-    rows = db.scalars(select(TestSuite).options(selectinload(TestSuite.test_cases))
-                      .order_by(TestSuite.id))
+@router.get("/test-suites")
+def list_test_suites(db: DB, user: CurrentUser):
+    stmt = select(TestSuite).options(selectinload(TestSuite.test_cases)).order_by(TestSuite.id)
+    rows = db.scalars(scoped(stmt, TestSuite.project_id, allowed_projects(db, user)))
     return [suite_out(s) for s in rows]
 
 
@@ -611,9 +637,11 @@ def create_test_suite(body: TestSuiteIn, db: DB):
     return suite_out(save(db, TestSuite(), body))
 
 
-@router.get("/test-suites/{suite_id}", dependencies=READ)
-def get_test_suite(suite_id: int, db: DB):
-    return suite_out(get_or_404(db, TestSuite, suite_id))
+@router.get("/test-suites/{suite_id}")
+def get_test_suite(suite_id: int, db: DB, user: CurrentUser):
+    suite = get_or_404(db, TestSuite, suite_id)
+    require_access(db, user, [suite.project_id])
+    return suite_out(suite)
 
 
 @router.put("/test-suites/{suite_id}", dependencies=WRITE)
@@ -636,16 +664,17 @@ def delete_test_suite(suite_id: int, db: DB):
 
 
 # --- Test Vakaları ------------------------------------------------------------
-@router.get("/test-cases", dependencies=READ)
-def list_test_cases(db: DB):
+@router.get("/test-cases")
+def list_test_cases(db: DB, user: CurrentUser):
     rows = db.scalars(select(TestCase).options(selectinload(TestCase.requirements))
                       .order_by(TestCase.id))
-    return [test_case_out(t) for t in rows]
+    allowed = allowed_projects(db, user)
+    return [test_case_out(t) for t in rows if case_visible(allowed, t)]
 
 
-@router.post("/test-cases", status_code=201, dependencies=TRACE)
-def create_test_case(body: TestCaseCreate, db: DB):
-    _, requirements = resolve_case_relations(db, body.suite_id, body.requirements)
+@router.post("/test-cases", status_code=201)
+def create_test_case(body: TestCaseCreate, db: DB, user: Tracer):
+    _, requirements = resolve_case_relations(db, user, body.suite_id, body.requirements)
     reqs = sorted(r.id for r in requirements)
     case = TestCase(
         id=body.id,
@@ -664,15 +693,15 @@ def create_test_case(body: TestCaseCreate, db: DB):
     return test_case_out(case)
 
 
-@router.get("/test-cases/{test_case_id}", dependencies=READ)
-def get_test_case(test_case_id: str, db: DB):
-    return test_case_out(get_or_404(db, TestCase, test_case_id))
+@router.get("/test-cases/{test_case_id}")
+def get_test_case(test_case_id: str, db: DB, user: CurrentUser):
+    return test_case_out(get_case(db, user, test_case_id))
 
 
-@router.put("/test-cases/{test_case_id}", dependencies=TRACE)
-def update_test_case(test_case_id: str, body: TestCaseIn, db: DB):
-    case = get_or_404(db, TestCase, test_case_id)
-    _, requirements = resolve_case_relations(db, body.suite_id, body.requirements)
+@router.put("/test-cases/{test_case_id}")
+def update_test_case(test_case_id: str, body: TestCaseIn, db: DB, user: Tracer):
+    case = get_case(db, user, test_case_id)
+    _, requirements = resolve_case_relations(db, user, body.suite_id, body.requirements)
     reqs = sorted(r.id for r in requirements)
     case.suite_id = body.suite_id
     case.title = body.title
@@ -687,9 +716,9 @@ def update_test_case(test_case_id: str, body: TestCaseIn, db: DB):
     return test_case_out(case)
 
 
-@router.delete("/test-cases/{test_case_id}", status_code=204, dependencies=TRACE)
-def delete_test_case(test_case_id: str, db: DB):
-    case = get_or_404(db, TestCase, test_case_id)
+@router.delete("/test-cases/{test_case_id}", status_code=204)
+def delete_test_case(test_case_id: str, db: DB, user: Tracer):
+    case = get_case(db, user, test_case_id)
     if db.scalar(select(Defect.id).where(Defect.test_case == test_case_id).limit(1)) is not None:
         raise HTTPException(409, "Test vakasına bağlı defect'ler var")
     if (
@@ -703,11 +732,11 @@ def delete_test_case(test_case_id: str, db: DB):
     remove(db, case)
 
 
-@router.put("/test-cases/{test_case_id}/requirements", dependencies=TRACE)
-def set_test_case_requirements(test_case_id: str, body: RequirementLinks, db: DB):
+@router.put("/test-cases/{test_case_id}/requirements")
+def set_test_case_requirements(test_case_id: str, body: RequirementLinks, db: DB, user: Tracer):
     """Test vakasının gereksinim bağlantılarını verilen listeyle değiştirir (en az 1 gereksinim şart)."""
-    case = get_or_404(db, TestCase, test_case_id)
-    _, requirements = resolve_case_relations(db, case.suite_id, body.requirements)
+    case = get_case(db, user, test_case_id)
+    _, requirements = resolve_case_relations(db, user, case.suite_id, body.requirements)
     case.requirements = requirements
     case.requirement = sorted(r.id for r in requirements)[0]
     commit_or_409(db)

@@ -1,9 +1,10 @@
 """PLN-23: authenticated Cobertura imports and retained evidence."""
 from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import select
 
+from .access import project_access
 from .auth import CurrentUser
 from .cobertura import MAX_COVERAGE_BYTES, parse_cobertura
 from .db import DB
@@ -11,7 +12,8 @@ from .junit_imports import Branch, Commit, Importer
 from .models import CoverageImport, ImportedTestRun, Project
 from .projects import commit_or_409, get_or_404
 
-router = APIRouter(prefix="/api/projects/{project_id}/coverage", tags=["Coverage imports"])
+router = APIRouter(prefix="/api/projects/{project_id}/coverage", tags=["Coverage imports"],
+                   dependencies=[Depends(project_access)])
 
 
 def report_out(report: CoverageImport, include_files: bool = True) -> dict:

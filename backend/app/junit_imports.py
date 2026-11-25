@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from .access import project_access
 from .auth import ADMIN, TEST_LEAD, TESTER, CurrentUser, require_roles
 from .db import DB
 from .junit import MAX_XML_BYTES, parse_junit
@@ -13,7 +14,8 @@ from .junit_defects import failure_defect
 from .models import ImportedTestResult, ImportedTestRun, Project, Requirement, TestCase, User
 from .projects import get_or_404
 
-router = APIRouter(prefix="/api/projects/{project_id}/runs", tags=["JUnit imports"])
+router = APIRouter(prefix="/api/projects/{project_id}/runs", tags=["JUnit imports"],
+                   dependencies=[Depends(project_access)])
 Importer = Annotated[User, Depends(require_roles(ADMIN, TEST_LEAD, TESTER))]
 Commit = Annotated[str | None, Query(pattern=r"^[a-fA-F0-9]{7,64}$", max_length=64)]
 Branch = Annotated[str | None, Query(min_length=1, max_length=255, pattern=r".*\S.*")]

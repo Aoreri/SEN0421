@@ -22,7 +22,7 @@ from app.models import (
 from app.models import (
     TestRun as RunModel,
 )
-from tests.conftest import as_user
+from tests.conftest import as_user, grant
 
 pytestmark = [pytest.mark.integration, pytest.mark.usefixtures('fresh_seed')]
 
@@ -37,7 +37,7 @@ def at(day):
 
 
 @pytest.fixture
-def population():
+def population(client):
     with SessionLocal() as db:
         p = Project(name='PLN-24 fixture')
         db.add(p)
@@ -74,6 +74,7 @@ def population():
             {'execution_id': ex[1].id, 'defect_id': ds[0].id},
             {'execution_id': ex[2].id, 'defect_id': ds[1].id}])
         db.commit()
+        grant(client, p.id)
         return {'project_id': p.id, 'release_id': a.id, 'other_release': b.id}
 
 
@@ -123,6 +124,7 @@ def test_empty_and_legacy_contract(client):
         db.add(p)
         db.commit()
         project_id = p.id
+    grant(client, project_id)
     r = client.get('/api/metrics/expanded', params={'project_id': project_id}).json()
     assert r['total_tests'] == r['pass_rate'] == r['requirement_coverage'] == r['reopen_rate'] == 0
     assert r['avg_defect_age_hours'] is None and r['avg_resolution_hours'] is None

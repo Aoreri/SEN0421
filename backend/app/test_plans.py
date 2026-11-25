@@ -12,7 +12,8 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
-from .auth import ADMIN, TEST_LEAD, TESTER, current_user, require_roles
+from .access import allowed_projects, require_access, scoped
+from .auth import ADMIN, TEST_LEAD, TESTER, CurrentUser, require_roles
 from .db import DB
 from .models import (
     Defect,
@@ -30,7 +31,6 @@ from .models import (
 )
 
 router = APIRouter(prefix="/api/test-plans", tags=["test-plans"])
-READ = [Depends(current_user)]
 WRITE = [Depends(require_roles(ADMIN, TEST_LEAD))]
 SNAPSHOT = [Depends(require_roles(ADMIN, TEST_LEAD, TESTER))]
 
@@ -76,6 +76,12 @@ def get_plan_or_404(db: Session, plan_id: int) -> TestPlan:
     )
     if plan is None:
         raise HTTPException(404, "Test Plan bulunamadı")
+    return plan
+
+
+def get_visible_plan(db: Session, user: User, plan_id: int) -> TestPlan:
+    plan = get_plan_or_404(db, plan_id)
+    require_access(db, user, [plan.project_id])
     return plan
 
 
@@ -447,11 +453,10 @@ def render_pdf_bytes(html_content: str, payload: dict[str, Any]) -> bytes:
 
 
 # --- Uç Noktalar --------------------------------------------------------------
-@router.get("", dependencies=READ)
-def list_test_plans(db: DB):
-    rows = db.scalars(
-        select(TestPlan).options(selectinload(TestPlan.snapshots)).order_by(TestPlan.id)
-    )
+@router.get("")
+def list_test_plans(db: DB, user: CurrentUser):
+    stmt = select(TestPlan).options(selectinload(TestPlan.snapshots)).order_by(TestPlan.id)
+    rows = db.scalars(scoped(stmt, TestPlan.project_id, allowed_projects(db, user)))
     return [plan_out(p, include_snapshots=False) for p in rows]
 
 
@@ -472,9 +477,9 @@ def create_test_plan(
     return plan_out(get_plan_or_404(db, plan.id), include_snapshots=True)
 
 
-@router.get("/{plan_id}", dependencies=READ)
-def get_test_plan(plan_id: int, db: DB):
-    return plan_out(get_plan_or_404(db, plan_id), include_snapshots=True)
+@router.get("/{plan_id}")
+def get_test_plan(plan_id: int, db: DB, user: CurrentUser):
+    return plan_out(get_visible_plan(db, user, plan_id), include_snapshots=True)
 
 
 @router.put("/{plan_id}", dependencies=WRITE)
@@ -525,7 +530,7 @@ def create_test_plan_snapshot(
     db: DB,
     user: Annotated[User, Depends(require_roles(ADMIN, TEST_LEAD, TESTER))],
 ):
-    plan = get_plan_or_404(db, plan_id)
+    plan = get_visible_plan(db, user, plan_id)
     html_content, payload = build_plan_snapshot_data(db, plan, user.username)
     snap = TestPlanSnapshot(
         test_plan_id=plan.id,
@@ -541,15 +546,15 @@ def create_test_plan_snapshot(
     return snapshot_detail_out(snap)
 
 
-@router.get("/{plan_id}/snapshots", dependencies=READ)
-def list_test_plan_snapshots(plan_id: int, db: DB):
-    plan = get_plan_or_404(db, plan_id)
+@router.get("/{plan_id}/snapshots")
+def list_test_plan_snapshots(plan_id: int, db: DB, user: CurrentUser):
+    plan = get_visible_plan(db, user, plan_id)
     return [snapshot_summary_out(s) for s in plan.snapshots]
 
 
-@router.get("/{plan_id}/snapshots/{snapshot_id}", dependencies=READ)
-def get_test_plan_snapshot(plan_id: int, snapshot_id: int, db: DB):
-    plan = get_plan_or_404(db, plan_id)
+@router.get("/{plan_id}/snapshots/{snapshot_id}")
+def get_test_plan_snapshot(plan_id: int, snapshot_id: int, db: DB, user: CurrentUser):
+    plan = get_visible_plan(db, user, plan_id)
     snap = db.scalar(
         select(TestPlanSnapshot).where(
             TestPlanSnapshot.id == snapshot_id,
@@ -561,14 +566,15 @@ def get_test_plan_snapshot(plan_id: int, snapshot_id: int, db: DB):
     return snapshot_detail_out(snap)
 
 
-@router.get("/{plan_id}/export", dependencies=READ)
+@router.get("/{plan_id}/export")
 def export_test_plan(
     plan_id: int,
     db: DB,
+    user: CurrentUser,
     format: Literal["html", "pdf"] = Query("html"),
     snapshot_id: int | None = Query(None),
 ):
-    plan = get_plan_or_404(db, plan_id)
+    plan = get_visible_plan(db, user, plan_id)
     if snapshot_id is not None:
         snap = db.scalar(
             select(TestPlanSnapshot).where(

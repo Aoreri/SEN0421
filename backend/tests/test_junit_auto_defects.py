@@ -10,7 +10,7 @@ from sqlalchemy.exc import IntegrityError
 from app.db import SessionLocal, engine
 from app.main import app
 from app.models import Defect, DefectHistory, ImportedTestResult, ImportedTestRun, JUnitAutoDefect
-from tests.conftest import as_user
+from tests.conftest import as_user, grant
 from tests.test_junit_import import upload
 
 pytestmark = [pytest.mark.integration, pytest.mark.usefixtures('fresh_seed')]
@@ -86,6 +86,7 @@ def test_same_key_in_another_project_is_not_deduplicated_across_projects(client)
     first = result(client)['results'][0]
     project = client.post('/api/projects', json={'name': 'Second failure scope'},
                           headers=as_user('admin')).json()
+    grant(client, project['id'])
     requirement = client.post('/api/requirements', json={
         'id': 'R33', 'project_id': project['id'], 'title': 'Other project requirement',
     }, headers=as_user('admin'))
@@ -112,6 +113,7 @@ def test_passed_skipped_and_unmatched_failures_do_not_create_defects(client, xml
 def test_known_case_outside_project_creates_no_defect(client):
     project = client.post('/api/projects', json={'name': 'No linked tests'},
                           headers=as_user('admin')).json()
+    grant(client, project['id'])
     before = row_counts()
     report = result(client, project=project['id'])
     assert report['results'][0]['defect_id'] is None

@@ -8,7 +8,7 @@ import pytest
 from app.auth import JWT_ALGORITHM, JWT_SECRET
 from app.db import SessionLocal
 from app.models import DefectTransition, User
-from tests.conftest import as_user
+from tests.conftest import as_user, grant
 
 pytestmark = [pytest.mark.integration, pytest.mark.usefixtures("fresh_seed")]
 
@@ -274,6 +274,7 @@ def test_sprint_crud_validation_roles_and_dependents(client):
 
     # Validation checks (422)
     p2 = client.post("/api/projects", json={"name": "P2-Sprint"}, headers=admin).json()
+    grant(client, p2["id"])
     r2 = client.post("/api/releases", json={"project_id": p2["id"], "version": "v2"}, headers=admin).json()
     for bad_body in [
         {"project_id": 999, "name": "S-BadProj"},
@@ -511,6 +512,7 @@ def test_release_gate_isolates_projects(client):
 
     # Create Project 2 with 1 requirement, 1 Failed test case, and 1 open Critical defect linked to it
     p2 = client.post("/api/projects", json={"name": "P2-Iso"}, headers=admin).json()
+    grant(client, p2["id"])
     client.post(
         "/api/requirements",
         json={"id": "R-P2-1", "project_id": p2["id"], "title": "P2 Req"},
@@ -727,6 +729,7 @@ def test_test_case_and_suite_validation_and_conflicts(client):
     admin = as_user("admin")
     tester = as_user("tester")
     p2 = client.post("/api/projects", json={"name": "P2"}, headers=admin).json()
+    grant(client, p2["id"])
     s1 = client.post("/api/test-suites", json={"project_id": 1, "name": "S1"}, headers=admin).json()
     s2 = client.post("/api/test-suites", json={"project_id": p2["id"], "name": "S1"},
                      headers=admin).json()
@@ -899,6 +902,7 @@ def test_test_run_validation_and_roles(client):
     tester = as_user("tester")
     admin = as_user("admin")
     p2 = client.post("/api/projects", json={"name": "P2"}, headers=admin).json()
+    grant(client, p2["id"])
     r2 = client.post("/api/releases", json={"project_id": p2["id"], "version": "v1"}, headers=admin).json()
     s2 = client.post("/api/test-suites", json={"project_id": p2["id"], "name": "S2"}, headers=admin).json()
 
@@ -1094,6 +1098,7 @@ def test_test_plan_crud_and_workflow(client):
 def test_test_plan_validation_and_dependents(client):
     admin = as_user("admin")
     p2 = client.post("/api/projects", json={"name": "P2"}, headers=admin).json()
+    grant(client, p2["id"])
     r1 = client.post("/api/releases", json={"project_id": 1, "version": "v1"}, headers=admin).json()
 
     # Unknown project or mismatched release -> 422
@@ -1245,6 +1250,8 @@ def test_test_plan_snapshot_isolates_projects(client):
     tester = as_user("tester")
 
     p2 = client.post("/api/projects", json={"name": "P2-Plan"}, headers=admin).json()
+
+    grant(client, p2["id"])
     client.post(
         "/api/requirements",
         json={"id": "R-P2", "project_id": p2["id"], "title": "P2 Gereksinimi"},
@@ -1458,6 +1465,8 @@ def test_summary_report_includes_unlinked_defects_for_every_project(client):
     project = client.post(
         "/api/projects", json={"name": "P-Summary-Defects"}, headers=admin
     ).json()
+
+    grant(client, project["id"])
     client.post(
         "/api/requirements",
         json={"id": "R-SUM-DEF", "project_id": project["id"], "title": "R-SUM-DEF"},
@@ -1511,6 +1520,8 @@ def test_summary_report_labels_release_scoped_pass_rate_and_gate_basis(client):
     project = client.post(
         "/api/projects", json={"name": "P-Summary-Rate"}, headers=admin
     ).json()
+
+    grant(client, project["id"])
     client.post(
         "/api/requirements",
         json={"id": "R-SUM-RATE", "project_id": project["id"], "title": "R-SUM-RATE"},
