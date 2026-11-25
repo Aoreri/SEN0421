@@ -340,6 +340,21 @@ export type TestPlanInput = {
   schedule_risks?: string;
 };
 
+export type TestSummaryReportSnapshotSummary = {
+  id: number;
+  release_id: number;
+  release_version: string;
+  release_status: ReleaseStatus;
+  gate_passed: boolean;
+  generated_by: string;
+  generated_at: string;
+};
+
+export type TestSummaryReportSnapshot = TestSummaryReportSnapshotSummary & {
+  html_content: string;
+  payload: Record<string, unknown>;
+};
+
 const TOKEN_STORAGE_KEY = "token";
 export const AUTH_EXPIRED_EVENT = "sds06:auth-expired";
 
@@ -738,6 +753,26 @@ export const api = {
     request<TestPlanSnapshot>(`/test-plans/${id}/snapshots`, { method: "POST" }),
   getTestPlanSnapshot: (planId: number, snapshotId: number) =>
     request<TestPlanSnapshot>(`/test-plans/${planId}/snapshots/${snapshotId}`),
+  summaryReportSnapshots: (releaseId: number) =>
+    request<TestSummaryReportSnapshotSummary[]>(
+      `/releases/${releaseId}/summary-report/snapshots`,
+    ),
+  createSummaryReportSnapshot: (releaseId: number) =>
+    request<TestSummaryReportSnapshot>(`/releases/${releaseId}/summary-report/snapshots`, {
+      method: "POST",
+    }),
+  getSummaryReportSnapshot: (releaseId: number, snapshotId: number) =>
+    request<TestSummaryReportSnapshot>(
+      `/releases/${releaseId}/summary-report/snapshots/${snapshotId}`,
+    ),
+  exportSummaryReportUrl: (
+    releaseId: number,
+    format: "html" | "pdf" = "html",
+    snapshotId?: number,
+  ) =>
+    `/api/releases/${releaseId}/summary-report/export?format=${format}${
+      snapshotId !== undefined ? `&snapshot_id=${snapshotId}` : ""
+    }`,
   downloadTestPlan: (planId: number, format: "html" | "pdf", snapshotId?: number) =>
     download(
       `/test-plans/${planId}/export?format=${format}${
