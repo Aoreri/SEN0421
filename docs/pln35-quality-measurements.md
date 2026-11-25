@@ -16,7 +16,7 @@ aykırı değerler veya başarısız denemeler silinmedi. Bunlar kaydedilen orta
 - Ölçülen uygulama kodu: PR #45 head [`97bdc7e`](https://github.com/Aoreri/SEN0421/commit/97bdc7eafb8c52ce90f227e371ad7e6623679470), GitHub'ın `main` ile birleştirme commit'i `5456f3e` üzerinde. Sonraki commit yalnızca kanıt, belge, test ve kapsam betiğini değiştirir; ölçülen uygulama kodu (`backend/app`, `frontend/src`, `quality/`) aynıdır.
 - Ölçüm başlangıcı (UTC): `2026-11-25T15:43:25.896Z`.
 - [PostgreSQL/tarayıcı ölçüm işi](https://github.com/Aoreri/SEN0421/actions/runs/45648086892) — başarılı.
-- [Backend, PostgreSQL, frontend ve birim kapsam kontrolleri](https://github.com/Aoreri/SEN0421/actions/runs/45648086807) — başarılı.
+- [Backend, PostgreSQL, frontend ve birim kapsam kontrolleri](https://github.com/Aoreri/SEN0421/pull/45/checks) — başarılı.
 - Kalıcı sayısal kanıt: [tüm süre örnekleri ve ortam bilgileri](evidence/pln35-performance.json), [birim kapsam özeti](evidence/pln35-unit-coverage.json).
 - Ayrıntılı JSON/Cobertura ve performans tanıları, Actions altında `workflow-metrics-unit-coverage` ve `pln35-performance` çıktılarında 14 gün saklanır.
 
