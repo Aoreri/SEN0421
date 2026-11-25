@@ -72,6 +72,7 @@ test vakası ↔ gereksinim izlenebilirliği.
 | IEEE 829 Test Incident Report (defect başına) ve Test Log (test koşumu başına) üretimi: Jinja2 şablonları, HTML + PDF (WeasyPrint ve RSK-07 yedek PDF-1.4) çıktısı ve anlık görüntü (snapshot) saklama | R3, R4 | IEEE 829 Test Incident Report, Test Log; 29119-3; 29119-2 Test Olay Raporlama |
 | IEEE 829 Test Summary Report üretimi: sürüm verisinden toplamlar, özellik/gereksinim bazında sonuçlar, defect özeti ve çıkış kriteri değerlendirmesi; HTML + PDF ve anlık görüntü (snapshot) saklama | R3, R7 | IEEE 829 Test Summary Report; 29119-3 Test Completion Report |
 | Test Plan yönetim ekranı (`/test-plans`): taslak oluşturma/düzenleme, yalnızca API'nin izin verdiği `Draft → In Review → Approved` durum geçişleri, sürüm geçmişi (snapshot) ve HTML / PDF indirme | R1, R3 | IEEE 829 Test Plan; 29119-3 Test Plan |
+| Sürüm yönetim ekranı (`/releases`): durum geçişleri, çıkış kriteri ayarları, Test Lead / Admin muafiyet kaydı, Test Summary Report anlık görüntüsü ve HTML / PDF indirme; sürüm / sprint filtreli metrik paneli | R5, R7 | 29119-2 Test Tamamlama; 29119-3 Test Completion Report |
 
 ## Mimari
 

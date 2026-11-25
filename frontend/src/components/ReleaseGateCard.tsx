@@ -1,8 +1,7 @@
 import { FormEvent, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import {
-  api,
   ExitCriteriaConfig,
-  formatErrorMessage,
   RELEASE_STATUSES,
   ReleaseGateStatus,
   ReleaseStatus,
@@ -24,6 +23,8 @@ export type ReleaseGateCardProps = {
   onUpdateCriteria: (criteria: ExitCriteriaConfig) => Promise<boolean>;
   onCreateWaiver: (reason: string) => Promise<void>;
   onDeleteWaiver: () => Promise<void>;
+  /** Paneldeki kartta sürüm yönetimi ekranına bağlantı gösterir. */
+  showManageLink?: boolean;
 };
 
 export function ReleaseGateCard({
@@ -34,6 +35,7 @@ export function ReleaseGateCard({
   onUpdateCriteria,
   onCreateWaiver,
   onDeleteWaiver,
+  showManageLink = false,
 }: ReleaseGateCardProps) {
   const [editingCriteria, setEditingCriteria] = useState(false);
   const [minPassRate, setMinPassRate] = useState("80");
@@ -43,17 +45,6 @@ export function ReleaseGateCard({
 
   const [waiverReason, setWaiverReason] = useState("");
   const [waiverError, setWaiverError] = useState("");
-  const [downloadError, setDownloadError] = useState("");
-
-  // Export routes require the bearer token, so a plain <a href> would get 401.
-  async function downloadReport(releaseId: number, format: "html" | "pdf") {
-    setDownloadError("");
-    try {
-      await api.downloadSummaryReport(releaseId, format);
-    } catch (err) {
-      setDownloadError(formatErrorMessage(err, "Test Summary Report indirilemedi."));
-    }
-  }
 
   useEffect(() => {
     if (!gate) return;
@@ -75,6 +66,8 @@ export function ReleaseGateCard({
 
   const canManageGate =
     user !== null && (user.role === "Admin" || user.role === "Test Lead");
+  // FR-REL-03: the API lets Admin and Test Lead record or remove a waiver.
+  const canWaive = canManageGate;
 
   async function handleSaveCriteria(e: FormEvent) {
     e.preventDefault();
@@ -184,7 +177,7 @@ export function ReleaseGateCard({
               {new Date(gate.waiver.waived_at).toLocaleString("tr-TR")})
             </span>
           </div>
-          {canManageGate && (
+          {canWaive && (
             <button
               type="button"
               className="secondary-btn"
@@ -232,25 +225,17 @@ export function ReleaseGateCard({
           </button>
         )}
 
-        <div className="row-actions">
-          <button type="button" className="detail-link" onClick={() => void downloadReport(gate.release_id, "html")}>
-            Test Summary Report (HTML)
-          </button>
-          <button type="button" className="detail-link" onClick={() => void downloadReport(gate.release_id, "pdf")}>
-            Test Summary Report (PDF)
-          </button>
-          {downloadError && (
-            <span className="field-error" role="alert">
-              {downloadError}
-            </span>
-          )}
-        </div>
+        {showManageLink && (
+          <Link to={`/releases?release=${gate.release_id}`} className="detail-link">
+            Sürüm Yönetimi &amp; Test Summary Report →
+          </Link>
+        )}
       </div>
 
       {!canManageGate && (
         <p className="hint" style={{ marginTop: 8 }}>
-          Sürüm durumu güncelleme, eşik yapılandırma ve muafiyet onaylama yalnızca{" "}
-          <strong>Test Lead</strong> ve <strong>Admin</strong> rolleri içindir.
+          Sürüm durumu güncelleme ve eşik yapılandırma yalnızca <strong>Test Lead</strong> ve{" "}
+          <strong>Admin</strong> rolleri içindir.
         </p>
       )}
 
@@ -307,7 +292,7 @@ export function ReleaseGateCard({
         </form>
       )}
 
-      {canManageGate && !gate.gate_passed && (
+      {canWaive && !gate.gate_passed && (
         <form onSubmit={(e) => void handleWaiverSubmit(e)} className="gate-subform" noValidate>
           <div className="form-field" style={{ flex: 1, width: "100%" }}>
             <label htmlFor="waiver-reason">
