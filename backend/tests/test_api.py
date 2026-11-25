@@ -1291,6 +1291,21 @@ def test_test_plan_snapshot_isolates_projects(client):
     assert "TC-001" not in snap2["html_content"]
 
 
+def test_release_report_generator_produces_html_pdf_json_and_notes(tmp_path):
+    from scripts.generate_release_report import build_release_bundle
+
+    bundle = build_release_bundle(tmp_path, "v1.0.0", "abcdef1")
+    pdf_bytes = (tmp_path / "test-summary-report-v1.0.0.pdf").read_bytes()
+    html_text = (tmp_path / "test-summary-report-v1.0.0.html").read_text(encoding="utf-8")
+    notes_text = (tmp_path / "release-notes-v1.0.0.md").read_text(encoding="utf-8")
+
+    assert pdf_bytes.startswith(b"%PDF-1.")
+    assert pdf_bytes.strip().endswith(b"%%EOF")
+    assert "TSR-SDS-06-v1.0.0" in html_text
+    assert "SDS-06 v1.0.0" in notes_text
+    assert bundle["payload"]["totals"]["total_cases"] == 6
+
+
 @pytest.mark.parametrize(
     "url",
     [

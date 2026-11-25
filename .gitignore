@@ -19,6 +19,14 @@ dist/
 !.claude/skills
 *.tsbuildinfo
 
+# PLN-36 generated release bundles
+release-bundle/
+backend/release-artifacts/
+backend/test-evidence.json
+built-images.json
+images.tar.gz
+images.sha256
+
 # Generated test coverage
 .coverage
 .coverage.*

@@ -1,0 +1,25 @@
+name: Release verifier tests (PLN-36)
+
+on:
+  pull_request:
+    paths: ["scripts/verify_release.py", "backend/tests/test_release_verification.py", "backend/tests/test_release_evidence.py", "backend/scripts/release_evidence.py", ".github/workflows/release-readiness.yml"]
+  push:
+    branches: ["feature/pln-36-*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validator-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -r backend/requirements-dev.txt
+      - name: Verify the candidate validator
+        working-directory: backend
+        run: python -m pytest -q tests/test_release_verification.py tests/test_release_evidence.py

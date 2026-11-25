@@ -145,6 +145,13 @@ GitHub Actions `CI` hattı her PR'da backend (SQLite ve PostgreSQL 16) ve fronte
 kontrollerini çalıştırır; Cobertura kapsam raporları Actions → **Artifacts** altında
 14 gün saklanır.
 
+PLN-36 sürüm akışı gerçek PostgreSQL pytest/JUnit ve Cobertura çıktılarından
+IEEE 829 Test Summary Report üretir; sürümleri, Docker imajlarını ve dosya
+checksum'larını doğrular. Manuel çalıştırma yalnızca kuru denemedir; hiçbir
+Release yayımlamaz. `main` üzerindeki bir commit'e ait `v*.*.*` etiketi ise
+başarılı doğrulamadan sonra aynı doğrulanmış imajları ve ekleri yayımlar.
+[Yayın ve gerçek test kanıtı sözleşmesi](docs/release-verification.md).
+
 ## JUnit XML içe aktarımı (PLN-22 — Esra Kaya)
 
 `POST /api/projects/{id}/runs/import`, ham XML gövdesini `application/xml` olarak
@@ -190,6 +197,13 @@ kapsam: [Metrik API sözleşmesi](docs/metrics-api.md).
 | Yazılım Tasarım Tanımı (mimari ve veri modeli) | [docs/software-design-description.md](docs/software-design-description.md) |
 | Standart durumu ve IEEE 829 ↔ 29119 eşlemesi | [docs/standard-status-and-mapping.md](docs/standard-status-and-mapping.md) |
 | Risk kaydı · Definition of Done | [docs/risk-register.md](docs/risk-register.md) · [docs/definition-of-done.md](docs/definition-of-done.md) |
+
+## Sürüm adayı doğrulaması (PLN-36 — Esra Kaya)
+
+Sürüm bilgileri, Test Summary Report ekleri ve Docker imaj kimlikleri yayın
+öncesinde doğrulanır; başarılı pakete manifest ve SHA256SUMS eklenir.
+[Doğrulama ve yayın teslim yönergesi](docs/release-verification.md).
+Bu araç etiket veya Release yayımlamaz.
 
 ## Katkı süreci
 

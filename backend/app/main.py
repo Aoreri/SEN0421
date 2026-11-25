@@ -34,7 +34,7 @@ from .models import (
     execution_defects,
 )
 
-app = FastAPI(title="SDS-06 Test & Defect Tracker", version="0.1.0")
+app = FastAPI(title="SDS-06 Test & Defect Tracker", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,

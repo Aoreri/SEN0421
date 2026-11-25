@@ -1,0 +1,185 @@
+name: Release v1.0
+
+on:
+  push:
+    tags: ["v*.*.*"]
+    branches: ["feature/pln-36-release-verification"]
+    paths: ["backend/**", "frontend/**", "scripts/**", ".github/workflows/release.yml"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to verify; manual runs never publish"
+        required: true
+        default: "v1.0.0"
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  candidate:
+    name: Test, build and verify candidate (no publication)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      repo: ${{ steps.meta.outputs.repo }}
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: sds06
+          POSTGRES_PASSWORD: sds06
+          POSTGRES_DB: sds06_release_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U sds06 -d sds06_release_test"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    env:
+      DATABASE_URL: postgresql+psycopg://sds06:sds06@localhost:5432/sds06_release_test
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Validate version and publication source
+        id: meta
+        env:
+          REQUESTED_VERSION: ${{ inputs.version || 'v1.0.0' }}
+        run: |
+          python - <<'PY'
+          import os, re, sys
+          from pathlib import Path
+          sys.path.insert(0, "scripts")
+          from verify_release import check_source, require
+          ref = os.environ["GITHUB_REF"]
+          version = ref.removeprefix("refs/tags/") if ref.startswith("refs/tags/") else os.environ["REQUESTED_VERSION"]
+          require(re.fullmatch(r"v\d+\.\d+\.\d+", version), "Invalid stable release version")
+          check_source(Path("."), version)
+          with open(os.environ["GITHUB_OUTPUT"], "a") as out:
+              out.write(f"version={version}\nrepo={os.environ['GITHUB_REPOSITORY'].lower()}\n")
+          PY
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            git merge-base --is-ancestor HEAD origin/main
+          fi
+      - name: Verify configured publication approval rules
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/environments/release-production" > approval-environment.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          rules = json.loads(Path("approval-environment.json").read_text()).get("protection_rules", [])
+          if not any(r.get("type") == "required_reviewers" and r.get("reviewers") and r.get("prevent_self_review") is True for r in rules):
+              raise SystemExit("Configure release-production required reviewers and prevent self-review before tagging; publication is blocked")
+          PY
+      - name: Install backend and real PDF renderer
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libpango-1.0-0 libpangocairo-1.0-0 libpangoft2-1.0-0 libcairo2 libgdk-pixbuf-2.0-0 libffi8 shared-mime-info fonts-dejavu-core
+          python -m pip install -r backend/requirements-dev.txt
+      - name: Verify backend on disposable PostgreSQL and capture actual evidence
+        working-directory: backend
+        run: |
+          ruff check .
+          mypy app
+          python -m pytest -q --cov=app --cov-report=term-missing --cov-report=xml:coverage.xml --junitxml=junit.xml -o junit_family=legacy
+          python - <<'PY'
+          import hashlib, json, subprocess
+          from pathlib import Path
+          sha = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+          data = {"commit": sha, **{f"{name}_sha256": hashlib.sha256(Path(f"{name}.xml").read_bytes()).hexdigest() for name in ("junit", "coverage")}}
+          Path("test-evidence.json").write_text(json.dumps(data))
+          PY
+      - name: Verify frontend
+        working-directory: frontend
+        run: npm ci && npm run lint && npm run typecheck && npm run build
+      - name: Generate report from the captured test evidence
+        working-directory: backend
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          python scripts/generate_release_report.py --version "$VERSION" --commit "$(git rev-parse HEAD)" --junit junit.xml --coverage coverage.xml --evidence test-evidence.json --output-dir ../release-bundle
+          cp junit.xml coverage.xml test-evidence.json ../release-bundle/
+      - name: Build images and capture their actual IDs
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+          REPO: ${{ steps.meta.outputs.repo }}
+        run: |
+          docker build -t "ghcr.io/$REPO/backend:$VERSION" backend
+          docker build -t "ghcr.io/$REPO/frontend:$VERSION" frontend
+          python - <<'PY'
+          import json, os, subprocess
+          from pathlib import Path
+          images = []
+          for component in ("backend", "frontend"):
+              tag = f"ghcr.io/{os.environ['REPO']}/{component}:{os.environ['VERSION']}"
+              info = json.loads(subprocess.check_output(["docker", "image", "inspect", tag]))[0]
+              images.append({"component": component, "tag": tag, "image_id": info["Id"]})
+          Path("built-images.json").write_text(json.dumps(images))
+          PY
+          docker save "ghcr.io/$REPO/backend:$VERSION" "ghcr.io/$REPO/frontend:$VERSION" | gzip -1 > images.tar.gz
+      - name: Verify the exact publication bundle
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          cp scripts/verify_release.py release-bundle/verify_release.py
+          python scripts/verify_release.py --root . --bundle release-bundle --images built-images.json --version "$VERSION" --commit "$(git rev-parse HEAD)" --output release-bundle --archive images.tar.gz
+          python scripts/verify_release.py --check-archive release-bundle/release-manifest.json --archive images.tar.gz
+      - name: Save the verified package without publishing
+        uses: actions/upload-artifact@v4
+        with:
+          name: verified-release-package
+          path: |
+            release-bundle/
+            images.tar.gz
+          compression-level: 0
+          retention-days: 14
+          if-no-files-found: error
+
+  publish:
+    name: Publish the previously verified bytes (tag on main only)
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: candidate
+    environment:
+      name: release-production
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      packages: write
+    env:
+      VERSION: ${{ needs.candidate.outputs.version }}
+      REPO: ${{ needs.candidate.outputs.repo }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: verified-release-package
+      - name: Recheck integrity and load the verified images
+        run: |
+          (cd release-bundle && sha256sum --check SHA256SUMS)
+          python3 release-bundle/verify_release.py --check-archive release-bundle/release-manifest.json --archive images.tar.gz
+          docker load -i images.tar.gz
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Push versioned images
+        run: |
+          docker push "ghcr.io/$REPO/backend:$VERSION"
+          docker push "ghcr.io/$REPO/frontend:$VERSION"
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.candidate.outputs.version }}
+          name: SDS-06 ${{ needs.candidate.outputs.version }}
+          body_path: release-bundle/release-notes-${{ needs.candidate.outputs.version }}.md
+          files: release-bundle/*
+          fail_on_unmatched_files: true
