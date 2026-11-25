@@ -49,7 +49,7 @@ def test_validation(client):
 
 
 def test_health(client):
-    assert client.get("/api/health").json() == {"status": "ok"}
+    assert client.get("/api/health").json() == {"status": "ok", "demo": True}
 
 
 def test_rejected_requests_leave_data_unchanged(client):

@@ -26,6 +26,7 @@ from . import metrics as expanded_metrics
 from .access import allowed_projects, case_visible, defect_visible, require_defect_access
 from .auth import ADMIN, TEST_LEAD, TESTER, CurrentUser, require_roles
 from .db import DB
+from .demo import demo_mode
 from .models import (
     Defect,
     DefectHistory,
@@ -81,7 +82,7 @@ def defect_out(d: Defect, rules: list[DefectTransition], user: User | None) -> d
 
 @app.get("/api/health")
 def health():
-    return {"status": "ok"}
+    return {"status": "ok", "demo": demo_mode()}
 
 
 @app.get("/api/defects")

@@ -533,6 +533,7 @@ export const api = {
       body: JSON.stringify({ username: username.trim(), password }),
     }),
   me: () => request<User>("/auth/me"),
+  health: () => request<{ status: string; demo: boolean }>("/health"),
   metrics: () => request<Metrics>("/metrics"),
   expandedMetrics: (
     releaseId?: number | null,

@@ -19,6 +19,11 @@ services:
     build: ./backend
     environment:
       DATABASE_URL: postgresql+psycopg://sds06:sds06@db:5432/sds06
+      # Varsayılan kurulum boş gelir. DEMO_MODE=1: demo hesapları ve verisi; aksi halde ilk Admin
+      # ADMIN_USERNAME/ADMIN_PASSWORD ile açılır (README: Demo modu).
+      DEMO_MODE: ${DEMO_MODE:-0}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
     ports:
       - "8000:8000"
     depends_on:

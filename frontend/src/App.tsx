@@ -655,10 +655,21 @@ function DashboardView({ user }: DashboardViewProps) {
   );
 }
 
+const DEMO_NOTICE =
+  "Bu bir demo sürümüdür; tüm veriler her gün Türkiye saatiyle gece 00:00'da sıfırlanır.";
+
 export default function App() {
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
   const [authReady, setAuthReady] = useState(() => !getStoredToken());
+  const [demo, setDemo] = useState(false);
+
+  useEffect(() => {
+    api
+      .health()
+      .then((h) => setDemo(h.demo))
+      .catch(() => setDemo(false));
+  }, []);
 
   useEffect(() => {
     const token = getStoredToken();
@@ -694,7 +705,14 @@ export default function App() {
       <header>
         <div className="header-inner">
           <div>
-            <h1>SDS-06 · Agile Test and Defect Tracking System</h1>
+            <h1>
+              SDS-06 · Agile Test and Defect Tracking System
+              {demo && (
+                <span className="demo-badge" tabIndex={0} title={DEMO_NOTICE} aria-label={DEMO_NOTICE}>
+                  DEMO
+                </span>
+              )}
+            </h1>
             <p>ISO/IEC/IEEE 12207 · IEEE 829 · ISO/IEC/IEEE 29119-2 / 29119-3</p>
           </div>
 
@@ -782,7 +800,7 @@ export default function App() {
           <Route path="/users" element={<UsersPage user={user} />} />
           <Route
             path="/login"
-            element={<LoginPage user={user} onLogin={setUser} onLogout={handleLogout} />}
+            element={<LoginPage user={user} onLogin={setUser} onLogout={handleLogout} demo={demo} />}
           />
         </Routes>
       </main>

@@ -48,7 +48,7 @@ def test_initial_history_and_public_listing():
     db.scalars.side_effect = None
     db.scalars.return_value = h
     assert main.defect_history(1, db, ADMIN)[0]["from"] is None
-    assert main.health() == {"status": "ok"}
+    assert main.health()["status"] == "ok"
 
 
 @pytest.mark.parametrize("body", [main.DefectCreate(title=" "), main.DefectCreate(title="A", test_case="missing")])

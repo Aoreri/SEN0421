@@ -7,6 +7,8 @@ from pathlib import Path
 # Set the URL before importing app.db so unit tests never select the dev DB by accident.
 _TEST_DIRECTORY = tempfile.TemporaryDirectory(prefix="sds06-pytest-")
 os.environ.setdefault("DATABASE_URL", f"sqlite:///{_TEST_DIRECTORY.name}/test.db")
+# Tests run against the demo accounts and data (app/demo.py).
+os.environ["DEMO_MODE"] = "1"
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
