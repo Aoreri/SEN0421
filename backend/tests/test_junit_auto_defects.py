@@ -35,17 +35,17 @@ def result(client, xml=FAILURE, **kwargs):
 
 def test_failed_matched_result_creates_open_defect_and_exactly_one_creation_history(client):
     before = row_counts()
-    cases = client.get('/api/test-cases').json()
+    cases = client.get('/api/test-cases', headers=as_user('tester')).json()
     report = result(client)
     row = report['results'][0]
     assert len(row['failure_signature']) == 64 and row['defect_id'] is not None
-    defect = next(d for d in client.get('/api/defects').json() if d['id'] == row['defect_id'])
+    defect = next(d for d in client.get('/api/defects', headers=as_user('tester')).json() if d['id'] == row['defect_id'])
     assert defect['status'] == 'Open' and defect['test_case'] == 'TC-001'
     assert defect['severity'] == 'Medium'
-    history = client.get(f"/api/defects/{defect['id']}/history").json()
+    history = client.get(f"/api/defects/{defect['id']}/history", headers=as_user('tester')).json()
     assert len(history) == 1 and history[0]['from'] is None and history[0]['to'] == 'Open'
     assert row_counts() == tuple(n + 1 for n in before)
-    assert client.get('/api/test-cases').json() == cases
+    assert client.get('/api/test-cases', headers=as_user('tester')).json() == cases
     saved = client.get(f"/api/projects/1/runs/imports/{report['id']}",
                        headers=as_user('developer')).json()
     assert saved == report
