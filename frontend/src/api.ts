@@ -419,7 +419,7 @@ export function formatErrorMessage(
   return fallback;
 }
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+async function send(path: string, options: RequestInit = {}): Promise<Response> {
   const token = getStoredToken();
   let res: Response;
   try {
@@ -443,6 +443,11 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     const payload: unknown = await res.json().catch(() => null);
     throw new ApiError(extractErrorDetail(payload, res.status, res.statusText), res.status);
   }
+  return res;
+}
+
+async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const res = await send(path, options);
 
   if (res.status === 204) {
     return undefined as T;
@@ -464,6 +469,19 @@ export type CoverageImport = {
 export type CoverageReport = CoverageImport & {
   files: (CoverageSummary & { filename: string })[];
 };
+
+/** Bearer token ile indirir; düz `<a href>` gezinmesi Authorization başlığını göndermez. */
+async function download(path: string, fallbackName: string): Promise<void> {
+  const res = await send(path);
+  const disposition = res.headers.get("Content-Disposition") ?? "";
+  const filename = /filename="([^"]+)"/.exec(disposition)?.[1] ?? fallbackName;
+  const url = URL.createObjectURL(await res.blob());
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
 
 export const api = {
   login: (username: string, password: string) =>
@@ -720,12 +738,11 @@ export const api = {
     request<TestPlanSnapshot>(`/test-plans/${id}/snapshots`, { method: "POST" }),
   getTestPlanSnapshot: (planId: number, snapshotId: number) =>
     request<TestPlanSnapshot>(`/test-plans/${planId}/snapshots/${snapshotId}`),
-  exportTestPlanUrl: (
-    planId: number,
-    format: "html" | "pdf" = "html",
-    snapshotId?: number,
-  ) =>
-    `/api/test-plans/${planId}/export?format=${format}${
-      snapshotId !== undefined ? `&snapshot_id=${snapshotId}` : ""
-    }`,
+  downloadTestPlan: (planId: number, format: "html" | "pdf", snapshotId?: number) =>
+    download(
+      `/test-plans/${planId}/export?format=${format}${
+        snapshotId !== undefined ? `&snapshot_id=${snapshotId}` : ""
+      }`,
+      `test-plan-${planId}${snapshotId !== undefined ? `-snap-${snapshotId}` : ""}.${format}`,
+    ),
 };
