@@ -137,7 +137,8 @@ def require_verification_passed(db: Session, defect: Defect) -> None:
                     409,
                     "Defect kapatılmadan önce başarılı bir doğrulama yürütmesi (Passed) gereklidir",
                 )
-        elif not (defect.id == 3 and tc_id == "TC-005" and tc and tc.status == "Not Run"):
+        # Demo verisindeki defect #3 için belgelenmiş istisna; demo dışı kurulumda uygulanmaz.
+        elif not (demo_mode() and defect.id == 3 and tc_id == "TC-005" and tc and tc.status == "Not Run"):
             if tc is None or tc.status != "Passed":
                 raise HTTPException(
                     409,
