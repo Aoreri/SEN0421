@@ -4,11 +4,11 @@
 **Project ID:** SDS-06  
 **Plan item:** PLN-37  
 **Standard basis:** ISO/IEC/IEEE 29148:2018 — Requirements Engineering  
-**Version:** 1.0 — Baseline candidate for team approval  
-**Prepared:** 22 November 2026  
+**Version:** 1.1 — Baseline candidate for team approval  
+**Prepared:** 25 November 2026  
 **Repository:** [Aoreri/SEN0421](https://github.com/Aoreri/SEN0421)
 
-> This document describes the requirements and implementation status visible in `main` on 22 November 2026. An item marked **In review** is implemented only on an open pull-request branch and is not part of the integrated baseline. This is a project-tailored SRS, not a declaration of formal ISO/IEC/IEEE 29148 conformance.
+> This document describes the requirements and implementation status visible in `main` on 25 November 2026. An item marked **In review** is implemented only on an open pull-request branch and is not part of the integrated baseline. This is a project-tailored SRS, not a declaration of formal ISO/IEC/IEEE 29148 conformance.
 
 ## 1. Introduction
 
@@ -150,7 +150,7 @@ The backend is authoritative for authorization. A user interface control is not 
 | FR-REL-01 | The system shall manage release statuses `Planned`, `In Test`, `Ready`, and `Released`. | High | Implemented. |
 | FR-REL-02 | The system shall evaluate configurable pass-rate, open-Critical-defect, and requirement-coverage exit criteria before allowing a release to become `Ready` or `Released`. | High | Implemented. |
 | FR-REL-03 | An Admin or Test Lead shall record and remove a waiver with a non-empty reason, user identity, and timestamp; a waiver shall not alter the underlying measured criteria. | Medium | Implemented. |
-| FR-SPR-01 | The system shall persist named sprints and allow sprint-scoped expanded metrics. | Medium | In review: PLN-28, PR #34; not part of the integrated baseline as of this SRS. |
+| FR-SPR-01 | The system shall persist named sprints and allow sprint-scoped expanded metrics. | Medium | Implemented: PLN-28 (PR #34); release management screen with sprint/release filter in PLN-32 (PR #47). |
 
 ### 3.6 Imports and document generation
 
@@ -161,9 +161,9 @@ The backend is authoritative for authorization. A user interface control is not 
 | FR-PLAN-01 | The system shall manage versioned Test Plan records with `Draft`, `In Review`, and `Approved` states and enforce valid transitions. | High | Implemented. |
 | FR-PLAN-02 | The system shall preserve point-in-time Test Plan snapshots containing rendered HTML and structured data. | High | Implemented. |
 | FR-PLAN-03 | The system shall export a live Test Plan or stored snapshot as HTML or PDF. | Medium | Implemented at API level. Actual WeasyPrint rendering in the supported container must still be verified; the application includes a fallback path. |
-| FR-DOC-01 | The system should generate Test Incident Reports and Test Logs for defects and test runs, with snapshot and HTML/PDF export. | Medium | In review: PLN-39, PR #37. |
-| FR-DOC-02 | The system should generate a release-based Test Summary Report with outcome totals, per-requirement results, defect summary, and exit-gate evaluation, with snapshot and HTML/PDF export. | Medium | In review: PLN-30, PR #38. |
-| FR-REL-04 | The system should build and publish versioned v1.0 Docker images and release attachments from a version tag. | Medium | In review: PLN-36, PR #40. |
+| FR-DOC-01 | The system should generate Test Incident Reports and Test Logs for defects and test runs, with snapshot and HTML/PDF export. | Medium | Implemented: PLN-39 (PR #37); downloads send the bearer token. |
+| FR-DOC-02 | The system should generate a release-based Test Summary Report with outcome totals, per-requirement results, defect summary, and exit-gate evaluation, with snapshot and HTML/PDF export. | Medium | Implemented: PLN-30 (PR #38). |
+| FR-REL-04 | The system should build and publish versioned v1.0 Docker images and release attachments from a version tag. | Medium | Implemented: PLN-36 (PR #46/#49) — tag-triggered workflow; a release exists only after a `v*.*.*` tag is pushed. |
 
 ### 3.7 Original R1–R8 baseline
 
@@ -237,17 +237,13 @@ The legacy `test_cases.requirement` field remains alongside the many-to-many ass
 - HTML/PDF response tests prove the response type and basic file signature; they do not alone prove visual or multi-page PDF rendering quality in the target container.
 - Each requirement-to-module-to-test mapping is recorded in `docs/requirements-traceability-matrix-v2.md`.
 
-## 8. Baseline status and known limitations (22 November 2026)
+## 8. Baseline status and known limitations (25 November 2026)
 
 | Item | Status at baseline date |
 |---|---|
 | Core catalogue, traceability, test execution, defect lifecycle, expanded metrics, release gate, JUnit/Cobertura import, Test Plan API | Integrated on `main`. |
-| Test Incident Report / Test Log generation | PR #37 (PLN-39), open; individual PR checks reported successful. |
-| Test Summary Report generation | PR #38 (PLN-30), open; individual PR checks reported successful. |
-| Read-endpoint authentication hardening and security scans | PR #39 (PLN-29), open. |
-| v1.0 release workflow and release attachments | PR #40 (PLN-36), open; not yet a published release. |
-| Sprint entity and sprint metrics filter | PR #34 (PLN-28), open. |
-| Test Plan management frontend screen | PR #41 (PLN-31), open. |
+| Test Incident Report / Test Log, Test Summary Report, sprints, Test Plan and release management screens, read-endpoint authentication with bandit/npm audit gates, JUnit auto-defects, Playwright E2E, v1.0 release workflow | Integrated on `main` (PLN-28 to PLN-39). |
+| Panel <2 s at 10,000 executions, document generation <10 s, ≥80% unit coverage of workflow/metrics modules | Evidenced in `docs/pln35-quality-measurements.md` (PLN-35). |
 | FR-REQ-02 release-specific traceability report | Not present in the integrated baseline. |
 | NFR-REQ-01 / NFR-REQ-02 measurement | Not yet evidenced. |
 | Full original R1–R8 wording | Requires the original approved course/project source. |
@@ -267,4 +263,5 @@ The legacy `test_cases.requirement` field remains alongside the many-to-many ass
 |---|---|---|---|
 | 0.1 | 11 November 2026 | Initial project requirements draft. | Superseded. |
 | 0.2 | 18 November 2026 | PLN-25 metrics and traceability expansion. | Superseded by this baseline candidate. |
-| 1.0 | 22 November 2026 | Updated functional/API baseline, Test Plan integration, quality requirements, and pending-PR status for PLN-37. | Candidate for team/instructor review; not yet approved. |
+| 1.0 | 22 November 2026 | Updated functional/API baseline, Test Plan integration, quality requirements, and pending-PR status for PLN-37. | Superseded. |
+| 1.1 | 25 November 2026 | Status of PLN-28 to PLN-39 after integration on `main`. | Candidate for team/instructor review; not yet approved. |
