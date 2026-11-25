@@ -233,7 +233,7 @@ export function TestCasesPage({ user }: TestCasesPageProps) {
         setPreviewMode(true);
         resetCaseForm();
         setNotice(
-          "PLN-16 test vakası CRUD uç noktası henüz backend'de aktif değil; değişiklik yerel önizleme deposuna kaydedildi.",
+          "Değişiklik şimdilik yalnızca bu tarayıcıda (önizleme) kaydedildi.",
         );
         setError("");
         await loadData();
@@ -361,7 +361,7 @@ export function TestCasesPage({ user }: TestCasesPageProps) {
         setPreviewMode(true);
         resetSuiteForm();
         setNotice(
-          "PLN-16 test suite CRUD uç noktası henüz backend'de aktif değil; suite yerel önizleme deposuna kaydedildi.",
+          "Suite şimdilik yalnızca bu tarayıcıda (önizleme) kaydedildi.",
         );
         setError("");
         await loadData();
@@ -652,12 +652,10 @@ export function TestCasesPage({ user }: TestCasesPageProps) {
       {previewMode && (
         <section className="info-banner" role="note">
           <div>
-            <strong>Önizleme Modu (PLN-16 Backend Bekleniyor):</strong>{" "}
-            Gereksinim listesi ve mevcut test vakaları sunucudan canlı okunur; matris değişiklikleri
-            mevcut test vakaları için <code>PUT /api/requirements/&#123;id&#125;/test-cases</code>{" "}
-            üzerinden gerçek veritabanına yazılır. Yeni test vakası, adım/öncelik/otomasyon
-            alanları ve test suite CRUD işlemleri PLN-16 uç noktaları eklenene kadar yerel tarayıcı
-            deposunda tutulur.
+            <strong>Önizleme Modu:</strong> Gereksinimler ve mevcut test vakaları canlı okunur;
+            mevcut test vakalarının matris değişiklikleri kalıcı olarak kaydedilir. Yeni test
+            vakaları, adım/öncelik/otomasyon alanları ve test suite işlemleri şimdilik yalnızca bu
+            tarayıcıda saklanır.
           </div>
         </section>
       )}
@@ -686,7 +684,7 @@ export function TestCasesPage({ user }: TestCasesPageProps) {
           <div>
             <h2>Test Vakası, Suite ve İzlenebilirlik Yönetimi</h2>
             <p className="section-desc">
-              ISO/IEC/IEEE 29119-2 · Test Tasarımı ve Gerçekleştirme (R2)
+              Test Tasarımı ve Gerçekleştirme
             </p>
           </div>
           <div className="tab-bar" role="tablist" aria-label="Test Tasarımı Görünümleri">
@@ -1155,7 +1153,7 @@ export function TestCasesPage({ user }: TestCasesPageProps) {
           <section>
             <div className="section-header">
               <div>
-                <h3>Gereksinim – Test İzlenebilirlik Matrisi (R2)</h3>
+                <h3>Gereksinim – Test İzlenebilirlik Matrisi</h3>
                 <p className="section-desc">
                   Her satır bir gereksinimi, her sütun bir test vakasını temsil eder.{" "}
                   {canManage

@@ -154,7 +154,7 @@ export function DefectDetailPage({ user }: DefectDetailPageProps) {
           <Link to="/" className="back-link">
             ← Defect Listesine Dön
           </Link>
-          <span className="hint">IEEE 829 Test Incident Report · ISO/IEC/IEEE 29119-2</span>
+          <span className="hint">IEEE 829 Test Incident Report</span>
         </div>
 
         {loading && !defect ? (
@@ -256,9 +256,9 @@ export function DefectDetailPage({ user }: DefectDetailPageProps) {
         <section>
           <div className="section-header">
             <div>
-              <h2>IEEE 829 Test Incident Report Çıktısı &amp; Anlık Görüntüler (PLN-39)</h2>
+              <h2>IEEE 829 Test Incident Report Çıktısı &amp; Anlık Görüntüler</h2>
               <p className="section-desc">
-                ISO/IEC/IEEE 29119-3 · Test Incident Report · Canlı veya saklanmış anlık görüntüden
+                Canlı veya saklanmış anlık görüntüden
                 (snapshot) HTML ve PDF rapor üretimi
               </p>
             </div>

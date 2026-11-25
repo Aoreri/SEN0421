@@ -627,9 +627,9 @@ export function ProjectsPage({ user }: ProjectsPageProps) {
       <section>
         <div className="section-header">
           <div>
-            <h2>Gereksinimler ve Test Vakası İzlenebilirliği (R1–R8)</h2>
+            <h2>Gereksinimler ve Test Vakası İzlenebilirliği</h2>
             <p className="hint">
-              ISO/IEC/IEEE 29119-2 Test Tasarımı ve Gerçekleştirme · Gereksinim ↔ Test Vakası
+              Test Tasarımı ve Gerçekleştirme · Gereksinim ↔ Test Vakası
               çoka-çok izlenebilirlik matrisi
             </p>
           </div>

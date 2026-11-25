@@ -56,7 +56,7 @@ export function ReleaseGateCard({
   if (!gate) {
     return (
       <section>
-        <h2>Sürüm Çıkış Kapısı (R7)</h2>
+        <h2>Sürüm Çıkış Kapısı</h2>
         <p className="table-empty">
           Çıkış kapısı değerlendirmesi için önce bir sürüm tanımlayın.
         </p>
@@ -109,7 +109,7 @@ export function ReleaseGateCard({
             Sürüm Çıkış Kapısı: {gate.release_version}
           </h2>
           <p className="section-desc">
-            ISO/IEC/IEEE 29119-2 · Test İzleme ve Kontrol · Sürüm Yayınlama Kriterleri (R7)
+            Test İzleme ve Kontrol · Sürüm Yayınlama Kriterleri
           </p>
         </div>
         <div className="badge-list">
