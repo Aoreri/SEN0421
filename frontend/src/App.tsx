@@ -31,6 +31,7 @@ import { DefectDetailPage } from "./pages/DefectDetailPage";
 import { LoginPage } from "./pages/LoginPage";
 import { JUnitImportsPage } from "./pages/JUnitImportsPage";
 import { ProjectsPage } from "./pages/ProjectsPage";
+import { ReleasesPage } from "./pages/ReleasesPage";
 import { TestCasesPage } from "./pages/TestCasesPage";
 import { TestPlansPage } from "./pages/TestPlansPage";
 import { TestRunsPage } from "./pages/TestRunsPage";
@@ -511,6 +512,7 @@ function DashboardView({ user }: DashboardViewProps) {
         onUpdateCriteria={handleUpdateExitCriteria}
         onCreateWaiver={handleCreateWaiver}
         onDeleteWaiver={handleDeleteWaiver}
+        showManageLink
       />
 
       <section>
@@ -720,6 +722,12 @@ export default function App() {
             Test Planları
           </NavLink>
           <NavLink
+            to="/releases"
+            className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
+          >
+            Sürüm Yönetimi
+          </NavLink>
+          <NavLink
             to="/projects"
             className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
           >
@@ -743,6 +751,7 @@ export default function App() {
           <Route path="/test-runs" element={<TestRunsPage user={user} />} />
           <Route path="/test-plans" element={<TestPlansPage user={user} />} />
           <Route path="/defects/:id" element={<DefectDetailPage user={user} />} />
+          <Route path="/releases" element={<ReleasesPage user={user} />} />
           <Route path="/projects" element={<ProjectsPage user={user} />} />
           <Route
             path="/login"
