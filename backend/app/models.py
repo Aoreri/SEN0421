@@ -76,6 +76,22 @@ class Release(Base):
     waived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
+class Sprint(Base):
+    __tablename__ = "sprints"
+    __table_args__ = (UniqueConstraint("project_id", "name"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    release_id: Mapped[int | None] = mapped_column(ForeignKey("releases.id"), index=True)
+    name: Mapped[str] = mapped_column(String(100))
+    goal: Mapped[str] = mapped_column(String(1000), default="", server_default="")
+    start_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    end_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    status: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="Planned", server_default="Planned"
+    )
+
+
 class Requirement(Base):
     __tablename__ = "requirements"
 
@@ -184,6 +200,7 @@ class TestRun(Base):
     name: Mapped[str] = mapped_column(String(200))
     project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
     release_id: Mapped[int | None] = mapped_column(ForeignKey("releases.id"), index=True)
+    sprint_id: Mapped[int | None] = mapped_column(ForeignKey("sprints.id"), index=True)
     suite_id: Mapped[int | None] = mapped_column(ForeignKey("test_suites.id"), index=True)
     created_by: Mapped[str] = mapped_column(String(50))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
