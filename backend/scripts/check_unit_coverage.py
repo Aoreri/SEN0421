@@ -15,7 +15,8 @@ def main():
     for name in MODULES:
         summary = report["files"][name]["summary"]
         lines = 100 * summary["covered_lines"] / summary["num_statements"]
-        branches = 100 * summary["covered_branches"] / summary["num_branches"]
+        # A module without branches has nothing left uncovered.
+        branches = 100 * summary["covered_branches"] / summary["num_branches"] if summary["num_branches"] else 100.0
         print(f"{name}: lines={lines:.2f}% branches={branches:.2f}%")
         if min(lines, branches) < 80:
             failures.append(name)

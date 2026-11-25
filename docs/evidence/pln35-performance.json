@@ -1,18 +1,20 @@
 {
-  "measured_at": "2026-11-24T14:07:20.258Z",
-  "commit": "61999d7fb48dae8dd3f201490af296e8cdfa6f6f",
+  "measured_at": "2026-11-25T15:43:25.896Z",
+  "commit": "5456f3e0a1b2aeb095ce7cd6d0336119eb1b274a",
   "environment": {
-    "os": "7.0.0-1020-azure",
+    "os": "7.0.0-1016-aws",
     "platform": "linux",
-    "cpu": "Intel(R) Xeon(R) Platinum 8370C CPU @ 2.80GHz",
+    "cpu": "Intel(R) Xeon(R) 6975P-C",
     "logical_cpus": 4,
-    "memory_bytes": 16758394880,
+    "memory_bytes": 16463400960,
     "node": "v22.23.5",
     "runner": "GitHub Actions ubuntu-latest",
     "chromium": "159.0.8154.6"
   },
   "fixture": {
     "executions": 10000,
+    "panel_executions": 10000,
+    "panel_pass_rate": 87.5,
     "runs_added": 100,
     "cases_added": 100,
     "defects_added": 100,
@@ -35,240 +37,1410 @@
     "panel_navigation": {
       "unit": "ms",
       "samples": [
-        477.76872100000037,
-        291.50972999999976,
-        295.6232660000005,
-        297.25487200000043,
-        278.71611399999983,
-        295.3978450000004,
-        308.21679700000004,
-        278.8706110000003,
-        312.82175000000007,
-        278.23279400000047
+        326.59733700000015,
+        220.83061300000008,
+        208.38304400000015,
+        225.22584800000004,
+        205.87620099999913,
+        204.08950000000004,
+        208.13925299999937,
+        223.4313199999997,
+        207.3483580000011,
+        207.73476400000072
       ],
-      "first": 477.76872100000037,
-      "min": 278.23279400000047,
-      "median": 295.6232660000005,
-      "p95": 477.76872100000037,
-      "max": 477.76872100000037,
+      "first": 326.59733700000015,
+      "min": 204.08950000000004,
+      "median": 208.38304400000015,
+      "p95": 326.59733700000015,
+      "max": 326.59733700000015,
       "limit_ms": 2000,
       "passed": true
     },
     "test_plan_html": {
       "unit": "ms",
       "samples": [
-        61.09051499999987,
-        36.87206700000024,
-        32.90006999999969,
-        41.763606000000436,
-        41.07926000000043
+        68.51430599999912,
+        24.960925999999745,
+        24.511042999998608,
+        25.859502999999677,
+        25.819666999999754
       ],
-      "first": 61.09051499999987,
-      "min": 32.90006999999969,
-      "median": 41.07926000000043,
-      "p95": 61.09051499999987,
-      "max": 61.09051499999987,
+      "first": 68.51430599999912,
+      "min": 24.511042999998608,
+      "median": 25.819666999999754,
+      "p95": 68.51430599999912,
+      "max": 68.51430599999912,
       "limit_ms": 10000,
       "passed": true
     },
     "test_plan_pdf": {
       "unit": "ms",
       "samples": [
-        2172.398065999999,
-        1497.7462800000012,
-        1595.6158919999998,
-        1612.3349170000001,
-        1527.686701999999
+        1905.188631000001,
+        951.0795859999998,
+        993.613206,
+        987.8870420000003,
+        955.3892850000011
       ],
-      "first": 2172.398065999999,
-      "min": 1497.7462800000012,
-      "median": 1595.6158919999998,
-      "p95": 2172.398065999999,
-      "max": 2172.398065999999,
+      "first": 1905.188631000001,
+      "min": 951.0795859999998,
+      "median": 987.8870420000003,
+      "p95": 1905.188631000001,
+      "max": 1905.188631000001,
       "limit_ms": 10000,
       "passed": true
     },
     "test_plan_snapshot": {
       "unit": "ms",
       "samples": [
-        37.082039000000805,
-        34.54912699999841,
-        35.4129869999997,
-        35.94035900000017,
-        36.36022299999968
+        30.868757000000187,
+        30.177847999999358,
+        28.985882999997557,
+        34.88763099999778,
+        29.72193700000207
       ],
-      "first": 37.082039000000805,
-      "min": 34.54912699999841,
-      "median": 35.94035900000017,
-      "p95": 37.082039000000805,
-      "max": 37.082039000000805,
+      "first": 30.868757000000187,
+      "min": 28.985882999997557,
+      "median": 30.177847999999358,
+      "p95": 34.88763099999778,
+      "max": 34.88763099999778,
       "limit_ms": 10000,
       "passed": true
     }
   },
   "panel_diagnostics": [
     {
-      "navigation_ms": 66.09513400000014,
-      "api_ready_ms": 312.00068500000043,
-      "paint_ms": 477.76872100000037,
-      "request_counts": {
-        "/api/auth/me": 1,
-        "/api/metrics": 1,
-        "/api/test-cases": 1,
-        "/api/requirements": 1,
-        "/api/releases": 1,
-        "/api/projects": 1,
-        "/api/defects": 1,
-        "/api/releases/1/gate": 1,
-        "/api/metrics/expanded": 1
-      }
+      "navigation_ms": 45.89021800000046,
+      "api_ready_ms": 215.79750500000046,
+      "paint_ms": 326.59733700000015,
+      "requests": [
+        {
+          "path": "/api/auth/me",
+          "timing": {
+            "startTime": 1795621411547.0222,
+            "domainLookupStart": -1,
+            "domainLookupEnd": -1,
+            "connectStart": -1,
+            "secureConnectionStart": -1,
+            "connectEnd": -1,
+            "requestStart": 0.176,
+            "responseStart": 9.964,
+            "responseEnd": 10.954
+          }
+        },
+        {
+          "path": "/api/metrics",
+          "timing": {
+            "startTime": 1795621411563.731,
+            "domainLookupStart": -1,
+            "domainLookupEnd": -1,
+            "connectStart": -1,
+            "secureConnectionStart": -1,
+            "connectEnd": -1,
+            "requestStart": 0.173,
+            "responseStart": 50.122,
+            "responseEnd": 50.586
+          }
+        },
+        {
+          "path": "/api/test-cases",
+          "timing": {
+            "startTime": 1795621411564.003,
+            "domainLookupStart": 0.065,
+            "domainLookupEnd": 0.072,
+            "connectStart": 0.072,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.554,
+            "requestStart": 0.59,
+            "responseStart": 71.527,
+            "responseEnd": 72.384
+          }
+        },
+        {
+          "path": "/api/projects",
+          "timing": {
+            "startTime": 1795621411564.3052,
+            "domainLookupStart": 0.035,
+            "domainLookupEnd": 0.037,
+            "connectStart": 0.037,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.254,
+            "requestStart": 0.344,
+            "responseStart": 79.022,
+            "responseEnd": 79.842
+          }
+        },
+        {
+          "path": "/api/defects",
+          "timing": {
+            "startTime": 1795621411564.189,
+            "domainLookupStart": 0.036,
+            "domainLookupEnd": 0.039,
+            "connectStart": 0.039,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.372,
+            "requestStart": 0.443,
+            "responseStart": 79.753,
+            "responseEnd": 80.54
+          }
+        },
+        {
+          "path": "/api/releases",
+          "timing": {
+            "startTime": 1795621411564.42,
+            "domainLookupStart": 0.032,
+            "domainLookupEnd": 0.033,
+            "connectStart": 0.033,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.278,
+            "requestStart": 0.295,
+            "responseStart": 79.913,
+            "responseEnd": 80.905
+          }
+        },
+        {
+          "path": "/api/requirements",
+          "timing": {
+            "startTime": 1795621411564.5151,
+            "domainLookupStart": 0.024,
+            "domainLookupEnd": 0.026,
+            "connectStart": 0.026,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.195,
+            "requestStart": 0.231,
+            "responseStart": 80.411,
+            "responseEnd": 81.144
+          }
+        },
+        {
+          "path": "/api/releases/1/gate",
+          "timing": {
+            "startTime": 1795621411646.091,
+            "domainLookupStart": 0.074,
+            "domainLookupEnd": 0.082,
+            "connectStart": 0.082,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.181,
+            "requestStart": 0.224,
+            "responseStart": 20.817,
+            "responseEnd": 21.411
+          }
+        },
+        {
+          "path": "/api/metrics/expanded",
+          "timing": {
+            "startTime": 1795621411646.7039,
+            "domainLookupStart": 0.19,
+            "domainLookupEnd": 0.197,
+            "connectStart": 0.197,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.277,
+            "requestStart": 0.366,
+            "responseStart": 59.431,
+            "responseEnd": 60.299
+          }
+        }
+      ]
     },
     {
-      "navigation_ms": 38.86446599999999,
-      "api_ready_ms": 165.0492409999997,
-      "paint_ms": 291.50972999999976,
-      "request_counts": {
-        "/api/auth/me": 1,
-        "/api/metrics": 1,
-        "/api/test-cases": 1,
-        "/api/projects": 1,
-        "/api/requirements": 1,
-        "/api/releases": 1,
-        "/api/defects": 1,
-        "/api/releases/1/gate": 1,
-        "/api/metrics/expanded": 1
-      }
+      "navigation_ms": 29.70762999999988,
+      "api_ready_ms": 122.89618799999971,
+      "paint_ms": 220.83061300000008,
+      "requests": [
+        {
+          "path": "/api/auth/me",
+          "timing": {
+            "startTime": 1795621411901.52,
+            "domainLookupStart": -1,
+            "domainLookupEnd": -1,
+            "connectStart": -1,
+            "secureConnectionStart": -1,
+            "connectEnd": -1,
+            "requestStart": 0.103,
+            "responseStart": 3.974,
+            "responseEnd": 4.796
+          }
+        },
+        {
+          "path": "/api/metrics",
+          "timing": {
+            "startTime": 1795621411911.23,
+            "domainLookupStart": -1,
+            "domainLookupEnd": -1,
+            "connectStart": -1,
+            "secureConnectionStart": -1,
+            "connectEnd": -1,
+            "requestStart": 0.109,
+            "responseStart": 17.818,
+            "responseEnd": 18.235
+          }
+        },
+        {
+          "path": "/api/releases",
+          "timing": {
+            "startTime": 1795621411912.118,
+            "domainLookupStart": 0.05,
+            "domainLookupEnd": 0.055,
+            "connectStart": 0.055,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.423,
+            "requestStart": 0.49,
+            "responseStart": 19.499,
+            "responseEnd": 20.509
+          }
+        },
+        {
+          "path": "/api/projects",
+          "timing": {
+            "startTime": 1795621411911.888,
+            "domainLookupStart": 0.055,
+            "domainLookupEnd": 0.06,
+            "connectStart": 0.06,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.619,
+            "requestStart": 0.65,
+            "responseStart": 19.543,
+            "responseEnd": 20.514
+          }
+        },
+        {
+          "path": "/api/test-cases",
+          "timing": {
+            "startTime": 1795621411911.438,
+            "domainLookupStart": 0.059,
+            "domainLookupEnd": 0.065,
+            "connectStart": 0.065,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.928,
+            "requestStart": 0.976,
+            "responseStart": 27.069,
+            "responseEnd": 27.859
+          }
+        },
+        {
+          "path": "/api/requirements",
+          "timing": {
+            "startTime": 1795621411912.27,
+            "domainLookupStart": 0.052,
+            "domainLookupEnd": 0.056,
+            "connectStart": 0.056,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.254,
+            "requestStart": 0.351,
+            "responseStart": 28.08,
+            "responseEnd": 28.983
+          }
+        },
+        {
+          "path": "/api/defects",
+          "timing": {
+            "startTime": 1795621411911.662,
+            "domainLookupStart": 0.081,
+            "domainLookupEnd": 0.086,
+            "connectStart": 0.086,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.721,
+            "requestStart": 0.815,
+            "responseStart": 30.579,
+            "responseEnd": 31.289
+          }
+        },
+        {
+          "path": "/api/releases/1/gate",
+          "timing": {
+            "startTime": 1795621411943.347,
+            "domainLookupStart": 0.079,
+            "domainLookupEnd": 0.084,
+            "connectStart": 0.084,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.158,
+            "requestStart": 0.192,
+            "responseStart": 13.935,
+            "responseEnd": 14.34
+          }
+        },
+        {
+          "path": "/api/metrics/expanded",
+          "timing": {
+            "startTime": 1795621411944.3208,
+            "domainLookupStart": 0.053,
+            "domainLookupEnd": 0.058,
+            "connectStart": 0.058,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.11,
+            "requestStart": 0.136,
+            "responseStart": 40.886,
+            "responseEnd": 42.019
+          }
+        }
+      ]
     },
     {
-      "navigation_ms": 40.98623300000054,
-      "api_ready_ms": 171.31306700000005,
-      "paint_ms": 295.6232660000005,
-      "request_counts": {
-        "/api/auth/me": 1,
-        "/api/metrics": 1,
-        "/api/projects": 1,
-        "/api/test-cases": 1,
-        "/api/releases": 1,
-        "/api/defects": 1,
-        "/api/requirements": 1,
-        "/api/releases/1/gate": 1,
-        "/api/metrics/expanded": 1
-      }
+      "navigation_ms": 26.97675900000013,
+      "api_ready_ms": 115.39836899999955,
+      "paint_ms": 208.38304400000015,
+      "requests": [
+        {
+          "path": "/api/auth/me",
+          "timing": {
+            "startTime": 1795621412143.713,
+            "domainLookupStart": -1,
+            "domainLookupEnd": -1,
+            "connectStart": -1,
+            "secureConnectionStart": -1,
+            "connectEnd": -1,
+            "requestStart": 0.095,
+            "responseStart": 3.058,
+            "responseEnd": 3.72
+          }
+        },
+        {
+          "path": "/api/test-cases",
+          "timing": {
+            "startTime": 1795621412151.3538,
+            "domainLookupStart": 0.054,
+            "domainLookupEnd": 0.059,
+            "connectStart": 0.059,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.409,
+            "requestStart": 0.445,
+            "responseStart": 24.351,
+            "responseEnd": 25.626
+          }
+        },
+        {
+          "path": "/api/metrics",
+          "timing": {
+            "startTime": 1795621412151.171,
+            "domainLookupStart": -1,
+            "domainLookupEnd": -1,
+            "connectStart": -1,
+            "secureConnectionStart": -1,
+            "connectEnd": -1,
+            "requestStart": 0.085,
+            "responseStart": 25.731,
+            "responseEnd": 26.203
+          }
+        },
+        {
+          "path": "/api/defects",
+          "timing": {
+            "startTime": 1795621412151.5298,
+            "domainLookupStart": 0.035,
+            "domainLookupEnd": 0.038,
+            "connectStart": 0.038,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.561,
+            "requestStart": 0.59,
+            "responseStart": 25.505,
+            "responseEnd": 26.094
+          }
+        },
+        {
+          "path": "/api/projects",
+          "timing": {
+            "startTime": 1795621412151.64,
+            "domainLookupStart": 0.071,
+            "domainLookupEnd": 0.076,
+            "connectStart": 0.076,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.448,
+            "requestStart": 0.502,
+            "responseStart": 26.707,
+            "responseEnd": 27.198
+          }
+        },
+        {
+          "path": "/api/requirements",
+          "timing": {
+            "startTime": 1795621412152.0168,
+            "domainLookupStart": 0.041,
+            "domainLookupEnd": 0.043,
+            "connectStart": 0.043,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.161,
+            "requestStart": 0.194,
+            "responseStart": 27.412,
+            "responseEnd": 28.133
+          }
+        },
+        {
+          "path": "/api/releases",
+          "timing": {
+            "startTime": 1795621412151.905,
+            "domainLookupStart": 0.039,
+            "domainLookupEnd": 0.042,
+            "connectStart": 0.042,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.263,
+            "requestStart": 0.286,
+            "responseStart": 29.198,
+            "responseEnd": 29.86
+          }
+        },
+        {
+          "path": "/api/releases/1/gate",
+          "timing": {
+            "startTime": 1795621412182.021,
+            "domainLookupStart": 0.1,
+            "domainLookupEnd": 0.105,
+            "connectStart": 0.105,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.336,
+            "requestStart": 0.372,
+            "responseStart": 15.133,
+            "responseEnd": 15.666
+          }
+        },
+        {
+          "path": "/api/metrics/expanded",
+          "timing": {
+            "startTime": 1795621412182.2542,
+            "domainLookupStart": 0.05,
+            "domainLookupEnd": 0.054,
+            "connectStart": 0.054,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.171,
+            "requestStart": 0.192,
+            "responseStart": 41.379,
+            "responseEnd": 41.864
+          }
+        }
+      ]
     },
     {
-      "navigation_ms": 37.77238800000032,
-      "api_ready_ms": 156.6038210000006,
-      "paint_ms": 297.25487200000043,
-      "request_counts": {
-        "/api/auth/me": 1,
-        "/api/projects": 1,
-        "/api/releases": 1,
-        "/api/test-cases": 1,
-        "/api/metrics": 1,
-        "/api/requirements": 1,
-        "/api/defects": 1,
-        "/api/releases/1/gate": 1,
-        "/api/metrics/expanded": 1
-      }
+      "navigation_ms": 29.267621000000872,
+      "api_ready_ms": 119.13866899999994,
+      "paint_ms": 225.22584800000004,
+      "requests": [
+        {
+          "path": "/api/auth/me",
+          "timing": {
+            "startTime": 1795621412378.9202,
+            "domainLookupStart": -1,
+            "domainLookupEnd": -1,
+            "connectStart": -1,
+            "secureConnectionStart": -1,
+            "connectEnd": -1,
+            "requestStart": 0.096,
+            "responseStart": 3.289,
+            "responseEnd": 3.967
+          }
+        },
+        {
+          "path": "/api/metrics",
+          "timing": {
+            "startTime": 1795621412386.5562,
+            "domainLookupStart": -1,
+            "domainLookupEnd": -1,
+            "connectStart": -1,
+            "secureConnectionStart": -1,
+            "connectEnd": -1,
+            "requestStart": 0.103,
+            "responseStart": 14.908,
+            "responseEnd": 15.349
+          }
+        },
+        {
+          "path": "/api/projects",
+          "timing": {
+            "startTime": 1795621412387.2039,
+            "domainLookupStart": 0.053,
+            "domainLookupEnd": 0.058,
+            "connectStart": 0.058,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.557,
+            "requestStart": 0.599,
+            "responseStart": 16.163,
+            "responseEnd": 17.149
+          }
+        },
+        {
+          "path": "/api/defects",
+          "timing": {
+            "startTime": 1795621412386.949,
+            "domainLookupStart": 0.054,
+            "domainLookupEnd": 0.059,
+            "connectStart": 0.059,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.695,
+            "requestStart": 0.764,
+            "responseStart": 21.079,
+            "responseEnd": 21.647
+          }
+        },
+        {
+          "path": "/api/releases",
+          "timing": {
+            "startTime": 1795621412387.382,
+            "domainLookupStart": 0.053,
+            "domainLookupEnd": 0.057,
+            "connectStart": 0.057,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.386,
+            "requestStart": 0.456,
+            "responseStart": 21.101,
+            "responseEnd": 21.915
+          }
+        },
+        {
+          "path": "/api/test-cases",
+          "timing": {
+            "startTime": 1795621412386.77,
+            "domainLookupStart": 0.055,
+            "domainLookupEnd": 0.061,
+            "connectStart": 0.061,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.294,
+            "requestStart": 0.328,
+            "responseStart": 26.456,
+            "responseEnd": 27.02
+          }
+        },
+        {
+          "path": "/api/requirements",
+          "timing": {
+            "startTime": 1795621412387.547,
+            "domainLookupStart": 0.045,
+            "domainLookupEnd": 0.049,
+            "connectStart": 0.049,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.226,
+            "requestStart": 0.326,
+            "responseStart": 31.184,
+            "responseEnd": 32.049
+          }
+        },
+        {
+          "path": "/api/releases/1/gate",
+          "timing": {
+            "startTime": 1795621412419.7578,
+            "domainLookupStart": 0.051,
+            "domainLookupEnd": 0.056,
+            "connectStart": 0.056,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.127,
+            "requestStart": 0.16,
+            "responseStart": 15.111,
+            "responseEnd": 15.566
+          }
+        },
+        {
+          "path": "/api/metrics/expanded",
+          "timing": {
+            "startTime": 1795621412419.999,
+            "domainLookupStart": 0.055,
+            "domainLookupEnd": 0.059,
+            "connectStart": 0.059,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.103,
+            "requestStart": 0.126,
+            "responseStart": 40.291,
+            "responseEnd": 40.717
+          }
+        }
+      ]
     },
     {
-      "navigation_ms": 38.50288300000011,
-      "api_ready_ms": 157.75728600000002,
-      "paint_ms": 278.71611399999983,
-      "request_counts": {
-        "/api/auth/me": 1,
-        "/api/metrics": 1,
-        "/api/projects": 1,
-        "/api/requirements": 1,
-        "/api/test-cases": 1,
-        "/api/defects": 1,
-        "/api/releases": 1,
-        "/api/releases/1/gate": 1,
-        "/api/metrics/expanded": 1
-      }
+      "navigation_ms": 26.55821499999911,
+      "api_ready_ms": 109.11796200000026,
+      "paint_ms": 205.87620099999913,
+      "requests": [
+        {
+          "path": "/api/auth/me",
+          "timing": {
+            "startTime": 1795621412631.784,
+            "domainLookupStart": -1,
+            "domainLookupEnd": -1,
+            "connectStart": -1,
+            "secureConnectionStart": -1,
+            "connectEnd": -1,
+            "requestStart": 0.092,
+            "responseStart": 3.241,
+            "responseEnd": 3.939
+          }
+        },
+        {
+          "path": "/api/metrics",
+          "timing": {
+            "startTime": 1795621412642.664,
+            "domainLookupStart": -1,
+            "domainLookupEnd": -1,
+            "connectStart": -1,
+            "secureConnectionStart": -1,
+            "connectEnd": -1,
+            "requestStart": 0.21,
+            "responseStart": 9.557,
+            "responseEnd": 10.142
+          }
+        },
+        {
+          "path": "/api/defects",
+          "timing": {
+            "startTime": 1795621412643.713,
+            "domainLookupStart": 0.104,
+            "domainLookupEnd": 0.11,
+            "connectStart": 0.11,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.751,
+            "requestStart": 0.829,
+            "responseStart": 23.429,
+            "responseEnd": 24.799
+          }
+        },
+        {
+          "path": "/api/releases",
+          "timing": {
+            "startTime": 1795621412644.177,
+            "domainLookupStart": 0.065,
+            "domainLookupEnd": 0.07,
+            "connectStart": 0.07,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.404,
+            "requestStart": 0.424,
+            "responseStart": 23.796,
+            "responseEnd": 25.304
+          }
+        },
+        {
+          "path": "/api/test-cases",
+          "timing": {
+            "startTime": 1795621412643.3918,
+            "domainLookupStart": 0.091,
+            "domainLookupEnd": 0.097,
+            "connectStart": 0.097,
+            "secureConnectionStart": -1,
+            "connectEnd": 1.059,
+            "requestStart": 1.107,
+            "responseStart": 25.653,
+            "responseEnd": 26.882
+          }
+        },
+        {
+          "path": "/api/projects",
+          "timing": {
+            "startTime": 1795621412643.959,
+            "domainLookupStart": 0.057,
+            "domainLookupEnd": 0.062,
+            "connectStart": 0.062,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.499,
+            "requestStart": 0.598,
+            "responseStart": 25.63,
+            "responseEnd": 27.023
+          }
+        },
+        {
+          "path": "/api/requirements",
+          "timing": {
+            "startTime": 1795621412644.358,
+            "domainLookupStart": 0.041,
+            "domainLookupEnd": 0.045,
+            "connectStart": 0.045,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.232,
+            "requestStart": 0.275,
+            "responseStart": 25.509,
+            "responseEnd": 27.058
+          }
+        },
+        {
+          "path": "/api/releases/1/gate",
+          "timing": {
+            "startTime": 1795621412670.958,
+            "domainLookupStart": 0.073,
+            "domainLookupEnd": 0.079,
+            "connectStart": 0.079,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.334,
+            "requestStart": 0.385,
+            "responseStart": 14.366,
+            "responseEnd": 14.891
+          }
+        },
+        {
+          "path": "/api/metrics/expanded",
+          "timing": {
+            "startTime": 1795621412671.1782,
+            "domainLookupStart": 0.055,
+            "domainLookupEnd": 0.059,
+            "connectStart": 0.059,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.202,
+            "requestStart": 0.227,
+            "responseStart": 34.208,
+            "responseEnd": 34.717
+          }
+        }
+      ]
     },
     {
-      "navigation_ms": 37.96478599999955,
-      "api_ready_ms": 149.24880399999984,
-      "paint_ms": 295.3978450000004,
-      "request_counts": {
-        "/api/auth/me": 1,
-        "/api/metrics": 1,
-        "/api/requirements": 1,
-        "/api/test-cases": 1,
-        "/api/projects": 1,
-        "/api/defects": 1,
-        "/api/releases": 1,
-        "/api/releases/1/gate": 1,
-        "/api/metrics/expanded": 1
-      }
+      "navigation_ms": 27.926000999999815,
+      "api_ready_ms": 112.26338399999986,
+      "paint_ms": 204.08950000000004,
+      "requests": [
+        {
+          "path": "/api/auth/me",
+          "timing": {
+            "startTime": 1795621412866.158,
+            "domainLookupStart": -1,
+            "domainLookupEnd": -1,
+            "connectStart": -1,
+            "secureConnectionStart": -1,
+            "connectEnd": -1,
+            "requestStart": 0.096,
+            "responseStart": 3.333,
+            "responseEnd": 4.041
+          }
+        },
+        {
+          "path": "/api/releases",
+          "timing": {
+            "startTime": 1795621412877.3289,
+            "domainLookupStart": 0.026,
+            "domainLookupEnd": 0.028,
+            "connectStart": 0.028,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.195,
+            "requestStart": 0.209,
+            "responseStart": 12.245,
+            "responseEnd": 12.82
+          }
+        },
+        {
+          "path": "/api/test-cases",
+          "timing": {
+            "startTime": 1795621412876.852,
+            "domainLookupStart": 0.053,
+            "domainLookupEnd": 0.058,
+            "connectStart": 0.058,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.377,
+            "requestStart": 0.404,
+            "responseStart": 23.209,
+            "responseEnd": 23.724
+          }
+        },
+        {
+          "path": "/api/projects",
+          "timing": {
+            "startTime": 1795621412877.177,
+            "domainLookupStart": 0.03,
+            "domainLookupEnd": 0.032,
+            "connectStart": 0.032,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.293,
+            "requestStart": 0.34,
+            "responseStart": 23.646,
+            "responseEnd": 24.36
+          }
+        },
+        {
+          "path": "/api/requirements",
+          "timing": {
+            "startTime": 1795621412877.412,
+            "domainLookupStart": 0.021,
+            "domainLookupEnd": 0.022,
+            "connectStart": 0.022,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.114,
+            "requestStart": 0.148,
+            "responseStart": 24.205,
+            "responseEnd": 24.887
+          }
+        },
+        {
+          "path": "/api/metrics",
+          "timing": {
+            "startTime": 1795621412876.6438,
+            "domainLookupStart": -1,
+            "domainLookupEnd": -1,
+            "connectStart": -1,
+            "secureConnectionStart": -1,
+            "connectEnd": -1,
+            "requestStart": 0.128,
+            "responseStart": 26.165,
+            "responseEnd": 26.584
+          }
+        },
+        {
+          "path": "/api/defects",
+          "timing": {
+            "startTime": 1795621412877.044,
+            "domainLookupStart": 0.04,
+            "domainLookupEnd": 0.044,
+            "connectStart": 0.044,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.418,
+            "requestStart": 0.44,
+            "responseStart": 30.1,
+            "responseEnd": 30.613
+          }
+        },
+        {
+          "path": "/api/releases/1/gate",
+          "timing": {
+            "startTime": 1795621412908.17,
+            "domainLookupStart": 0.059,
+            "domainLookupEnd": 0.065,
+            "connectStart": 0.065,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.387,
+            "requestStart": 0.423,
+            "responseStart": 14.003,
+            "responseEnd": 14.58
+          }
+        },
+        {
+          "path": "/api/metrics/expanded",
+          "timing": {
+            "startTime": 1795621412908.435,
+            "domainLookupStart": 0.059,
+            "domainLookupEnd": 0.063,
+            "connectStart": 0.063,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.194,
+            "requestStart": 0.264,
+            "responseStart": 33.147,
+            "responseEnd": 33.647
+          }
+        }
+      ]
     },
     {
-      "navigation_ms": 37.47077300000001,
-      "api_ready_ms": 154.59729100000004,
-      "paint_ms": 308.21679700000004,
-      "request_counts": {
-        "/api/auth/me": 1,
-        "/api/projects": 1,
-        "/api/defects": 1,
-        "/api/metrics": 1,
-        "/api/requirements": 1,
-        "/api/test-cases": 1,
-        "/api/releases": 1,
-        "/api/releases/1/gate": 1,
-        "/api/metrics/expanded": 1
-      }
+      "navigation_ms": 27.538053000000218,
+      "api_ready_ms": 111.61412299999938,
+      "paint_ms": 208.13925299999937,
+      "requests": [
+        {
+          "path": "/api/auth/me",
+          "timing": {
+            "startTime": 1795621413094.897,
+            "domainLookupStart": -1,
+            "domainLookupEnd": -1,
+            "connectStart": -1,
+            "secureConnectionStart": -1,
+            "connectEnd": -1,
+            "requestStart": 0.142,
+            "responseStart": 3.358,
+            "responseEnd": 4.007
+          }
+        },
+        {
+          "path": "/api/metrics",
+          "timing": {
+            "startTime": 1795621413102.694,
+            "domainLookupStart": -1,
+            "domainLookupEnd": -1,
+            "connectStart": -1,
+            "secureConnectionStart": -1,
+            "connectEnd": -1,
+            "requestStart": 0.09,
+            "responseStart": 14.727,
+            "responseEnd": 15.343
+          }
+        },
+        {
+          "path": "/api/defects",
+          "timing": {
+            "startTime": 1795621413103.093,
+            "domainLookupStart": 0.041,
+            "domainLookupEnd": 0.045,
+            "connectStart": 0.045,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.145,
+            "requestStart": 0.161,
+            "responseStart": 25.142,
+            "responseEnd": 25.675
+          }
+        },
+        {
+          "path": "/api/requirements",
+          "timing": {
+            "startTime": 1795621413104.4932,
+            "domainLookupStart": 0.234,
+            "domainLookupEnd": 0.24,
+            "connectStart": 0.24,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.389,
+            "requestStart": 0.445,
+            "responseStart": 26.16,
+            "responseEnd": 27.779
+          }
+        },
+        {
+          "path": "/api/projects",
+          "timing": {
+            "startTime": 1795621413104.055,
+            "domainLookupStart": 0.081,
+            "domainLookupEnd": 0.087,
+            "connectStart": 0.087,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.752,
+            "requestStart": 0.788,
+            "responseStart": 26.935,
+            "responseEnd": 28.274
+          }
+        },
+        {
+          "path": "/api/test-cases",
+          "timing": {
+            "startTime": 1795621413102.8708,
+            "domainLookupStart": 0.053,
+            "domainLookupEnd": 0.059,
+            "connectStart": 0.059,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.297,
+            "requestStart": 0.326,
+            "responseStart": 29.217,
+            "responseEnd": 29.826
+          }
+        },
+        {
+          "path": "/api/releases",
+          "timing": {
+            "startTime": 1795621413104.3088,
+            "domainLookupStart": 0.058,
+            "domainLookupEnd": 0.063,
+            "connectStart": 0.063,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.57,
+            "requestStart": 0.594,
+            "responseStart": 28.975,
+            "responseEnd": 31.013
+          }
+        },
+        {
+          "path": "/api/releases/1/gate",
+          "timing": {
+            "startTime": 1795621413134.572,
+            "domainLookupStart": 0.06,
+            "domainLookupEnd": 0.065,
+            "connectStart": 0.065,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.517,
+            "requestStart": 0.555,
+            "responseStart": 12.336,
+            "responseEnd": 12.752
+          }
+        },
+        {
+          "path": "/api/metrics/expanded",
+          "timing": {
+            "startTime": 1795621413134.9658,
+            "domainLookupStart": 0.057,
+            "domainLookupEnd": 0.062,
+            "connectStart": 0.062,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.202,
+            "requestStart": 0.226,
+            "responseStart": 35.139,
+            "responseEnd": 35.703
+          }
+        }
+      ]
     },
     {
-      "navigation_ms": 40.2062190000006,
-      "api_ready_ms": 159.96739799999978,
-      "paint_ms": 278.8706110000003,
-      "request_counts": {
-        "/api/auth/me": 1,
-        "/api/projects": 1,
-        "/api/metrics": 1,
-        "/api/releases": 1,
-        "/api/test-cases": 1,
-        "/api/defects": 1,
-        "/api/requirements": 1,
-        "/api/releases/1/gate": 1,
-        "/api/metrics/expanded": 1
-      }
+      "navigation_ms": 26.74888800000008,
+      "api_ready_ms": 119.41052499999932,
+      "paint_ms": 223.4313199999997,
+      "requests": [
+        {
+          "path": "/api/auth/me",
+          "timing": {
+            "startTime": 1795621413328.563,
+            "domainLookupStart": -1,
+            "domainLookupEnd": -1,
+            "connectStart": -1,
+            "secureConnectionStart": -1,
+            "connectEnd": -1,
+            "requestStart": 0.075,
+            "responseStart": 10.058,
+            "responseEnd": 10.77
+          }
+        },
+        {
+          "path": "/api/metrics",
+          "timing": {
+            "startTime": 1795621413345.666,
+            "domainLookupStart": -1,
+            "domainLookupEnd": -1,
+            "connectStart": -1,
+            "secureConnectionStart": -1,
+            "connectEnd": -1,
+            "requestStart": 0.135,
+            "responseStart": 12.426,
+            "responseEnd": 12.856
+          }
+        },
+        {
+          "path": "/api/test-cases",
+          "timing": {
+            "startTime": 1795621413345.9128,
+            "domainLookupStart": 0.055,
+            "domainLookupEnd": 0.06,
+            "connectStart": 0.06,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.861,
+            "requestStart": 0.898,
+            "responseStart": 26.593,
+            "responseEnd": 27.279
+          }
+        },
+        {
+          "path": "/api/requirements",
+          "timing": {
+            "startTime": 1795621413346.66,
+            "domainLookupStart": 0.068,
+            "domainLookupEnd": 0.072,
+            "connectStart": 0.072,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.222,
+            "requestStart": 0.281,
+            "responseStart": 26.259,
+            "responseEnd": 27.057
+          }
+        },
+        {
+          "path": "/api/defects",
+          "timing": {
+            "startTime": 1795621413346.14,
+            "domainLookupStart": 0.052,
+            "domainLookupEnd": 0.056,
+            "connectStart": 0.056,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.665,
+            "requestStart": 0.739,
+            "responseStart": 27.051,
+            "responseEnd": 27.68
+          }
+        },
+        {
+          "path": "/api/projects",
+          "timing": {
+            "startTime": 1795621413346.2842,
+            "domainLookupStart": 0.067,
+            "domainLookupEnd": 0.071,
+            "connectStart": 0.071,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.583,
+            "requestStart": 0.603,
+            "responseStart": 27.132,
+            "responseEnd": 27.749
+          }
+        },
+        {
+          "path": "/api/releases",
+          "timing": {
+            "startTime": 1795621413346.5352,
+            "domainLookupStart": 0.046,
+            "domainLookupEnd": 0.049,
+            "connectStart": 0.049,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.341,
+            "requestStart": 0.379,
+            "responseStart": 29.844,
+            "responseEnd": 30.639
+          }
+        },
+        {
+          "path": "/api/releases/1/gate",
+          "timing": {
+            "startTime": 1795621413378.9312,
+            "domainLookupStart": 0.058,
+            "domainLookupEnd": 0.063,
+            "connectStart": 0.063,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.272,
+            "requestStart": 0.305,
+            "responseStart": 14.478,
+            "responseEnd": 16.441
+          }
+        },
+        {
+          "path": "/api/metrics/expanded",
+          "timing": {
+            "startTime": 1795621413379.111,
+            "domainLookupStart": 0.041,
+            "domainLookupEnd": 0.044,
+            "connectStart": 0.044,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.091,
+            "requestStart": 0.177,
+            "responseStart": 33.627,
+            "responseEnd": 35.604
+          }
+        }
+      ]
     },
     {
-      "navigation_ms": 40.0467009999993,
-      "api_ready_ms": 151.97454899999957,
-      "paint_ms": 312.82175000000007,
-      "request_counts": {
-        "/api/auth/me": 1,
-        "/api/metrics": 1,
-        "/api/releases": 1,
-        "/api/test-cases": 1,
-        "/api/projects": 1,
-        "/api/requirements": 1,
-        "/api/defects": 1,
-        "/api/releases/1/gate": 1,
-        "/api/metrics/expanded": 1
-      }
+      "navigation_ms": 28.36754699999983,
+      "api_ready_ms": 111.83235700000114,
+      "paint_ms": 207.3483580000011,
+      "requests": [
+        {
+          "path": "/api/auth/me",
+          "timing": {
+            "startTime": 1795621413579.484,
+            "domainLookupStart": -1,
+            "domainLookupEnd": -1,
+            "connectStart": -1,
+            "secureConnectionStart": -1,
+            "connectEnd": -1,
+            "requestStart": 0.098,
+            "responseStart": 3.287,
+            "responseEnd": 3.979
+          }
+        },
+        {
+          "path": "/api/metrics",
+          "timing": {
+            "startTime": 1795621413587.1538,
+            "domainLookupStart": -1,
+            "domainLookupEnd": -1,
+            "connectStart": -1,
+            "secureConnectionStart": -1,
+            "connectEnd": -1,
+            "requestStart": 0.085,
+            "responseStart": 11.972,
+            "responseEnd": 12.354
+          }
+        },
+        {
+          "path": "/api/requirements",
+          "timing": {
+            "startTime": 1795621413588.26,
+            "domainLookupStart": 0.066,
+            "domainLookupEnd": 0.07,
+            "connectStart": 0.07,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.286,
+            "requestStart": 0.378,
+            "responseStart": 27.064,
+            "responseEnd": 28.129
+          }
+        },
+        {
+          "path": "/api/releases",
+          "timing": {
+            "startTime": 1795621413588.0151,
+            "domainLookupStart": 0.091,
+            "domainLookupEnd": 0.097,
+            "connectStart": 0.097,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.529,
+            "requestStart": 0.59,
+            "responseStart": 27.966,
+            "responseEnd": 28.88
+          }
+        },
+        {
+          "path": "/api/test-cases",
+          "timing": {
+            "startTime": 1795621413587.323,
+            "domainLookupStart": 0.043,
+            "domainLookupEnd": 0.05,
+            "connectStart": 0.05,
+            "secureConnectionStart": -1,
+            "connectEnd": 1.078,
+            "requestStart": 1.121,
+            "responseStart": 28.942,
+            "responseEnd": 29.374
+          }
+        },
+        {
+          "path": "/api/defects",
+          "timing": {
+            "startTime": 1795621413587.4841,
+            "domainLookupStart": 0.047,
+            "domainLookupEnd": 0.052,
+            "connectStart": 0.052,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.917,
+            "requestStart": 1.008,
+            "responseStart": 29.018,
+            "responseEnd": 29.531
+          }
+        },
+        {
+          "path": "/api/projects",
+          "timing": {
+            "startTime": 1795621413587.7659,
+            "domainLookupStart": 0.061,
+            "domainLookupEnd": 0.066,
+            "connectStart": 0.066,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.751,
+            "requestStart": 0.796,
+            "responseStart": 31.036,
+            "responseEnd": 31.76
+          }
+        },
+        {
+          "path": "/api/releases/1/gate",
+          "timing": {
+            "startTime": 1795621413620.075,
+            "domainLookupStart": 0.047,
+            "domainLookupEnd": 0.071,
+            "connectStart": 0.071,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.302,
+            "requestStart": 0.339,
+            "responseStart": 13.817,
+            "responseEnd": 14.48
+          }
+        },
+        {
+          "path": "/api/metrics/expanded",
+          "timing": {
+            "startTime": 1795621413620.2632,
+            "domainLookupStart": 0.049,
+            "domainLookupEnd": 0.053,
+            "connectStart": 0.053,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.185,
+            "requestStart": 0.21,
+            "responseStart": 34.237,
+            "responseEnd": 34.893
+          }
+        }
+      ]
     },
     {
-      "navigation_ms": 40.49427399999968,
-      "api_ready_ms": 148.85318000000007,
-      "paint_ms": 278.23279400000047,
-      "request_counts": {
-        "/api/auth/me": 1,
-        "/api/metrics": 1,
-        "/api/projects": 1,
-        "/api/releases": 1,
-        "/api/requirements": 1,
-        "/api/defects": 1,
-        "/api/test-cases": 1,
-        "/api/releases/1/gate": 1,
-        "/api/metrics/expanded": 1
-      }
+      "navigation_ms": 29.658785999999964,
+      "api_ready_ms": 114.24814499999957,
+      "paint_ms": 207.73476400000072,
+      "requests": [
+        {
+          "path": "/api/auth/me",
+          "timing": {
+            "startTime": 1795621413814.409,
+            "domainLookupStart": -1,
+            "domainLookupEnd": -1,
+            "connectStart": -1,
+            "secureConnectionStart": -1,
+            "connectEnd": -1,
+            "requestStart": 0.077,
+            "responseStart": 3.337,
+            "responseEnd": 4.045
+          }
+        },
+        {
+          "path": "/api/metrics",
+          "timing": {
+            "startTime": 1795621413826.539,
+            "domainLookupStart": -1,
+            "domainLookupEnd": -1,
+            "connectStart": -1,
+            "secureConnectionStart": -1,
+            "connectEnd": -1,
+            "requestStart": 0.086,
+            "responseStart": 20.404,
+            "responseEnd": 21.214
+          }
+        },
+        {
+          "path": "/api/projects",
+          "timing": {
+            "startTime": 1795621413827.035,
+            "domainLookupStart": 0.04,
+            "domainLookupEnd": 0.044,
+            "connectStart": 0.044,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.203,
+            "requestStart": 0.215,
+            "responseStart": 24.286,
+            "responseEnd": 25.126
+          }
+        },
+        {
+          "path": "/api/test-cases",
+          "timing": {
+            "startTime": 1795621413826.7341,
+            "domainLookupStart": 0.048,
+            "domainLookupEnd": 0.053,
+            "connectStart": 0.053,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.371,
+            "requestStart": 0.411,
+            "responseStart": 25.155,
+            "responseEnd": 25.858
+          }
+        },
+        {
+          "path": "/api/releases",
+          "timing": {
+            "startTime": 1795621413828.253,
+            "domainLookupStart": 0.062,
+            "domainLookupEnd": 0.07,
+            "connectStart": 0.07,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.368,
+            "requestStart": 0.434,
+            "responseStart": 23.776,
+            "responseEnd": 25.435
+          }
+        },
+        {
+          "path": "/api/defects",
+          "timing": {
+            "startTime": 1795621413826.897,
+            "domainLookupStart": 0.032,
+            "domainLookupEnd": 0.034,
+            "connectStart": 0.034,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.219,
+            "requestStart": 0.304,
+            "responseStart": 25.478,
+            "responseEnd": 25.953
+          }
+        },
+        {
+          "path": "/api/requirements",
+          "timing": {
+            "startTime": 1795621413828.4788,
+            "domainLookupStart": 0.058,
+            "domainLookupEnd": 0.063,
+            "connectStart": 0.063,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.145,
+            "requestStart": 0.262,
+            "responseStart": 27.492,
+            "responseEnd": 29.288
+          }
+        },
+        {
+          "path": "/api/releases/1/gate",
+          "timing": {
+            "startTime": 1795621413857.037,
+            "domainLookupStart": 0.058,
+            "domainLookupEnd": 0.064,
+            "connectStart": 0.064,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.308,
+            "requestStart": 0.344,
+            "responseStart": 14.26,
+            "responseEnd": 14.714
+          }
+        },
+        {
+          "path": "/api/metrics/expanded",
+          "timing": {
+            "startTime": 1795621413857.234,
+            "domainLookupStart": 0.049,
+            "domainLookupEnd": 0.055,
+            "connectStart": 0.055,
+            "secureConnectionStart": -1,
+            "connectEnd": 0.177,
+            "requestStart": 0.198,
+            "responseStart": 32.727,
+            "responseEnd": 33.172
+          }
+        }
+      ]
     }
   ],
   "release_selector_verified": true,
-  "passed": true,
-  "workflow_run": "https://github.com/esrakaya38/SEN0421/actions/runs/45410292362"
+  "anonymous_dashboard_verified": true,
+  "passed": true
 }

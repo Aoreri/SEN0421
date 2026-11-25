@@ -130,7 +130,7 @@ def test_sql_dialect_expressions_compile(dialect):
     assert str(metrics.event_day(db, at).compile(dialect=dialect))
 
 
-@pytest.mark.parametrize("kwargs", [{"sprint_id": "unsupported"}, {"start_at": datetime(2026, 1, 2, tzinfo=UTC), "end_at": datetime(2026, 1, 1, tzinfo=UTC)}, {"project_id": 1, "release_id": 2}])
+@pytest.mark.parametrize("kwargs", [{"project_id": 1, "sprint_id": 5}, {"start_at": datetime(2026, 1, 2, tzinfo=UTC), "end_at": datetime(2026, 1, 1, tzinfo=UTC)}, {"project_id": 1, "release_id": 2}])
 def test_invalid_metric_scope(kwargs):
     db = MagicMock()
     db.get.return_value = Release(id=2, project_id=3)

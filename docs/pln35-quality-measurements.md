@@ -13,10 +13,10 @@ Karar bütün örneklerin **en yüksek süresine** göre verildi; ilk örnek,
 aykırı değerler veya başarısız denemeler silinmedi. Bunlar kaydedilen ortamın
 ölçümleridir; bütün donanımlar için süre garantisi değildir.
 
-- Ölçülen uygulama kodu: [`61999d7fb48dae8dd3f201490af296e8cdfa6f6f`](https://github.com/esrakaya38/SEN0421/commit/61999d7fb48dae8dd3f201490af296e8cdfa6f6f). Bu raporu ekleyen sonraki commit yalnızca belgelendirmedir.
-- Ölçüm başlangıcı (UTC): `2026-11-24T14:07:20.258Z`.
-- [PostgreSQL/tarayıcı ölçüm işi](https://github.com/esrakaya38/SEN0421/actions/runs/45410292362) — başarılı.
-- [Backend, PostgreSQL, frontend ve birim kapsam kontrolleri](https://github.com/esrakaya38/SEN0421/actions/runs/45410293086) — başarılı.
+- Ölçülen uygulama kodu: PR #45 head [`97bdc7e`](https://github.com/Aoreri/SEN0421/commit/97bdc7eafb8c52ce90f227e371ad7e6623679470), GitHub'ın `main` ile birleştirme commit'i `5456f3e` üzerinde. Sonraki commit yalnızca kanıt, belge, test ve kapsam betiğini değiştirir; ölçülen uygulama kodu (`backend/app`, `frontend/src`, `quality/`) aynıdır.
+- Ölçüm başlangıcı (UTC): `2026-11-25T15:43:25.896Z`.
+- [PostgreSQL/tarayıcı ölçüm işi](https://github.com/Aoreri/SEN0421/actions/runs/45648086892) — başarılı.
+- [Backend, PostgreSQL, frontend ve birim kapsam kontrolleri](https://github.com/Aoreri/SEN0421/actions/runs/45648086807) — başarılı.
 - Kalıcı sayısal kanıt: [tüm süre örnekleri ve ortam bilgileri](evidence/pln35-performance.json), [birim kapsam özeti](evidence/pln35-unit-coverage.json).
 - Ayrıntılı JSON/Cobertura ve performans tanıları, Actions altında `workflow-metrics-unit-coverage` ve `pln35-performance` çıktılarında 14 gün saklanır.
 
@@ -24,9 +24,9 @@ aykırı değerler veya başarısız denemeler silinmedi. Bunlar kaydedilen orta
 
 | Bileşen | Gerçek ölçüm ortamı |
 | --- | --- |
-| Çalıştırıcı | GitHub Actions `ubuntu-latest`, Linux `7.0.0-1020-azure` |
-| CPU | Intel(R) Xeon(R) Platinum 8370C CPU @ 2.80GHz; 4 mantıksal işlemci |
-| RAM | 16758394880 bayt (~15.61 GiB) |
+| Çalıştırıcı | GitHub Actions `ubuntu-latest`, Linux `7.0.0-1016-aws` |
+| CPU | Intel(R) Xeon(R) 6975P-C; 4 mantıksal işlemci |
+| RAM | 16463400960 bayt (~15.33 GiB) |
 | Python / Node | 3.12.16 / v22.23.5 |
 | PostgreSQL / Chromium | 16.16 / 159.0.8154.6 |
 | Sunum | Üretim Vite build'i + Vite preview, gerçek FastAPI/Uvicorn; 1280×800, DPR 1 |
@@ -54,10 +54,10 @@ maksimuma eşit olması normaldir.
 
 | İşlem | Örnek | İlk | Üst medyan | P95 | Maksimum | Sınır | Karar |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| Panel açılışı (tarayıcı) | 10 | 477.769 | 295.623 | 477.769 | **477.769** | < 2,000 | Geçti |
-| Test Plan HTML üretimi | 5 | 61.091 | 41.079 | 61.091 | **61.091** | < 10,000 | Geçti |
-| Test Plan PDF üretimi | 5 | 2172.398 | 1595.616 | 2172.398 | **2172.398** | < 10,000 | Geçti |
-| Test Plan snapshot üretimi | 5 | 37.082 | 35.940 | 37.082 | **37.082** | < 10,000 | Geçti |
+| Panel açılışı (tarayıcı) | 10 | 326.597 | 208.383 | 326.597 | **326.597** | < 2,000 | Geçti |
+| Test Plan HTML üretimi | 5 | 68.514 | 25.820 | 68.514 | **68.514** | < 10,000 | Geçti |
+| Test Plan PDF üretimi | 5 | 1905.189 | 987.887 | 1905.189 | **1905.189** | < 10,000 | Geçti |
+| Test Plan snapshot üretimi | 5 | 30.869 | 30.178 | 34.888 | **34.888** | < 10,000 | Geçti |
 
 Panel için her açılışta yeni Chromium bağlamı kullanıldı; tarayıcı cache’i örnekler arasında paylaşılmaz ve API
 yanıtı taklidi yoktur. Kimlik doğrulama işlemi sayaç dışındadır; kayıtlı
