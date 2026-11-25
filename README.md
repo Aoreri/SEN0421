@@ -64,6 +64,7 @@ test vakası ↔ gereksinim izlenebilirliği.
 | Grafikli metrik paneli (`/`) ve sürüm çıkış kapısı kartı: koşum başına yığılmış sonuç çubuğu + başarı trendi, defect burn-up, önem dağılımı, yapılandırılabilir çıkış eşikleri ve Test Lead muafiyeti | R5, R7 | 29119-2 Test İzleme ve Kontrol |
 | Test vakası listesi ve metrikler: koşum oranı, başarı oranı, açık defect sayısı | R2, R5 | 29119-2 Test İzleme ve Kontrol |
 | JUnit XML içe aktarımı; commit/branch üst verisi, projeye göre kararlı test vakası eşleme ve eşleşmeyen sonuç raporu | R6 | 29119-2 Test Yürütme; 12207 Doğrulama |
+| Başarısız eşleşmiş JUnit sonuçlarından Open defect açma; proje/test vakası/hata imzasıyla tekilleştirme ve değiştirilemez açılış geçmişi (PLN-33) | R4, R6 | 29119-2 Test Olay Raporlama; 12207 Problem Çözümleme |
 | Cobertura XML satır/dal kapsamı içe aktarımı ve GitHub Actions CI kanıtlarının geçici örneğe otomatik aktarımı | R5, R6 | 29119-2 Test İzleme ve Kontrol; 12207 Doğrulama |
 | Test koşumu (Test Run) ve test yürütme (Test Execution): Passed / Failed / Blocked / Skipped sonuçları, yürütme ↔ defect bağlantısı ve `Resolved → Closed` doğrulama şartı | R2, R4 | 29119-2 Test Yürütme; 12207 Doğrulama |
 | Sürüm durumları (`Planned`, `In Test`, `Ready`, `Released`), yapılandırılabilir çıkış kriterleri (başarı oranı, açık kritik defect, gereksinim kapsama) ve Test Lead / Admin muafiyet kaydı | R7 | 29119-2 Test Tamamlama; 12207 Kalite Güvence |
@@ -152,8 +153,10 @@ parametreleriyle üst veri saklanır. `test_case_id` özelliği (yoksa tam testc
 projenin gereksinimlerine bağlı test vakalarıyla eşlenir; eşleşmeyen sonuçlar da
 kaydedilip ayrı raporlanır. Sınır 1 MiB / 5000 sonuçtur.
 
-İçe aktarım anlık görüntüleri genel PLN-17 koşum yönetiminden ayrıdır; mevcut test
-vakası durumlarını veya metrikleri güncellemez. Okuma uçları, örnek XML, eşleme
+İçe aktarım anlık görüntüleri genel PLN-17 koşum yönetiminden ayrıdır; test vakası
+durumlarını değiştirmez. PLN-33, eşleşmiş başarısız sonuç için Open defect açar ve
+açılışı geçmişe ekler; aynı proje, test vakası ve hata imzası tekrar geldiğinde
+aynı defect kullanılır. Bu yeni defect normal açık-defect metriklerine yansır. Okuma uçları, örnek XML, eşleme
 kuralları ve migrasyon ayrıntıları: [JUnit import sözleşmesi](docs/junit-import.md).
 
 ## Cobertura içe aktarımı ve CI aktarımı (PLN-23 — Esra Kaya)

@@ -57,6 +57,8 @@ def test_import_persists_metadata_mapping_outcomes_and_unmatched_report(client):
     listing = client.get('/api/projects/1/runs/imports', headers=as_user('tester')).json()
     assert listing[0]['summary'] == report['summary'] and 'results' not in listing[0]
     assert client.get('/api/test-cases').json() == old_cases
+    # PLN-33 creates one Open incident for the matched failed TC-003 result.
+    old_metrics['open_defects'] += 1
     assert client.get('/api/metrics').json() == old_metrics
 
 

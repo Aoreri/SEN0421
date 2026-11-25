@@ -156,7 +156,7 @@ The backend is authoritative for authorization. A user interface control is not 
 
 | ID | Requirement | Priority | Baseline status |
 |---|---|---|---|
-| FR-IMP-01 | The system shall import bounded JUnit XML, retain commit/branch metadata, map stable test-case keys, and report unmatched results rather than silently dropping them. | Medium | Implemented. |
+| FR-IMP-01 | The system shall import bounded JUnit XML, retain commit/branch metadata, map stable test-case keys, and report unmatched results rather than silently dropping them. | Medium | Implemented. PLN-33 (PR #35) also creates one deduplicated Open defect per test case and failure signature, with one immutable creation-history entry. |
 | FR-IMP-02 | The system shall import Cobertura line/branch coverage evidence and associate it with project/import metadata. | Medium | Implemented. |
 | FR-PLAN-01 | The system shall manage versioned Test Plan records with `Draft`, `In Review`, and `Approved` states and enforce valid transitions. | High | Implemented. |
 | FR-PLAN-02 | The system shall preserve point-in-time Test Plan snapshots containing rendered HTML and structured data. | High | Implemented. |
