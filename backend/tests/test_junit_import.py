@@ -35,8 +35,8 @@ def counts():
 
 
 def test_import_persists_metadata_mapping_outcomes_and_unmatched_report(client):
-    old_cases = client.get('/api/test-cases').json()
-    old_metrics = client.get('/api/metrics').json()
+    old_cases = client.get('/api/test-cases', headers=as_user('tester')).json()
+    old_metrics = client.get('/api/metrics', headers=as_user('tester')).json()
     response = upload(client, params={"commit": "a" * 40, "branch": "feature/import"})
     assert response.status_code == 201, response.text
     report = response.json()
@@ -56,8 +56,10 @@ def test_import_persists_metadata_mapping_outcomes_and_unmatched_report(client):
     assert saved.status_code == 200 and saved.json() == report
     listing = client.get('/api/projects/1/runs/imports', headers=as_user('tester')).json()
     assert listing[0]['summary'] == report['summary'] and 'results' not in listing[0]
-    assert client.get('/api/test-cases').json() == old_cases
-    assert client.get('/api/metrics').json() == old_metrics
+    assert client.get('/api/test-cases', headers=as_user('tester')).json() == old_cases
+    # PLN-33 creates one Open incident for the matched failed TC-003 result.
+    old_metrics['open_defects'] += 1
+    assert client.get('/api/metrics', headers=as_user('tester')).json() == old_metrics
 
 
 @pytest.mark.parametrize('username', ['admin', 'testlead', 'tester'])

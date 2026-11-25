@@ -12,7 +12,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
-from .auth import ADMIN, TEST_LEAD, TESTER, require_roles
+from .auth import ADMIN, TEST_LEAD, TESTER, current_user, require_roles
 from .db import DB
 from .models import (
     Defect,
@@ -30,6 +30,7 @@ from .models import (
 )
 
 router = APIRouter(prefix="/api/test-plans", tags=["test-plans"])
+READ = [Depends(current_user)]
 WRITE = [Depends(require_roles(ADMIN, TEST_LEAD))]
 SNAPSHOT = [Depends(require_roles(ADMIN, TEST_LEAD, TESTER))]
 
@@ -132,7 +133,8 @@ def build_plan_snapshot_data(
     db: Session, plan: TestPlan, generated_by: str
 ) -> tuple[str, dict[str, Any]]:
     project = db.get(Project, plan.project_id)
-    assert project is not None
+    if project is None:
+        raise HTTPException(404, "Proje bulunamadı")
     release = db.get(Release, plan.release_id) if plan.release_id is not None else None
 
     reqs = list(
@@ -440,12 +442,12 @@ def render_pdf_bytes(html_content: str, payload: dict[str, Any]) -> bytes:
         if isinstance(pdf_bytes, bytes) and pdf_bytes.startswith(b"%PDF-"):
             return pdf_bytes
     except Exception:
-        pass
+        return _fallback_pdf_bytes(payload)
     return _fallback_pdf_bytes(payload)
 
 
 # --- Uç Noktalar --------------------------------------------------------------
-@router.get("")
+@router.get("", dependencies=READ)
 def list_test_plans(db: DB):
     rows = db.scalars(
         select(TestPlan).options(selectinload(TestPlan.snapshots)).order_by(TestPlan.id)
@@ -470,7 +472,7 @@ def create_test_plan(
     return plan_out(get_plan_or_404(db, plan.id), include_snapshots=True)
 
 
-@router.get("/{plan_id}")
+@router.get("/{plan_id}", dependencies=READ)
 def get_test_plan(plan_id: int, db: DB):
     return plan_out(get_plan_or_404(db, plan_id), include_snapshots=True)
 
@@ -539,13 +541,13 @@ def create_test_plan_snapshot(
     return snapshot_detail_out(snap)
 
 
-@router.get("/{plan_id}/snapshots")
+@router.get("/{plan_id}/snapshots", dependencies=READ)
 def list_test_plan_snapshots(plan_id: int, db: DB):
     plan = get_plan_or_404(db, plan_id)
     return [snapshot_summary_out(s) for s in plan.snapshots]
 
 
-@router.get("/{plan_id}/snapshots/{snapshot_id}")
+@router.get("/{plan_id}/snapshots/{snapshot_id}", dependencies=READ)
 def get_test_plan_snapshot(plan_id: int, snapshot_id: int, db: DB):
     plan = get_plan_or_404(db, plan_id)
     snap = db.scalar(
@@ -559,7 +561,7 @@ def get_test_plan_snapshot(plan_id: int, snapshot_id: int, db: DB):
     return snapshot_detail_out(snap)
 
 
-@router.get("/{plan_id}/export")
+@router.get("/{plan_id}/export", dependencies=READ)
 def export_test_plan(
     plan_id: int,
     db: DB,

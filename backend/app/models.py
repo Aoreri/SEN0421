@@ -76,6 +76,22 @@ class Release(Base):
     waived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
+class Sprint(Base):
+    __tablename__ = "sprints"
+    __table_args__ = (UniqueConstraint("project_id", "name"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    release_id: Mapped[int | None] = mapped_column(ForeignKey("releases.id"), index=True)
+    name: Mapped[str] = mapped_column(String(100))
+    goal: Mapped[str] = mapped_column(String(1000), default="", server_default="")
+    start_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    end_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    status: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="Planned", server_default="Planned"
+    )
+
+
 class Requirement(Base):
     __tablename__ = "requirements"
 
@@ -175,6 +191,8 @@ class ImportedTestResult(Base):
     status: Mapped[str] = mapped_column(String(20))
     duration_seconds: Mapped[float | None]
     message: Mapped[str] = mapped_column(Text)
+    failure_signature: Mapped[str | None] = mapped_column(String(64))
+    defect_id: Mapped[int | None] = mapped_column(ForeignKey("defects.id"))
 
 
 class TestRun(Base):
@@ -184,6 +202,7 @@ class TestRun(Base):
     name: Mapped[str] = mapped_column(String(200))
     project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
     release_id: Mapped[int | None] = mapped_column(ForeignKey("releases.id"), index=True)
+    sprint_id: Mapped[int | None] = mapped_column(ForeignKey("sprints.id"), index=True)
     suite_id: Mapped[int | None] = mapped_column(ForeignKey("test_suites.id"), index=True)
     created_by: Mapped[str] = mapped_column(String(50))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
@@ -264,3 +283,67 @@ class CoverageImport(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     summary: Mapped[dict] = mapped_column(JSON)
     files: Mapped[list[dict]] = mapped_column(JSON)
+
+
+class JUnitAutoDefect(Base):
+    """One persistent incident per project, stable test-case ID and error signature."""
+
+    __tablename__ = "junit_auto_defects"
+    __table_args__ = (UniqueConstraint("project_id", "test_case_id", "failure_signature",
+                                       name="uq_junit_auto_defect_key"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"))
+    test_case_id: Mapped[str] = mapped_column(ForeignKey("test_cases.id"))
+    failure_signature: Mapped[str] = mapped_column(String(64))
+    defect_id: Mapped[int] = mapped_column(ForeignKey("defects.id"), unique=True)
+
+
+class TestSummaryReportSnapshot(Base):
+    """PLN-30 IEEE 829 Test Summary Report anlık görüntüsü (sürüm başına)."""
+
+    __tablename__ = "test_summary_report_snapshots"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    release_id: Mapped[int] = mapped_column(ForeignKey("releases.id"), index=True)
+    release_version: Mapped[str] = mapped_column(String(50))
+    release_status: Mapped[str] = mapped_column(String(20))
+    gate_passed: Mapped[bool] = mapped_column(Boolean)
+    html_content: Mapped[str] = mapped_column(Text)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSON)
+    generated_by: Mapped[str] = mapped_column(String(50))
+    generated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
+class TestIncidentReportSnapshot(Base):
+    """PLN-39 IEEE 829 Test Incident Report anlık görüntüsü (defect başına)."""
+
+    __tablename__ = "test_incident_report_snapshots"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    defect_id: Mapped[int] = mapped_column(ForeignKey("defects.id"), index=True)
+    status: Mapped[str] = mapped_column(String(20))
+    severity: Mapped[str] = mapped_column(String(20))
+    html_content: Mapped[str] = mapped_column(Text)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSON)
+    generated_by: Mapped[str] = mapped_column(String(50))
+    generated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
+class TestLogSnapshot(Base):
+    """PLN-39 IEEE 829 Test Log anlık görüntüsü (test koşumu başına)."""
+
+    __tablename__ = "test_log_snapshots"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    test_run_id: Mapped[int] = mapped_column(ForeignKey("test_runs.id"), index=True)
+    html_content: Mapped[str] = mapped_column(Text)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSON)
+    generated_by: Mapped[str] = mapped_column(String(50))
+    generated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )

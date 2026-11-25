@@ -10,6 +10,7 @@ from app.models import (
     Project,
     Release,
     Requirement,
+    Sprint,
     execution_defects,
 )
 from app.models import (
@@ -21,8 +22,14 @@ from app.models import (
 from app.models import (
     TestRun as RunModel,
 )
+from tests.conftest import as_user
 
 pytestmark = [pytest.mark.integration, pytest.mark.usefixtures('fresh_seed')]
+
+
+@pytest.fixture(autouse=True)
+def auth_client(fresh_seed, client):
+    client.headers.update(as_user('tester'))
 
 
 def at(day):
@@ -124,14 +131,14 @@ def test_empty_and_legacy_contract(client):
         'total_tests': 6, 'execution_rate': 66.7, 'pass_rate': 75, 'open_defects': 3}
 
 
-@pytest.mark.parametrize('params', [{'sprint_id': 'sprint-1'}, {'start_at': '2026-11-01T00:00:00'},
+@pytest.mark.parametrize('params', [{'sprint_id': 'sprint-1'}, {'sprint_id': -1}, {'start_at': '2026-11-01T00:00:00'},
     {'start_at': at(3).isoformat(), 'end_at': at(2).isoformat()}, {'release_id': -1}, {'project_id': -1}])
 def test_invalid_or_missing_model_scope(client, params):
     assert client.get('/api/metrics/expanded', params=params).status_code == 422
 
 
 def test_unknown_or_cross_project_scope(client, population):
-    for params in ({'release_id': 99999}, {'project_id': 99999}):
+    for params in ({'release_id': 99999}, {'project_id': 99999}, {'sprint_id': 99999}):
         assert client.get('/api/metrics/expanded', params=params).status_code == 404
     assert client.get('/api/metrics/expanded', params={
         'release_id': population['release_id'], 'project_id': 1}).status_code == 422
@@ -183,3 +190,78 @@ def test_reopen_day_is_visible_without_double_counting_active_defects(client, po
     assert points['2026-11-03']['open_remaining'] == report['open_defects'] == 1
     assert points['2026-11-03']['opened'] == points['2026-11-03']['resolved'] == 1
     assert report['reopen_rate'] == 100.0
+
+
+def test_sprint_based_metrics_filtering_and_window_defaults(client, population):
+    with SessionLocal() as db:
+        s_explicit = Sprint(
+            project_id=population['project_id'],
+            release_id=population['release_id'],
+            name='Sprint 1 Explicit',
+            goal='Explicit run link test',
+            status='Active',
+        )
+        s_window = Sprint(
+            project_id=population['project_id'],
+            release_id=population['release_id'],
+            name='Sprint 2 Window',
+            goal='Date window fallback test',
+            start_at=at(1),
+            end_at=at(3),
+            status='Completed',
+        )
+        db.add_all([s_explicit, s_window])
+        db.flush()
+        run_s1 = RunModel(
+            name='Sprint 1 Run',
+            project_id=population['project_id'],
+            release_id=population['release_id'],
+            sprint_id=s_explicit.id,
+            created_by='tester',
+            created_at=at(2),
+        )
+        db.add(run_s1)
+        db.flush()
+        ex_p = ExecutionModel(run_id=run_s1.id, test_case_id='T24-0', status='Passed')
+        ex_f = ExecutionModel(run_id=run_s1.id, test_case_id='T24-1', status='Failed')
+        db.add_all([ex_p, ex_f])
+        db.flush()
+        d_s1 = Defect(title='Sprint 1 Defect', test_case='T24-1', severity='Critical', status='Open')
+        db.add(d_s1)
+        db.flush()
+        db.add(DefectHistory(defect_id=d_s1.id, from_status=None, to_status='Open', at=at(2)))
+        db.execute(execution_defects.insert().values(execution_id=ex_f.id, defect_id=d_s1.id))
+        db.commit()
+        s_explicit_id = s_explicit.id
+        s_window_id = s_window.id
+
+    # 1. Explicit sprint_id linkage scopes runs and execution-linked defects to that sprint
+    r1 = client.get('/api/metrics/expanded', params={'sprint_id': s_explicit_id}).json()
+    assert r1['scope']['sprint_id'] == s_explicit_id
+    assert r1['scope']['project_id'] == population['project_id']
+    assert r1['scope']['sprint_available'] is True
+    assert r1['total_tests'] == 2
+    assert r1['execution_rate'] == 100.0
+    assert r1['pass_rate'] == 50.0
+    assert r1['open_defects'] == 1
+    assert r1['denominators']['defects_created'] == 1
+    assert r1['severity_distribution'] == [{'severity': 'Critical', 'total': 1, 'open': 1, 'closed': 0}]
+
+    # 2. Sprint with start_at/end_at and no explicit sprint_id runs defaults to sprint's date bounds & release
+    r2 = client.get('/api/metrics/expanded', params={'sprint_id': s_window_id}).json()
+    assert r2['scope']['sprint_id'] == s_window_id
+    assert datetime.fromisoformat(r2['scope']['start_at']) == at(1)
+    assert datetime.fromisoformat(r2['scope']['end_at']) == at(3)
+    # Both A run (day 1) and Sprint 1 Run (day 2) belong to release A and fall in [day 1, day 3)
+    assert r2['total_tests'] == 8
+    assert r2['denominators']['defects_created'] == 3
+    assert r2['reopen_rate'] == 0.0
+
+    # 3. Conflict checks: sprint with wrong project_id or wrong release_id returns 422
+    assert client.get(
+        '/api/metrics/expanded', params={'sprint_id': s_explicit_id, 'project_id': 1}
+    ).status_code == 422
+    assert client.get(
+        '/api/metrics/expanded',
+        params={'sprint_id': s_explicit_id, 'release_id': population['other_release']},
+    ).status_code == 422

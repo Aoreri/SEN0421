@@ -56,21 +56,22 @@ test vakası ↔ gereksinim izlenebilirliği.
 | --- | --- | --- |
 | Defect yaşam döngüsü `Open → In Progress → Resolved → Closed` (+ Reopen); geçiş kuralları ve rol kısıtları veritabanında (`defect_transitions`), geçersiz geçiş 409, yetkisiz rol 403 | R4 | 12207 Problem Çözümleme; 29119-2 Test Olay Raporlama |
 | Değiştirilemez defect geçmişi (`defect_history`, PostgreSQL trigger ile yalnızca ekleme) | R4, R8 | 12207 Konfigürasyon Yönetimi |
-| JWT ile giriş ve rol tabanlı erişim: Admin, Test Lead, Tester, Developer | R8 | 12207 Uygulama |
-| Proje, sürüm ve gereksinim yönetimi; test vakası ↔ gereksinim izlenebilirliği (çoka çok) | R2, R7 | 29119-2 Test Tasarımı ve Gerçekleştirme |
+| JWT ile giriş, tüm okuma (`GET`) ve yazma uç noktalarında kimlik doğrulama ve rol tabanlı erişim: Admin, Test Lead, Tester, Developer; CI üzerinde `bandit` ve `npm audit` güvenlik taraması (PLN-29) | R8 | 12207 Uygulama; Güvenlik |
+| Proje, sürüm, sprint ve gereksinim yönetimi; test vakası ↔ gereksinim izlenebilirliği (çoka çok) | R2, R5, R7 | 29119-2 Test Tasarımı ve Gerçekleştirme; 12207 Proje Planlama |
 | Test vakası (adımlar, beklenen sonuç, öncelik, otomasyon bayrağı, kararlı anahtar) ve test suite CRUD API'si | R2 | 29119-2 Test Tasarımı ve Gerçekleştirme; 29119-3 Test Case Specification |
 | Test vakası / suite yönetimi (`/test-cases`) ve etkileşimli gereksinim – test izlenebilirlik matrisi | R2 | 29119-2 Test Tasarımı ve Gerçekleştirme |
 | Test koşumu yürütme ekranı (`/test-runs`): `Passed`/`Failed`/`Blocked`/`Skipped` sonuç girme, başarısız yürütmeden defect açma ve koşum geçmişi | R2, R4 | 29119-2 Test Yürütme; Test Olay Raporlama |
 | Grafikli metrik paneli (`/`) ve sürüm çıkış kapısı kartı: koşum başına yığılmış sonuç çubuğu + başarı trendi, defect burn-up, önem dağılımı, yapılandırılabilir çıkış eşikleri ve Test Lead muafiyeti | R5, R7 | 29119-2 Test İzleme ve Kontrol |
 | Test vakası listesi ve metrikler: koşum oranı, başarı oranı, açık defect sayısı | R2, R5 | 29119-2 Test İzleme ve Kontrol |
 | JUnit XML içe aktarımı; commit/branch üst verisi, projeye göre kararlı test vakası eşleme ve eşleşmeyen sonuç raporu | R6 | 29119-2 Test Yürütme; 12207 Doğrulama |
+| Başarısız eşleşmiş JUnit sonuçlarından Open defect açma; proje/test vakası/hata imzasıyla tekilleştirme ve değiştirilemez açılış geçmişi (PLN-33) | R4, R6 | 29119-2 Test Olay Raporlama; 12207 Problem Çözümleme |
 | Cobertura XML satır/dal kapsamı içe aktarımı ve GitHub Actions CI kanıtlarının geçici örneğe otomatik aktarımı | R5, R6 | 29119-2 Test İzleme ve Kontrol; 12207 Doğrulama |
 | Test koşumu (Test Run) ve test yürütme (Test Execution): Passed / Failed / Blocked / Skipped sonuçları, yürütme ↔ defect bağlantısı ve `Resolved → Closed` doğrulama şartı | R2, R4 | 29119-2 Test Yürütme; 12207 Doğrulama |
 | Sürüm durumları (`Planned`, `In Test`, `Ready`, `Released`), yapılandırılabilir çıkış kriterleri (başarı oranı, açık kritik defect, gereksinim kapsama) ve Test Lead / Admin muafiyet kaydı | R7 | 29119-2 Test Tamamlama; 12207 Kalite Güvence |
 | IEEE 829 Test Plan kaydı (`Draft` / `In Review` / `Approved`), anlık görüntü (snapshot) saklama ve Jinja2 + WeasyPrint/PDF + HTML üretimi | R1, R3 | IEEE 829 Test Plan; 29119-3 Test Plan; 12207 Uygulama |
-
-**Planlanan:** genişletilmiş metrik SQL agregasyon API'si (PLN-24) ve
-Test Summary Report / Test Incident Report üretimi (Jinja2 + WeasyPrint).
+| IEEE 829 Test Incident Report (defect başına) ve Test Log (test koşumu başına) üretimi: Jinja2 şablonları, HTML + PDF (WeasyPrint ve RSK-07 yedek PDF-1.4) çıktısı ve anlık görüntü (snapshot) saklama | R3, R4 | IEEE 829 Test Incident Report, Test Log; 29119-3; 29119-2 Test Olay Raporlama |
+| IEEE 829 Test Summary Report üretimi: sürüm verisinden toplamlar, özellik/gereksinim bazında sonuçlar, defect özeti ve çıkış kriteri değerlendirmesi; HTML + PDF ve anlık görüntü (snapshot) saklama | R3, R7 | IEEE 829 Test Summary Report; 29119-3 Test Completion Report |
+| Test Plan yönetim ekranı (`/test-plans`): taslak oluşturma/düzenleme, yalnızca API'nin izin verdiği `Draft → In Review → Approved` durum geçişleri, sürüm geçmişi (snapshot) ve HTML / PDF indirme | R1, R3 | IEEE 829 Test Plan; 29119-3 Test Plan |
 
 ## Mimari
 
@@ -158,8 +159,10 @@ parametreleriyle üst veri saklanır. `test_case_id` özelliği (yoksa tam testc
 projenin gereksinimlerine bağlı test vakalarıyla eşlenir; eşleşmeyen sonuçlar da
 kaydedilip ayrı raporlanır. Sınır 1 MiB / 5000 sonuçtur.
 
-İçe aktarım anlık görüntüleri genel PLN-17 koşum yönetiminden ayrıdır; mevcut test
-vakası durumlarını veya metrikleri güncellemez. Okuma uçları, örnek XML, eşleme
+İçe aktarım anlık görüntüleri genel PLN-17 koşum yönetiminden ayrıdır; test vakası
+durumlarını değiştirmez. PLN-33, eşleşmiş başarısız sonuç için Open defect açar ve
+açılışı geçmişe ekler; aynı proje, test vakası ve hata imzası tekrar geldiğinde
+aynı defect kullanılır. Bu yeni defect normal açık-defect metriklerine yansır. Okuma uçları, örnek XML, eşleme
 kuralları ve migrasyon ayrıntıları: [JUnit import sözleşmesi](docs/junit-import.md).
 
 ## Cobertura içe aktarımı ve CI aktarımı (PLN-23 — Esra Kaya)
@@ -171,13 +174,14 @@ Cobertura raporlarını geçici bir SDS-06 örneğine aktarır; sonuçlar **Arti
 ci-import-evidence** altında 14 gün saklanır. Canlı proje veritabanına yazılmaz.
 Sınırlar, doğrulama, API ve migrasyon: [Cobertura sözleşmesi](docs/cobertura-import.md).
 
-## SQL metrikleri (PLN-24 — Esra Kaya)
+## SQL metrikleri ve sprint yönetimi (PLN-24 — Esra Kaya; PLN-28 — Caner Serbest)
 
-`GET /api/metrics/expanded`: proje/sürüm ve UTC tarih aralığına göre koşum
-başarı oranı, gereksinim kapsamı, yeniden açılma oranı, defect yaşı ve ilk çözüm
-süresi. Eski `/api/metrics` sözleşmesi korunur. Sprint modeli bulunmadığından
-sprint kimliğiyle filtreleme mevcut değildir; bilinen sprint tarih aralığı
-kullanılabilir. Formüller ve kapsam: [Metrik API sözleşmesi](docs/metrics-api.md).
+`GET /api/metrics/expanded`: proje, sürüm, sprint (`sprint_id`) ve UTC tarih aralığına göre
+koşum başarı oranı, gereksinim kapsamı, yeniden açılma oranı, defect yaşı ve ilk çözüm
+süresi. Eski `/api/metrics` sözleşmesi korunur. Sprint varlığı `/api/sprints` üzerinden
+yönetilir (`Planned` / `Active` / `Completed`, hedef, başlangıç ve bitiş tarihleri, isteğe bağlı
+sürüm bağlantısı) ve test koşumları `sprint_id` ile sprintlere bağlanabilir. Formüller ve
+kapsam: [Metrik API sözleşmesi](docs/metrics-api.md).
 
 ## Dokümanlar
 
@@ -207,3 +211,9 @@ Bu araç etiket veya Release yayımlamaz.
 açıklaması `.github/pull_request_template.md` bölümlerini ve bir `Agent:` satırını
 içermelidir; `PR description` CI kontrolü bunu denetler. Ajan kuralları:
 [AGENTS.md](AGENTS.md).
+
+## Playwright E2E (PLN-34)
+
+Login, defect lifecycle, test runs and Test Plan downloads are covered by the
+[Playwright acceptance suite](frontend/e2e/README.md). The CI job runs a disposable
+Docker Compose stack and imports its real JUnit results back into SDS-06.

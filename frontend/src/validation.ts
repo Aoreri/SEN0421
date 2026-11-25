@@ -73,6 +73,19 @@ export type ExitCriteriaFormValues = {
 
 export type ExitCriteriaFormErrors = Partial<Record<keyof ExitCriteriaFormValues, string>>;
 
+export type TestPlanFormValues = {
+  projectId: string;
+  version: string;
+  title: string;
+  scope: string;
+  approach: string;
+  passFailCriteria: string;
+  environment: string;
+  scheduleRisks: string;
+};
+
+export type TestPlanFormErrors = Partial<Record<keyof TestPlanFormValues, string>>;
+
 const MIN_TITLE_LENGTH = 3;
 const MAX_TITLE_LENGTH = 120;
 const MAX_PROJECT_NAME_LENGTH = 100;
@@ -83,6 +96,8 @@ const MAX_REQ_TITLE_LENGTH = 200;
 const MAX_TEST_KEY_LENGTH = 20;
 const MAX_TEST_TITLE_LENGTH = 200;
 const MAX_SUITE_NAME_LENGTH = 100;
+const MAX_PLAN_TITLE_LENGTH = 200;
+const MAX_PLAN_SECTION_LENGTH = 2000;
 
 export function validateDefectForm(
   values: DefectFormValues,
@@ -322,6 +337,49 @@ export function validateWaiverReason(reason: string): string | undefined {
     return `Muafiyet gerekçesi en fazla ${MAX_DESCRIPTION_LENGTH} karakter olabilir.`;
   }
   return undefined;
+}
+
+export function validateTestPlanForm(values: TestPlanFormValues): TestPlanFormErrors {
+  const errors: TestPlanFormErrors = {};
+  const projectId = Number(values.projectId);
+  const version = values.version.trim();
+  const title = values.title.trim();
+
+  if (!values.projectId || !Number.isInteger(projectId) || projectId <= 0) {
+    errors.projectId = "Geçerli bir proje seçin.";
+  }
+
+  if (!version) {
+    errors.version = "Sürüm numarası boş olamaz (örn. v1.0).";
+  } else if (version.length > MAX_VERSION_LENGTH) {
+    errors.version = `Sürüm numarası en fazla ${MAX_VERSION_LENGTH} karakter olabilir.`;
+  }
+
+  if (!title) {
+    errors.title = "Test Plan başlığı boş olamaz.";
+  } else if (title.length < MIN_TITLE_LENGTH) {
+    errors.title = `Başlık en az ${MIN_TITLE_LENGTH} karakter olmalıdır.`;
+  } else if (title.length > MAX_PLAN_TITLE_LENGTH) {
+    errors.title = `Başlık en fazla ${MAX_PLAN_TITLE_LENGTH} karakter olabilir.`;
+  }
+
+  if (values.scope.trim().length > MAX_PLAN_SECTION_LENGTH) {
+    errors.scope = `Kapsam alanı en fazla ${MAX_PLAN_SECTION_LENGTH} karakter olabilir.`;
+  }
+  if (values.approach.trim().length > MAX_PLAN_SECTION_LENGTH) {
+    errors.approach = `Yaklaşım alanı en fazla ${MAX_PLAN_SECTION_LENGTH} karakter olabilir.`;
+  }
+  if (values.passFailCriteria.trim().length > MAX_PLAN_SECTION_LENGTH) {
+    errors.passFailCriteria = `Kabul/Red kriterleri en fazla ${MAX_PLAN_SECTION_LENGTH} karakter olabilir.`;
+  }
+  if (values.environment.trim().length > MAX_PLAN_SECTION_LENGTH) {
+    errors.environment = `Test ortamı alanı en fazla ${MAX_PLAN_SECTION_LENGTH} karakter olabilir.`;
+  }
+  if (values.scheduleRisks.trim().length > MAX_PLAN_SECTION_LENGTH) {
+    errors.scheduleRisks = `Takvim ve riskler alanı en fazla ${MAX_PLAN_SECTION_LENGTH} karakter olabilir.`;
+  }
+
+  return errors;
 }
 
 export function hasFormErrors(errors: Record<string, string | undefined>): boolean {
