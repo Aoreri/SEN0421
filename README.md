@@ -194,3 +194,9 @@ kapsam: [Metrik API sözleşmesi](docs/metrics-api.md).
 açıklaması `.github/pull_request_template.md` bölümlerini ve bir `Agent:` satırını
 içermelidir; `PR description` CI kontrolü bunu denetler. Ajan kuralları:
 [AGENTS.md](AGENTS.md).
+
+## Playwright E2E (PLN-34)
+
+Login, defect lifecycle, test runs and Test Plan downloads are covered by the
+[Playwright acceptance suite](frontend/e2e/README.md). The CI job runs a disposable
+Docker Compose stack and imports its real JUnit results back into SDS-06.
