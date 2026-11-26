@@ -1,3 +1,5 @@
+import { translate } from "./i18nTranslate";
+
 export const SEVERITIES = ["Low", "Medium", "High", "Critical"] as const;
 export type Severity = (typeof SEVERITIES)[number];
 
@@ -446,7 +448,9 @@ function extractErrorDetail(payload: unknown, status: number, fallbackText: stri
       }
     }
   }
-  return STATUS_ERROR_MESSAGES[status] ?? (fallbackText || "İstek işlenirken bir hata oluştu.");
+  return (
+    translate(STATUS_ERROR_MESSAGES[status] ?? (fallbackText || "İstek işlenirken bir hata oluştu."))
+  );
 }
 
 export function formatErrorMessage(
@@ -459,7 +463,7 @@ export function formatErrorMessage(
   if (error instanceof Error && error.message.trim()) {
     return error.message.trim();
   }
-  return fallback;
+  return translate(fallback);
 }
 
 async function send(path: string, options: RequestInit = {}): Promise<Response> {
@@ -475,7 +479,10 @@ async function send(path: string, options: RequestInit = {}): Promise<Response> 
       },
     });
   } catch {
-    throw new ApiError("Backend'e ulaşılamadı. Önce backend'i başlatın (README'ye bakın).", 0);
+    throw new ApiError(
+      translate("Backend'e ulaşılamadı. Önce backend'i başlatın (README'ye bakın)."),
+      0,
+    );
   }
 
   if (!res.ok) {
