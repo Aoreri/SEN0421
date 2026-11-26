@@ -6,6 +6,9 @@ header { background: #1f3a5f; color: #fff; padding: 20px 16px 0; }
 header h1 { margin: 0 0 4px; font-size: 1.4rem; }
 header p { margin: 0; opacity: .8; font-size: .9rem; }
 .auth-bar { display: flex; align-items: center; gap: 10px; font-size: .9rem; }
+.lang-toggle { display: flex; gap: 2px; }
+.lang-toggle .header-btn { padding: 4px 9px; }
+.lang-toggle .header-btn[aria-pressed="false"] { background: transparent; color: rgba(255, 255, 255, .7); }
 .auth-user { display: inline-flex; align-items: center; gap: 6px; }
 .header-btn { background: rgba(255, 255, 255, .15); color: #fff; border: 1px solid rgba(255, 255, 255, .35); border-radius: 4px; padding: 6px 12px; font-size: .85rem; text-decoration: none; cursor: pointer; }
 .header-btn:hover { background: rgba(255, 255, 255, .25); }
