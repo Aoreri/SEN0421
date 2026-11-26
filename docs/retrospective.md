@@ -21,7 +21,7 @@
 - A passing API response with a PDF content type/signature did not by itself prove that the intended renderer and page layout work in the target container.
 - Performance and clean-machine installation targets were stated as measurable requirements but were not yet accompanied by reproducible measurement reports.
 - The integrated baseline and the contents of open PR branches needed to be distinguished carefully to avoid describing planned or in-review behavior as a released feature.
-- The final demonstration video requires an actual application session and a shareable recording link; a script alone is not a video artifact.
+- The final demonstration video was recorded from an actual application session and published on the demo site; the script alone would not have been a video artifact.
 
 ## 3. Improvement actions
 
