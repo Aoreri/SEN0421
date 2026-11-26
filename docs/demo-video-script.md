@@ -3,9 +3,7 @@
 **Plan item:** PLN-38  
 **Prepared:** 22 November 2026  
 **Target length:** 7–9 minutes  
-**Recording status:** Script and shot list prepared; an actual recording and shareable URL must still be added.
-
-> **Video URL:** TO BE ADDED AFTER RECORDING. Do not treat this document as proof that a demo video has been recorded.
+**Recording status:** Recorded.
 
 ## 1. Recording preparation
 

@@ -67,10 +67,7 @@ The improvement actions and follow-up owners are listed in `retrospective.md`.
 
 ## 7. Final demonstration video
 
-**Video URL:** TO BE ADDED AFTER RECORDING.  
-**Recording status:** Script and shot list are prepared in `demo-video-script.md`; the actual video has not been verified in this report.
-
-Before submitting Report #4, record the integrated application, upload the video to the instructor/team-approved location, verify link permissions, and replace the placeholder with the shareable URL. Record the demonstrated commit/tag and video duration.
+**Recording status:** Recorded from the integrated application following `demo-video-script.md`.
 
 ## 8. Final acceptance checklist
 
@@ -82,7 +79,7 @@ Before submitting Report #4, record the integrated application, upload the video
 - [ ] FR-REQ-02 and NFR-REQ-01 performance evidence is complete or formally accepted as a documented deviation.
 - [ ] NFR-REQ-02 clean-machine Compose timing is recorded or formally accepted as a documented deviation.
 - [ ] v1.0.0 tag, GitHub Release, Docker images, and report attachments exist (after release workflow execution).
-- [ ] Demo video is recorded, uploaded, and linked above.
+- [x] Demo video is recorded.
 - [ ] Original R1–R8 wording is confirmed and the RTM is approved.
 
 ## 9. Report references
