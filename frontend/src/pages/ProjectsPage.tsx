@@ -12,6 +12,7 @@ import {
 import { DataTable, DataTableColumn } from "../components/DataTable";
 import { ErrorAlert } from "../components/ErrorAlert";
 import { FormField } from "../components/FormField";
+import { ProjectMembers } from "../components/ProjectMembers";
 import { StatusBadge } from "../components/StatusBadge";
 import {
   hasFormErrors,
@@ -561,6 +562,8 @@ export function ProjectsPage({ user }: ProjectsPageProps) {
           ariaLabel="Projeler"
         />
       </section>
+
+      {canWriteCatalog && <ProjectMembers projects={projects} />}
 
       <section>
         <h2>{t("Sürümler (Releases)")}</h2>

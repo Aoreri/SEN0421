@@ -31,7 +31,7 @@ def rule(previous="Open", target="In Progress"):
 def test_legacy_metric_denominators(statuses, expected):
     db = MagicMock()
     db.scalars.return_value, db.scalar.return_value = statuses, 2
-    value = main.metrics(db)
+    value = main.metrics(db, ADMIN)
     assert (value["total_tests"], value["execution_rate"], value["pass_rate"]) == expected
     assert value["open_defects"] == 2
 
@@ -47,8 +47,8 @@ def test_initial_history_and_public_listing():
     assert main.list_defects(db, ADMIN)[0]["allowed"] == ["In Progress"]
     db.scalars.side_effect = None
     db.scalars.return_value = h
-    assert main.defect_history(1, db)[0]["from"] is None
-    assert main.health() == {"status": "ok"}
+    assert main.defect_history(1, db, ADMIN)[0]["from"] is None
+    assert main.health()["status"] == "ok"
 
 
 @pytest.mark.parametrize("body", [main.DefectCreate(title=" "), main.DefectCreate(title="A", test_case="missing")])
@@ -107,6 +107,16 @@ def test_legacy_exception_is_limited_to_documented_seed():
     main.require_verification_passed(db, Defect(id=3, test_case="TC-005"))
 
 
+def test_legacy_exception_does_not_apply_outside_demo(monkeypatch):
+    monkeypatch.setenv("DEMO_MODE", "0")
+    db = MagicMock()
+    db.scalars.return_value, db.scalar.return_value = [], None
+    db.get.return_value = Case(status="Not Run")
+    with pytest.raises(HTTPException) as err:
+        main.require_verification_passed(db, Defect(id=3, test_case="TC-005"))
+    assert err.value.status_code == 409
+
+
 @pytest.mark.parametrize("num,den,expected", [(0, 0, 0), (1, 3, 33.3), (3, 3, 100)])
 def test_percentage(num, den, expected):
     assert metrics.percent(num, den) == expected
@@ -136,7 +146,7 @@ def test_invalid_metric_scope(kwargs):
     db = MagicMock()
     db.get.return_value = Release(id=2, project_id=3)
     with pytest.raises(HTTPException) as error:
-        metrics.expanded_metrics(db, **kwargs)
+        metrics.expanded_metrics(db, ADMIN, **kwargs)
     assert error.value.status_code == 422
 
 
@@ -166,7 +176,7 @@ def test_expanded_rates_denominators_and_utc(scope, empty, aware):
     kwargs = dict(project_id=1, release_id=2, start_at=datetime(2025, 1, 1, tzinfo=UTC), end_at=datetime(2027, 1, 1, tzinfo=UTC)) if scope else {}
     if scope == "project":
         kwargs = {"project_id": 1}
-    value = metrics.expanded_metrics(db, **kwargs)
+    value = metrics.expanded_metrics(db, ADMIN, **kwargs)
     assert value["total_tests"] == sum(totals)
     assert value["pass_rate"] == (0 if empty else 75)
     assert value["requirement_coverage"] == (0 if empty else 75)
@@ -186,12 +196,12 @@ def test_run_lookup(missing):
     db.scalar.return_value = None if missing else run
     if missing:
         with pytest.raises(HTTPException) as error:
-            runs.get_test_run(7, db)
+            runs.get_test_run(7, db, ADMIN)
         assert error.value.status_code == 404
     else:
-        assert runs.get_test_run(7, db)["name"] == "Run"
+        assert runs.get_test_run(7, db, ADMIN)["name"] == "Run"
         db.scalars.return_value = [run]
-        assert runs.list_test_runs(db)[0]["id"] == 7
+        assert runs.list_test_runs(db, ADMIN)[0]["id"] == 7
 
 
 @pytest.mark.parametrize("which", ["project", "release", "suite", "case"])
@@ -296,7 +306,7 @@ def sprint_db(sprint, explicit_runs=None):
 ])
 def test_invalid_sprint_metric_scope(sprint, kwargs, status):
     with pytest.raises(HTTPException) as error:
-        metrics.expanded_metrics(sprint_db(sprint), **kwargs)
+        metrics.expanded_metrics(sprint_db(sprint), ADMIN, **kwargs)
     assert error.value.status_code == status
 
 
@@ -307,7 +317,7 @@ def test_invalid_sprint_metric_scope(sprint, kwargs, status):
     (Sprint(id=5, project_id=1, start_at=JAN, end_at=JAN + timedelta(days=14)), None, None),
 ])
 def test_sprint_metric_scope_branches(sprint, explicit, release_id):
-    value = metrics.expanded_metrics(sprint_db(sprint, explicit), sprint_id=5, release_id=release_id)
+    value = metrics.expanded_metrics(sprint_db(sprint, explicit), ADMIN, sprint_id=5, release_id=release_id)
     assert value["scope"]["sprint_id"] == 5 and value["scope"]["project_id"] == 1
     assert value["total_tests"] == 0 and value["pass_rate"] == 0
 

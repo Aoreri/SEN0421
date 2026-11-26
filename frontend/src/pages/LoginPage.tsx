@@ -18,9 +18,11 @@ export type LoginPageProps = {
   user: User | null;
   onLogin: (user: User) => void;
   onLogout: () => void;
+  /** Demo hesapları yalnızca demo kurulumunda gösterilir (PLN-38). */
+  demo: boolean;
 };
 
-export function LoginPage({ user, onLogin, onLogout }: LoginPageProps) {
+export function LoginPage({ user, onLogin, onLogout, demo }: LoginPageProps) {
   const t = useT();
   const navigate = useNavigate();
   const [username, setUsername] = useState("");
@@ -131,6 +133,7 @@ export function LoginPage({ user, onLogin, onLogout }: LoginPageProps) {
         </form>
       </section>
 
+      {demo && (
       <section>
         <h2>{t("Demo Hesapları")}</h2>
         <table aria-label={t("Demo Kullanıcıları")}>
@@ -166,6 +169,7 @@ export function LoginPage({ user, onLogin, onLogout }: LoginPageProps) {
           </tbody>
         </table>
       </section>
+      )}
     </>
   );
 }

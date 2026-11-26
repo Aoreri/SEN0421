@@ -12,6 +12,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from . import (
+    access,
     auth,
     coverage_imports,
     junit_imports,
@@ -22,8 +23,10 @@ from . import (
     test_reports,
 )
 from . import metrics as expanded_metrics
-from .auth import ADMIN, TEST_LEAD, TESTER, CurrentUser, current_user, require_roles
+from .access import allowed_projects, case_visible, defect_visible, require_defect_access
+from .auth import ADMIN, TEST_LEAD, TESTER, CurrentUser, require_roles
 from .db import DB
+from .demo import demo_mode
 from .models import (
     Defect,
     DefectHistory,
@@ -44,6 +47,7 @@ app.add_middleware(
 )
 app.include_router(auth.router)
 app.include_router(projects.router)
+app.include_router(access.router)
 app.include_router(junit_imports.router)
 app.include_router(runs.router)
 app.include_router(test_plans.router)
@@ -78,13 +82,16 @@ def defect_out(d: Defect, rules: list[DefectTransition], user: User | None) -> d
 
 @app.get("/api/health")
 def health():
-    return {"status": "ok"}
+    return {"status": "ok", "demo": demo_mode()}
 
 
 @app.get("/api/defects")
 def list_defects(db: DB, user: CurrentUser):
     rules = transition_rules(db)
-    return [defect_out(d, rules, user) for d in db.scalars(select(Defect).order_by(Defect.id))]
+    allowed = allowed_projects(db, user)
+    # shortcut: one project lookup per defect for Tester/Developer; batch it if defect lists grow large.
+    return [defect_out(d, rules, user) for d in db.scalars(select(Defect).order_by(Defect.id))
+            if defect_visible(db, allowed, d)]
 
 
 @app.post("/api/defects", status_code=201)
@@ -93,7 +100,8 @@ def create_defect(
 ):
     if not body.title.strip():
         raise HTTPException(422, "Başlık boş olamaz")
-    if body.test_case and not db.get(TestCase, body.test_case):
+    case = db.get(TestCase, body.test_case) if body.test_case else None
+    if body.test_case and (case is None or not case_visible(allowed_projects(db, user), case)):
         raise HTTPException(422, "Test vakası bulunamadı")
     defect = Defect(status="Open", **body.model_dump())
     db.add(defect)
@@ -129,7 +137,8 @@ def require_verification_passed(db: Session, defect: Defect) -> None:
                     409,
                     "Defect kapatılmadan önce başarılı bir doğrulama yürütmesi (Passed) gereklidir",
                 )
-        elif not (defect.id == 3 and tc_id == "TC-005" and tc and tc.status == "Not Run"):
+        # Demo verisindeki defect #3 için belgelenmiş istisna; demo dışı kurulumda uygulanmaz.
+        elif not (demo_mode() and defect.id == 3 and tc_id == "TC-005" and tc and tc.status == "Not Run"):
             if tc is None or tc.status != "Passed":
                 raise HTTPException(
                     409,
@@ -142,6 +151,7 @@ def transition_defect(defect_id: int, body: Transition, db: DB, user: CurrentUse
     defect = db.get(Defect, defect_id, with_for_update=True)
     if not defect:
         raise HTTPException(404, "Defect bulunamadı")
+    require_defect_access(db, user, defect, change=True)
     rule = db.get(DefectTransition, (defect.status, body.to))
     if rule is None:
         raise HTTPException(409, f"Geçersiz geçiş: {defect.status} -> {body.to}")
@@ -155,21 +165,29 @@ def transition_defect(defect_id: int, body: Transition, db: DB, user: CurrentUse
     return defect_out(defect, transition_rules(db), user)
 
 
-@app.get("/api/defects/{defect_id}/history", dependencies=[Depends(current_user)])
-def defect_history(defect_id: int, db: DB):
+@app.get("/api/defects/{defect_id}/history")
+def defect_history(defect_id: int, db: DB, user: CurrentUser):
+    defect = db.get(Defect, defect_id)
+    if defect is not None:
+        require_defect_access(db, user, defect)
     rows = db.scalars(select(DefectHistory).where(DefectHistory.defect_id == defect_id)
                       .order_by(DefectHistory.id))
     return [{"defect_id": h.defect_id, "from": h.from_status, "to": h.to_status, "at": h.at}
             for h in rows]
 
 
-@app.get("/api/metrics", dependencies=[Depends(current_user)])
-def metrics(db: DB):
-    statuses = list(db.scalars(select(TestCase.status)))
+@app.get("/api/metrics")
+def metrics(db: DB, user: CurrentUser):
+    allowed = allowed_projects(db, user)
+    statuses = (list(db.scalars(select(TestCase.status))) if allowed is None else
+                [t.status for t in db.scalars(select(TestCase)) if case_visible(allowed, t)])
     total = len(statuses)
     executed = sum(s in ("Passed", "Failed") for s in statuses)
     passed = statuses.count("Passed")
-    open_defects = db.scalar(select(func.count()).where(Defect.status != "Closed"))
+    open_defects = (db.scalar(select(func.count()).where(Defect.status != "Closed"))
+                    if allowed is None else
+                    sum(defect_visible(db, allowed, d)
+                        for d in db.scalars(select(Defect).where(Defect.status != "Closed"))))
     return {
         "total_tests": total,
         "execution_rate": round(executed / total * 100, 1) if total else 0,

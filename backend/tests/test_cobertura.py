@@ -5,7 +5,7 @@ from sqlalchemy import func, select
 from app.cobertura import MAX_COVERAGE_BYTES, parse_cobertura
 from app.db import SessionLocal
 from app.models import CoverageImport
-from tests.conftest import as_user
+from tests.conftest import as_user, grant
 
 REPORT = '''<?xml version="1.0"?>
 <!DOCTYPE coverage SYSTEM "http://cobertura.sourceforge.net/xml/coverage-04.dtd">
@@ -84,6 +84,7 @@ def test_import_persists_metadata_and_linked_junit_evidence(client, record_prope
     assert upload(client, project=99999).status_code == 404
     assert client.get(f"/api/projects/999/coverage/imports/{report['id']}", headers=auth).status_code == 404
     other = client.post('/api/projects', json={'name': 'Other'}, headers=as_user('admin')).json()
+    grant(client, other['id'])
     assert upload(client, project=other['id'], params={'junit_import_id': junit['id']}).status_code == 422
 
 

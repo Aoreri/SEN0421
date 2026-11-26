@@ -10,7 +10,8 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from .auth import ADMIN, TEST_LEAD, TESTER, require_roles
+from .access import require_access, require_defect_access
+from .auth import ADMIN, TEST_LEAD, TESTER, CurrentUser, require_roles
 from .db import DB
 from .models import (
     Defect,
@@ -26,7 +27,6 @@ from .models import (
     User,
     execution_defects,
 )
-from .projects import READ
 from .test_plans import _pdf_escape
 
 router = APIRouter(prefix="/api", tags=["test-reports"])
@@ -382,6 +382,7 @@ def build_incident_report_data(
 @router.post("/defects/{defect_id}/incident-report/snapshots", status_code=201)
 def create_incident_report_snapshot(defect_id: int, db: DB, user: SnapshotUser):
     defect = get_defect_or_404(db, defect_id)
+    require_defect_access(db, user, defect)
     html_content, payload = build_incident_report_data(db, defect, user.username)
     snap = TestIncidentReportSnapshot(
         defect_id=defect.id,
@@ -397,9 +398,9 @@ def create_incident_report_snapshot(defect_id: int, db: DB, user: SnapshotUser):
     return incident_snapshot_detail_out(snap)
 
 
-@router.get("/defects/{defect_id}/incident-report/snapshots", dependencies=READ)
-def list_incident_report_snapshots(defect_id: int, db: DB):
-    get_defect_or_404(db, defect_id)
+@router.get("/defects/{defect_id}/incident-report/snapshots")
+def list_incident_report_snapshots(defect_id: int, db: DB, user: CurrentUser):
+    require_defect_access(db, user, get_defect_or_404(db, defect_id))
     rows = db.scalars(
         select(TestIncidentReportSnapshot)
         .where(TestIncidentReportSnapshot.defect_id == defect_id)
@@ -408,9 +409,9 @@ def list_incident_report_snapshots(defect_id: int, db: DB):
     return [incident_snapshot_summary_out(s) for s in rows]
 
 
-@router.get("/defects/{defect_id}/incident-report/snapshots/{snapshot_id}", dependencies=READ)
-def get_incident_report_snapshot(defect_id: int, snapshot_id: int, db: DB):
-    get_defect_or_404(db, defect_id)
+@router.get("/defects/{defect_id}/incident-report/snapshots/{snapshot_id}")
+def get_incident_report_snapshot(defect_id: int, snapshot_id: int, db: DB, user: CurrentUser):
+    require_defect_access(db, user, get_defect_or_404(db, defect_id))
     snap = db.scalar(
         select(TestIncidentReportSnapshot).where(
             TestIncidentReportSnapshot.id == snapshot_id,
@@ -422,14 +423,16 @@ def get_incident_report_snapshot(defect_id: int, snapshot_id: int, db: DB):
     return incident_snapshot_detail_out(snap)
 
 
-@router.get("/defects/{defect_id}/incident-report/export", dependencies=READ)
+@router.get("/defects/{defect_id}/incident-report/export")
 def export_incident_report(
     defect_id: int,
     db: DB,
+    user: CurrentUser,
     format: Literal["html", "pdf"] = Query("html"),
     snapshot_id: int | None = Query(None),
 ):
     defect = get_defect_or_404(db, defect_id)
+    require_defect_access(db, user, defect)
     if snapshot_id is not None:
         snap = db.scalar(
             select(TestIncidentReportSnapshot).where(
@@ -581,6 +584,7 @@ def build_test_log_data(
 @router.post("/test-runs/{run_id}/test-log/snapshots", status_code=201)
 def create_test_log_snapshot(run_id: int, db: DB, user: SnapshotUser):
     run = get_run_for_log_or_404(db, run_id)
+    require_access(db, user, [run.project_id])
     html_content, payload = build_test_log_data(db, run, user.username)
     snap = TestLogSnapshot(
         test_run_id=run.id,
@@ -594,9 +598,9 @@ def create_test_log_snapshot(run_id: int, db: DB, user: SnapshotUser):
     return test_log_snapshot_detail_out(snap)
 
 
-@router.get("/test-runs/{run_id}/test-log/snapshots", dependencies=READ)
-def list_test_log_snapshots(run_id: int, db: DB):
-    get_run_for_log_or_404(db, run_id)
+@router.get("/test-runs/{run_id}/test-log/snapshots")
+def list_test_log_snapshots(run_id: int, db: DB, user: CurrentUser):
+    require_access(db, user, [get_run_for_log_or_404(db, run_id).project_id])
     rows = db.scalars(
         select(TestLogSnapshot)
         .where(TestLogSnapshot.test_run_id == run_id)
@@ -605,9 +609,9 @@ def list_test_log_snapshots(run_id: int, db: DB):
     return [test_log_snapshot_summary_out(s) for s in rows]
 
 
-@router.get("/test-runs/{run_id}/test-log/snapshots/{snapshot_id}", dependencies=READ)
-def get_test_log_snapshot(run_id: int, snapshot_id: int, db: DB):
-    get_run_for_log_or_404(db, run_id)
+@router.get("/test-runs/{run_id}/test-log/snapshots/{snapshot_id}")
+def get_test_log_snapshot(run_id: int, snapshot_id: int, db: DB, user: CurrentUser):
+    require_access(db, user, [get_run_for_log_or_404(db, run_id).project_id])
     snap = db.scalar(
         select(TestLogSnapshot).where(
             TestLogSnapshot.id == snapshot_id,
@@ -619,14 +623,16 @@ def get_test_log_snapshot(run_id: int, snapshot_id: int, db: DB):
     return test_log_snapshot_detail_out(snap)
 
 
-@router.get("/test-runs/{run_id}/test-log/export", dependencies=READ)
+@router.get("/test-runs/{run_id}/test-log/export")
 def export_test_log(
     run_id: int,
     db: DB,
+    user: CurrentUser,
     format: Literal["html", "pdf"] = Query("html"),
     snapshot_id: int | None = Query(None),
 ):
     run = get_run_for_log_or_404(db, run_id)
+    require_access(db, user, [run.project_id])
     if snapshot_id is not None:
         snap = db.scalar(
             select(TestLogSnapshot).where(

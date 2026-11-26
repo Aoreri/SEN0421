@@ -540,6 +540,7 @@ export const api = {
       body: JSON.stringify({ username: username.trim(), password }),
     }),
   me: () => request<User>("/auth/me"),
+  health: () => request<{ status: string; demo: boolean }>("/health"),
   metrics: () => request<Metrics>("/metrics"),
   expandedMetrics: (
     releaseId?: number | null,
@@ -651,6 +652,19 @@ export const api = {
       body: JSON.stringify({ name: name.trim(), description: description.trim() }),
     }),
   deleteProject: (id: number) => request<void>(`/projects/${id}`, { method: "DELETE" }),
+  // PLN-40: Admin ve Test Lead; Tester/Developer yalnızca üye oldukları projeleri görür.
+  users: () => request<User[]>("/users"),
+  createUser: (username: string, password: string, role: Role) =>
+    request<User>("/users", {
+      method: "POST",
+      body: JSON.stringify({ username: username.trim(), password, role }),
+    }),
+  deleteUser: (id: number) => request<void>(`/users/${id}`, { method: "DELETE" }),
+  projectMembers: (projectId: number) => request<User[]>(`/projects/${projectId}/members`),
+  addProjectMember: (projectId: number, userId: number) =>
+    request<User[]>(`/projects/${projectId}/members/${userId}`, { method: "PUT" }),
+  removeProjectMember: (projectId: number, userId: number) =>
+    request<User[]>(`/projects/${projectId}/members/${userId}`, { method: "DELETE" }),
   releases: () => request<Release[]>("/releases"),
   createRelease: (project_id: number, version: string) =>
     request<Release>("/releases", {

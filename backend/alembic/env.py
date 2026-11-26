@@ -11,3 +11,9 @@ with engine.connect() as connection:
     context.configure(connection=connection, target_metadata=Base.metadata)
     with context.begin_transaction():
         context.run_migrations()
+    at_head = context.get_context().get_current_revision() == context.script.get_current_head()
+
+if at_head:
+    from app.demo import bootstrap
+
+    bootstrap()

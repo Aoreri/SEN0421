@@ -7,6 +7,8 @@ from pathlib import Path
 # Set the URL before importing app.db so unit tests never select the dev DB by accident.
 _TEST_DIRECTORY = tempfile.TemporaryDirectory(prefix="sds06-pytest-")
 os.environ.setdefault("DATABASE_URL", f"sqlite:///{_TEST_DIRECTORY.name}/test.db")
+# Tests run against the demo accounts and data (app/demo.py).
+os.environ["DEMO_MODE"] = "1"
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
@@ -45,3 +47,12 @@ def fresh_seed():
 def pytest_sessionfinish(session, exitstatus):
     engine.dispose()
     _TEST_DIRECTORY.cleanup()
+
+
+def grant(client, project_id: int, *usernames: str) -> None:
+    """PLN-40: Tester/Developer yalnızca üye oldukları projeleri görür; yeni projeye üye ekler."""
+    admin = as_user("admin")
+    users = {u["username"]: u["id"] for u in client.get("/api/users", headers=admin).json()}
+    for name in usernames or ("tester", "developer"):
+        res = client.put(f"/api/projects/{project_id}/members/{users[name]}", headers=admin)
+        assert res.status_code == 200, res.text

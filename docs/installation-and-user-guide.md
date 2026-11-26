@@ -78,7 +78,7 @@ docker compose down -v
 
 ## 5. Sign in and roles
 
-The repository includes sample users for local demonstration. Their shared sample password is `demo1234`.
+With `DEMO_MODE=1` the system loads sample users and data for demonstration; their shared sample password is `demo1234`. By default the database starts empty and the first Admin comes from `ADMIN_USERNAME`/`ADMIN_PASSWORD`.
 
 | Username | Role | Typical demonstration responsibility |
 |---|---|---|

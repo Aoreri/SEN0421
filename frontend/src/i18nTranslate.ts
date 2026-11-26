@@ -298,6 +298,9 @@ export const en: Record<string, string> = {
   "Kabul/Red kriterleri en fazla {max} karakter olabilir.":
     "Pass/fail criteria can be at most {max} characters.",
   "Kapat": "Close",
+  "Kullanıcılar": "Users",
+  "Bu bir demo sürümüdür; tüm veriler her gün Türkiye saatiyle gece 00:00'da sıfırlanır.":
+    "This is a demo version; all data is reset every day at 00:00 Turkey time.",
   "Kapatılan": "Closed",
   "Kapatılan:": "Closed:",
   "Kapsam Eksikliği (Gap):": "Coverage Gap:",

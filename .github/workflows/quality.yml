@@ -41,6 +41,7 @@ jobs:
     env:
       DATABASE_URL: postgresql+psycopg://sds06:sds06@localhost:5432/sds06_pln35_benchmark
       PLN35_DISPOSABLE: "1"
+      DEMO_MODE: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

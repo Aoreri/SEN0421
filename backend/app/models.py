@@ -36,6 +36,14 @@ test_case_requirements = Table(
     Column("requirement_id", ForeignKey("requirements.id"), primary_key=True),
 )
 
+# PLN-40: Tester ve Developer yalnızca üye oldukları projeleri görür (app/access.py).
+project_members = Table(
+    "project_members",
+    Base.metadata,
+    Column("project_id", ForeignKey("projects.id"), primary_key=True),
+    Column("user_id", ForeignKey("users.id"), primary_key=True, index=True),
+)
+
 execution_defects = Table(
     "execution_defects",
     Base.metadata,

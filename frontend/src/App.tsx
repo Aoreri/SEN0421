@@ -35,6 +35,7 @@ import { ReleasesPage } from "./pages/ReleasesPage";
 import { TestCasesPage } from "./pages/TestCasesPage";
 import { TestPlansPage } from "./pages/TestPlansPage";
 import { TestRunsPage } from "./pages/TestRunsPage";
+import { UsersPage } from "./pages/UsersPage";
 import {
   computePreviewExpandedMetrics,
   createPreviewReleaseWaiver,
@@ -664,6 +665,9 @@ function DashboardView({ user }: DashboardViewProps) {
   );
 }
 
+const DEMO_NOTICE =
+  "Bu bir demo sürümüdür; tüm veriler her gün Türkiye saatiyle gece 00:00'da sıfırlanır.";
+
 export default function App() {
   const t = useT();
   const lang = useLang();
@@ -671,6 +675,14 @@ export default function App() {
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
   const [authReady, setAuthReady] = useState(() => !getStoredToken());
+  const [demo, setDemo] = useState(false);
+
+  useEffect(() => {
+    api
+      .health()
+      .then((h) => setDemo(h.demo))
+      .catch(() => setDemo(false));
+  }, []);
 
   useEffect(() => {
     const token = getStoredToken();
@@ -706,7 +718,14 @@ export default function App() {
       <header>
         <div className="header-inner">
           <div>
-            <h1>SDS-06 · Agile Test and Defect Tracking System</h1>
+            <h1>
+              SDS-06 · Agile Test and Defect Tracking System
+              {demo && (
+                <span className="demo-badge" tabIndex={0} title={t(DEMO_NOTICE)} aria-label={t(DEMO_NOTICE)}>
+                  DEMO
+                </span>
+              )}
+            </h1>
           </div>
 
           <div className="auth-bar">
@@ -783,6 +802,11 @@ export default function App() {
           >
             {t("Projeler & Gereksinimler")}
           </NavLink>
+          {user?.role === "Admin" && (
+            <NavLink to="/users" className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}>
+              {t("Kullanıcılar")}
+            </NavLink>
+          )}
           <NavLink to="/junit-imports" className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}>{t("JUnit Raporları")}</NavLink>
         </nav>
       </header>
@@ -797,9 +821,10 @@ export default function App() {
           <Route path="/defects/:id" element={<DefectDetailPage user={user} />} />
           <Route path="/releases" element={<ReleasesPage user={user} />} />
           <Route path="/projects" element={<ProjectsPage user={user} />} />
+          <Route path="/users" element={<UsersPage user={user} />} />
           <Route
             path="/login"
-            element={<LoginPage user={user} onLogin={setUser} onLogout={handleLogout} />}
+            element={<LoginPage user={user} onLogin={setUser} onLogout={handleLogout} demo={demo} />}
           />
         </Routes>
       </main>

@@ -16,9 +16,9 @@
 5. Prepare a simple test case with a linked requirement, a test run, one failed execution, a related defect, and a subsequent passing verification execution.
 6. If the Test Plan UI or report UI is not merged, demonstrate the available API endpoint through Swagger and explicitly say that the UI/report PR is pending; do not imply it is integrated.
 
-## 2. Timed storyboard and narration
+## 2. Timed storyboard and on-screen captions
 
-| Time | Screen / action | Narration points |
+| Time | Screen / action | Caption points |
 |---|---|---|
 | 00:00–00:40 | Title slide and dashboard | Introduce SDS-06 as an academic Agile Test and Defect Tracking System. State the scope: requirements, test design, execution, defects, metrics, and test documentation. |
 | 00:40–01:30 | Login page and role selection | Explain Admin, Test Lead, Tester, and Developer roles. Sign in with a sample account and explain that backend authorization enforces permissions. |
@@ -30,14 +30,14 @@
 | 06:20–07:25 | Test Plan and reports | Demonstrate Test Plan lifecycle and snapshot/HTML/PDF export if the UI/report path is integrated. Otherwise use `/docs` and label the API/PR status accurately. |
 | 07:25–08:10 | CI / standards / close | Show the GitHub Actions checks and summarize 12207, 29119-2/-3, IEEE 1016, 29148, 1012 and 25010 work products. State known limitations honestly. |
 
-## 3. Suggested closing statement
+## 3. Suggested closing caption
 
 “SDS-06 connects requirements to test cases, executes test runs, records and verifies defects, and provides project/release metrics and test documentation. The team has used automated API, PostgreSQL, frontend, and CI checks. Remaining acceptance items are the integrated migration chain, final PDF rendering inspection, performance/clean-machine measurements, and any work still in open pull requests.”
 
 ## 4. Upload and evidence steps
 
 - Record the walkthrough using the course-accepted screen recorder.
-- Export at a readable resolution with audio narration.
+- Export at a readable resolution (1080p) with on-screen captions that explain each step. Audio narration is optional; the course template asks only for a video link.
 - Upload to the team/instructor-approved storage or course portal.
 - Verify the link opens for the instructor/team (appropriate permissions, not a private local path).
 - Replace the URL placeholder at the top of this file and in `final-deliverable-report.md`.

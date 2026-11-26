@@ -7,7 +7,16 @@ from pydantic import BaseModel, Field, StringConstraints
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from .auth import ADMIN, TEST_LEAD, TESTER, current_user, require_roles
+from .access import (
+    GLOBAL_ROLES,
+    allowed_projects,
+    case_visible,
+    defect_visible,
+    require_access,
+    scoped,
+    visible,
+)
+from .auth import ADMIN, TEST_LEAD, TESTER, CurrentUser, require_roles
 from .db import DB
 from .models import (
     Defect,
@@ -24,7 +33,6 @@ from .models import (
 )
 
 router = APIRouter(prefix="/api", tags=["test-runs"])
-READ = [Depends(current_user)]
 ExecuteUser = Annotated[User, Depends(require_roles(ADMIN, TEST_LEAD, TESTER))]
 
 RunName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
@@ -107,24 +115,36 @@ def load_execution_or_404(db: Session, run_id: int, execution_id: int) -> TestEx
     return ex
 
 
-@router.get("/test-runs", dependencies=READ)
-def list_test_runs(db: DB):
+def require_run_access(db: Session, user: User, run_id: int) -> None:
+    if user.role in GLOBAL_ROLES:
+        return
+    run = db.get(TestRun, run_id)
+    require_access(db, user, [run.project_id] if run else [])
+
+
+@router.get("/test-runs")
+def list_test_runs(db: DB, user: CurrentUser):
     stmt = (
         select(TestRun)
         .options(selectinload(TestRun.executions).selectinload(TestExecution.defects))
         .order_by(TestRun.id)
     )
-    return [run_out(r) for r in db.scalars(stmt)]
+    return [run_out(r) for r in db.scalars(scoped(stmt, TestRun.project_id, allowed_projects(db, user)))]
 
 
-@router.get("/test-runs/{run_id}", dependencies=READ)
-def get_test_run(run_id: int, db: DB):
-    return run_out(load_run_or_404(db, run_id))
+@router.get("/test-runs/{run_id}")
+def get_test_run(run_id: int, db: DB, user: CurrentUser):
+    run = load_run_or_404(db, run_id)
+    require_access(db, user, [run.project_id])
+    return run_out(run)
 
 
 @router.post("/test-runs", status_code=201)
 def create_test_run(body: TestRunCreate, db: DB, user: ExecuteUser):
     if db.get(Project, body.project_id) is None:
+        raise HTTPException(422, "Proje bulunamadı")
+    allowed = allowed_projects(db, user)
+    if not visible(allowed, [body.project_id]):
         raise HTTPException(422, "Proje bulunamadı")
     release_id = body.release_id
     if release_id is not None:
@@ -149,6 +169,9 @@ def create_test_run(body: TestRunCreate, db: DB, user: ExecuteUser):
             raise HTTPException(422, "Test suite bulunamadı veya projeye ait değil")
     ordered_case_ids = list(dict.fromkeys(body.test_case_ids))
     found_cases = set(db.scalars(select(TestCase.id).where(TestCase.id.in_(ordered_case_ids))))
+    if allowed is not None:
+        found_cases = {tc.id for tc in db.scalars(select(TestCase).where(TestCase.id.in_(found_cases)))
+                       if case_visible(allowed, tc)}
     if len(found_cases) != len(ordered_case_ids):
         raise HTTPException(422, "Test vakası bulunamadı")
 
@@ -174,11 +197,14 @@ def record_execution(
     run_id: int, execution_id: int, body: ExecutionRecord, db: DB, user: ExecuteUser
 ):
     ex = load_execution_or_404(db, run_id, execution_id)
+    require_run_access(db, user, run_id)
     if body.defect_ids is not None:
         unique_ids = list(dict.fromkeys(body.defect_ids))
         defects = list(
             db.scalars(select(Defect).where(Defect.id.in_(unique_ids)).order_by(Defect.id))
         )
+        allowed = allowed_projects(db, user)
+        defects = [d for d in defects if defect_visible(db, allowed, d)]
         if len(defects) != len(unique_ids):
             raise HTTPException(422, "Defect bulunamadı")
         ex.defects = defects
@@ -202,6 +228,7 @@ def create_defect_from_execution(
     run_id: int, execution_id: int, body: ExecutionDefectCreate, db: DB, user: ExecuteUser
 ):
     ex = load_execution_or_404(db, run_id, execution_id)
+    require_run_access(db, user, run_id)
     defect = Defect(
         title=body.title,
         severity=body.severity,

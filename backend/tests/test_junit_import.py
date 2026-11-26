@@ -6,7 +6,7 @@ from sqlalchemy.exc import IntegrityError
 from app.db import SessionLocal
 from app.junit import MAX_XML_BYTES
 from app.models import ImportedTestResult, ImportedTestRun
-from tests.conftest import as_user
+from tests.conftest import as_user, grant
 
 pytestmark = [pytest.mark.integration, pytest.mark.usefixtures("fresh_seed")]
 
@@ -75,6 +75,7 @@ def test_import_auth_is_enforced_before_writes(client, username, status):
 
 def test_other_project_cases_are_reported_unmatched_and_reads_are_scoped(client):
     project = client.post('/api/projects', json={'name': 'Other'}, headers=as_user('admin')).json()
+    grant(client, project['id'])
     report = upload(client, project=project['id']).json()
     assert report['summary']['matched'] == 0 and report['summary']['unmatched'] == 4
     assert report['unmatched_results'][0]['unmatched_reason'] == 'not_linked_to_project'
@@ -141,6 +142,7 @@ def test_reads_require_login_and_support_pagination(client):
 def test_project_with_import_history_cannot_be_deleted(client):
     project = client.post('/api/projects', json={'name': 'Import-only project'},
                           headers=as_user('admin')).json()
+    grant(client, project['id'])
     report = upload(client, project=project['id']).json()
     assert client.delete(f"/api/projects/{project['id']}",
                          headers=as_user('admin')).status_code == 409

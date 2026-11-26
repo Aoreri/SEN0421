@@ -2,11 +2,12 @@
 from datetime import UTC, datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy import Float, case, cast, func, or_, select, union_all
 from sqlalchemy.orm import Session
 
-from .auth import current_user
+from .access import allowed_projects, require_access
+from .auth import CurrentUser
 from .db import DB
 from .models import (
     Defect,
@@ -54,8 +55,8 @@ def stored_utc(value: datetime | None) -> datetime | None:
     return value.astimezone(UTC)
 
 
-@router.get("/expanded", dependencies=[Depends(current_user)])
-def expanded_metrics(db: DB,
+@router.get("/expanded")
+def expanded_metrics(db: DB, user: CurrentUser,
                      project_id: Annotated[int | None, Query(ge=1)] = None,
                      release_id: Annotated[int | None, Query(ge=1)] = None,
                      sprint_id: Annotated[int | None, Query(ge=1)] = None,
@@ -90,10 +91,13 @@ def expanded_metrics(db: DB,
         project_id = release.project_id
     if project_id is not None:
         get_or_404(db, Project, project_id)
+        require_access(db, user, [project_id])
+    # Tester/Developer without an explicit scope see their own projects only.
+    scope_ids = {project_id} if project_id is not None else allowed_projects(db, user)
     as_of = min(datetime.now(UTC), end) if end is not None else datetime.now(UTC)
     run_query = select(TestRun.id, TestRun.name, TestRun.created_at).where(TestRun.created_at <= as_of)
-    if project_id is not None:
-        run_query = run_query.where(TestRun.project_id == project_id)
+    if scope_ids is not None:
+        run_query = run_query.where(TestRun.project_id.in_(scope_ids))
     if release_id is not None:
         run_query = run_query.where(TestRun.release_id == release_id)
     if sprint is not None:
@@ -135,8 +139,8 @@ def expanded_metrics(db: DB,
     series.reverse()
 
     req_scope = select(Requirement.id)
-    if project_id is not None:
-        req_scope = req_scope.where(Requirement.project_id == project_id)
+    if scope_ids is not None:
+        req_scope = req_scope.where(Requirement.project_id.in_(scope_ids))
     reqs = req_scope.cte("scoped_requirements")
     req_total = db.scalar(select(func.count()).select_from(reqs)) or 0
     covered_req = db.scalar(select(func.count()).select_from(reqs).where(
@@ -186,13 +190,13 @@ def expanded_metrics(db: DB,
             TestExecution, TestExecution.id == execution_defects.c.execution_id).join(
             TestRun, TestRun.id == TestExecution.run_id).where(TestRun.release_id == release_id)
         defects_query = defects_query.where(Defect.id.in_(linked_defects))
-    elif project_id is not None:
+    elif scope_ids is not None:
         linked_cases = select(test_case_requirements.c.test_case_id).join(
             Requirement, Requirement.id == test_case_requirements.c.requirement_id).where(
-            Requirement.project_id == project_id)
+            Requirement.project_id.in_(scope_ids))
         linked_defects = select(execution_defects.c.defect_id).join(
             TestExecution, TestExecution.id == execution_defects.c.execution_id).join(
-            TestRun, TestRun.id == TestExecution.run_id).where(TestRun.project_id == project_id)
+            TestRun, TestRun.id == TestExecution.run_id).where(TestRun.project_id.in_(scope_ids))
         defects_query = defects_query.where(or_(Defect.test_case.in_(linked_cases),
                                                 Defect.id.in_(linked_defects)))
     scoped_defects = defects_query.cte("scoped_defects")

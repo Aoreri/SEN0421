@@ -10,7 +10,8 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session, selectinload
 
-from .auth import ADMIN, TEST_LEAD, TESTER, require_roles
+from .access import require_access
+from .auth import ADMIN, TEST_LEAD, TESTER, CurrentUser, require_roles
 from .db import DB
 from .models import (
     Defect,
@@ -25,7 +26,7 @@ from .models import (
     User,
     execution_defects,
 )
-from .projects import READ, get_or_404, release_gate_out
+from .projects import get_or_404, release_gate_out
 from .test_plans import _pdf_escape
 
 router = APIRouter(prefix="/api/releases", tags=["test-summary-reports"])
@@ -453,6 +454,7 @@ def render_summary_pdf_bytes(html_content: str, payload: dict[str, Any]) -> byte
 @router.post("/{release_id}/summary-report/snapshots", status_code=201)
 def create_summary_report_snapshot(release_id: int, db: DB, user: SnapshotUser):
     release = get_or_404(db, Release, release_id)
+    require_access(db, user, [release.project_id])
     html_content, payload = build_summary_report_data(db, release, user.username)
     snap = TestSummaryReportSnapshot(
         release_id=release.id,
@@ -469,9 +471,9 @@ def create_summary_report_snapshot(release_id: int, db: DB, user: SnapshotUser):
     return snapshot_detail_out(snap)
 
 
-@router.get("/{release_id}/summary-report/snapshots", dependencies=READ)
-def list_summary_report_snapshots(release_id: int, db: DB):
-    get_or_404(db, Release, release_id)
+@router.get("/{release_id}/summary-report/snapshots")
+def list_summary_report_snapshots(release_id: int, db: DB, user: CurrentUser):
+    require_access(db, user, [get_or_404(db, Release, release_id).project_id])
     rows = db.scalars(
         select(TestSummaryReportSnapshot)
         .where(TestSummaryReportSnapshot.release_id == release_id)
@@ -480,9 +482,9 @@ def list_summary_report_snapshots(release_id: int, db: DB):
     return [snapshot_summary_out(s) for s in rows]
 
 
-@router.get("/{release_id}/summary-report/snapshots/{snapshot_id}", dependencies=READ)
-def get_summary_report_snapshot(release_id: int, snapshot_id: int, db: DB):
-    get_or_404(db, Release, release_id)
+@router.get("/{release_id}/summary-report/snapshots/{snapshot_id}")
+def get_summary_report_snapshot(release_id: int, snapshot_id: int, db: DB, user: CurrentUser):
+    require_access(db, user, [get_or_404(db, Release, release_id).project_id])
     snap = db.scalar(
         select(TestSummaryReportSnapshot).where(
             TestSummaryReportSnapshot.id == snapshot_id,
@@ -494,14 +496,16 @@ def get_summary_report_snapshot(release_id: int, snapshot_id: int, db: DB):
     return snapshot_detail_out(snap)
 
 
-@router.get("/{release_id}/summary-report/export", dependencies=READ)
+@router.get("/{release_id}/summary-report/export")
 def export_summary_report(
     release_id: int,
     db: DB,
+    user: CurrentUser,
     format: Literal["html", "pdf"] = Query("html"),
     snapshot_id: int | None = Query(None),
 ):
     release = get_or_404(db, Release, release_id)
+    require_access(db, user, [release.project_id])
     if snapshot_id is not None:
         snap = db.scalar(
             select(TestSummaryReportSnapshot).where(

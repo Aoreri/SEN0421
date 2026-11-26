@@ -17,6 +17,11 @@ export default async function setup(config: FullConfig) {
     const project = await api.post("/api/projects", { headers, data: { name: projectName } });
     expect(project.status()).toBe(201);
     const projectId: number = (await project.json()).id;
+    // PLN-40: Tester and Developer only see projects they are members of.
+    const users: { id: number; username: string }[] = await (await api.get("/api/users", { headers })).json();
+    for (const user of users.filter(u => u.username === "tester" || u.username === "developer")) {
+      expect((await api.put(`/api/projects/${projectId}/members/${user.id}`, { headers })).status()).toBe(200);
+    }
     const requirementId = `P34-${suffix}`;
     expect((await api.post("/api/requirements", {
       headers, data: { id: requirementId, project_id: projectId, title: "PLN-34 E2E acceptance" },
