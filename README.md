@@ -94,6 +94,7 @@ docker compose up --build -d --wait
 ```
 
 - Arayüz: http://localhost:5173
+- Dil: arayüz Türkçedir (varsayılan); başlıktaki `TR | EN` düğmesiyle İngilizceye geçilir.
 - API / Swagger: http://localhost:8000/docs · sağlık kontrolü: http://localhost:8000/api/health
 
 Backend açılışta `alembic upgrade head` çalıştırır; ilk migrasyon demo verisini yükler.

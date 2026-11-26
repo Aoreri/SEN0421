@@ -1,4 +1,5 @@
 import { ReactNode } from "react";
+import { useT } from "../i18n";
 
 export type DataTableColumn<T> = {
   key: string;
@@ -21,8 +22,9 @@ export function DataTable<T>({
   emptyMessage = "Kayıt bulunamadı.",
   ariaLabel,
 }: DataTableProps<T>) {
+  const t = useT();
   return (
-    <table aria-label={ariaLabel}>
+    <table aria-label={ariaLabel && t(ariaLabel)}>
       <thead>
         <tr>
           {columns.map((col) => (
@@ -34,7 +36,7 @@ export function DataTable<T>({
         {rows.length === 0 ? (
           <tr>
             <td colSpan={columns.length} className="table-empty">
-              {emptyMessage}
+              {t(emptyMessage)}
             </td>
           </tr>
         ) : (

@@ -1,4 +1,5 @@
 import { SEVERITIES, TEST_PRIORITIES } from "./api";
+import { translate } from "./i18nTranslate";
 
 export type DefectFormValues = {
   title: string;
@@ -107,15 +108,19 @@ export function validateDefectForm(
   const trimmedTitle = values.title.trim();
 
   if (!trimmedTitle) {
-    errors.title = "Başlık boş olamaz.";
+    errors.title = translate("Başlık boş olamaz.");
   } else if (trimmedTitle.length < MIN_TITLE_LENGTH) {
-    errors.title = `Başlık en az ${MIN_TITLE_LENGTH} karakter olmalıdır.`;
+    errors.title = translate("Başlık en az {min} karakter olmalıdır.", {
+      min: MIN_TITLE_LENGTH,
+    });
   } else if (trimmedTitle.length > MAX_TITLE_LENGTH) {
-    errors.title = `Başlık en fazla ${MAX_TITLE_LENGTH} karakter olabilir.`;
+    errors.title = translate("Başlık en fazla {max} karakter olabilir.", {
+      max: MAX_TITLE_LENGTH,
+    });
   }
 
   if (!SEVERITIES.includes(values.severity as (typeof SEVERITIES)[number])) {
-    errors.severity = "Geçerli bir önem derecesi seçin.";
+    errors.severity = translate("Geçerli bir önem derecesi seçin.");
   }
 
   if (
@@ -124,7 +129,7 @@ export function validateDefectForm(
     validTestCaseIds.length > 0 &&
     !validTestCaseIds.includes(values.testCase)
   ) {
-    errors.testCase = "Geçerli bir test vakası seçin.";
+    errors.testCase = translate("Geçerli bir test vakası seçin.");
   }
 
   return errors;
@@ -133,12 +138,12 @@ export function validateDefectForm(
 export function validateLoginForm(values: LoginFormValues): LoginFormErrors {
   const errors: LoginFormErrors = {};
   if (!values.username.trim()) {
-    errors.username = "Kullanıcı adı boş olamaz.";
+    errors.username = translate("Kullanıcı adı boş olamaz.");
   }
   if (!values.password) {
-    errors.password = "Parola boş olamaz.";
+    errors.password = translate("Parola boş olamaz.");
   } else if (new TextEncoder().encode(values.password).length > 72) {
-    errors.password = "Parola en fazla 72 bayt olabilir.";
+    errors.password = translate("Parola en fazla 72 bayt olabilir.");
   }
   return errors;
 }
@@ -149,13 +154,17 @@ export function validateProjectForm(values: ProjectFormValues): ProjectFormError
   const description = values.description.trim();
 
   if (!name) {
-    errors.name = "Proje adı boş olamaz.";
+    errors.name = translate("Proje adı boş olamaz.");
   } else if (name.length > MAX_PROJECT_NAME_LENGTH) {
-    errors.name = `Proje adı en fazla ${MAX_PROJECT_NAME_LENGTH} karakter olabilir.`;
+    errors.name = translate("Proje adı en fazla {max} karakter olabilir.", {
+      max: MAX_PROJECT_NAME_LENGTH,
+    });
   }
 
   if (description.length > MAX_DESCRIPTION_LENGTH) {
-    errors.description = `Açıklama en fazla ${MAX_DESCRIPTION_LENGTH} karakter olabilir.`;
+    errors.description = translate("Açıklama en fazla {max} karakter olabilir.", {
+      max: MAX_DESCRIPTION_LENGTH,
+    });
   }
 
   return errors;
@@ -167,13 +176,15 @@ export function validateReleaseForm(values: ReleaseFormValues): ReleaseFormError
   const version = values.version.trim();
 
   if (!values.projectId || !Number.isInteger(projectId) || projectId <= 0) {
-    errors.projectId = "Geçerli bir proje seçin.";
+    errors.projectId = translate("Geçerli bir proje seçin.");
   }
 
   if (!version) {
-    errors.version = "Sürüm bilgisi boş olamaz.";
+    errors.version = translate("Sürüm bilgisi boş olamaz.");
   } else if (version.length > MAX_VERSION_LENGTH) {
-    errors.version = `Sürüm en fazla ${MAX_VERSION_LENGTH} karakter olabilir.`;
+    errors.version = translate("Sürüm en fazla {max} karakter olabilir.", {
+      max: MAX_VERSION_LENGTH,
+    });
   }
 
   return errors;
@@ -191,24 +202,30 @@ export function validateRequirementForm(
 
   if (requireId) {
     if (!id) {
-      errors.id = "Gereksinim kodu boş olamaz (örn. R9).";
+      errors.id = translate("Gereksinim kodu boş olamaz (örn. R9).");
     } else if (id.length > MAX_REQ_CODE_LENGTH) {
-      errors.id = `Gereksinim kodu en fazla ${MAX_REQ_CODE_LENGTH} karakter olabilir.`;
+      errors.id = translate("Gereksinim kodu en fazla {max} karakter olabilir.", {
+        max: MAX_REQ_CODE_LENGTH,
+      });
     }
   }
 
   if (!values.projectId || !Number.isInteger(projectId) || projectId <= 0) {
-    errors.projectId = "Geçerli bir proje seçin.";
+    errors.projectId = translate("Geçerli bir proje seçin.");
   }
 
   if (!title) {
-    errors.title = "Gereksinim başlığı boş olamaz.";
+    errors.title = translate("Gereksinim başlığı boş olamaz.");
   } else if (title.length > MAX_REQ_TITLE_LENGTH) {
-    errors.title = `Başlık en fazla ${MAX_REQ_TITLE_LENGTH} karakter olabilir.`;
+    errors.title = translate("Başlık en fazla {max} karakter olabilir.", {
+      max: MAX_REQ_TITLE_LENGTH,
+    });
   }
 
   if (description.length > MAX_DESCRIPTION_LENGTH) {
-    errors.description = `Açıklama en fazla ${MAX_DESCRIPTION_LENGTH} karakter olabilir.`;
+    errors.description = translate("Açıklama en fazla {max} karakter olabilir.", {
+      max: MAX_DESCRIPTION_LENGTH,
+    });
   }
 
   return errors;
@@ -225,37 +242,45 @@ export function validateTestCaseForm(values: TestCaseFormValues): TestCaseFormEr
   const expectedResult = values.expectedResult.trim();
 
   if (!stableKey) {
-    errors.stableKey = "Kararlı test anahtarı boş olamaz (örn. TC-007).";
+    errors.stableKey = translate("Kararlı test anahtarı boş olamaz (örn. TC-007).");
   } else if (stableKey.length > MAX_TEST_KEY_LENGTH) {
-    errors.stableKey = `Anahtar en fazla ${MAX_TEST_KEY_LENGTH} karakter olabilir.`;
+    errors.stableKey = translate("Anahtar en fazla {max} karakter olabilir.", {
+      max: MAX_TEST_KEY_LENGTH,
+    });
   } else if (!/^[A-Za-z0-9_-]+$/.test(stableKey)) {
-    errors.stableKey = "Anahtar yalnızca harf, rakam, '-' ve '_' içerebilir.";
+    errors.stableKey = translate("Anahtar yalnızca harf, rakam, '-' ve '_' içerebilir.");
   }
 
   if (!title) {
-    errors.title = "Test vakası başlığı boş olamaz.";
+    errors.title = translate("Test vakası başlığı boş olamaz.");
   } else if (title.length < MIN_TITLE_LENGTH) {
-    errors.title = `Başlık en az ${MIN_TITLE_LENGTH} karakter olmalıdır.`;
+    errors.title = translate("Başlık en az {min} karakter olmalıdır.", {
+      min: MIN_TITLE_LENGTH,
+    });
   } else if (title.length > MAX_TEST_TITLE_LENGTH) {
-    errors.title = `Başlık en fazla ${MAX_TEST_TITLE_LENGTH} karakter olabilir.`;
+    errors.title = translate("Başlık en fazla {max} karakter olabilir.", {
+      max: MAX_TEST_TITLE_LENGTH,
+    });
   }
 
   if (!TEST_PRIORITIES.includes(values.priority as (typeof TEST_PRIORITIES)[number])) {
-    errors.priority = "Geçerli bir öncelik seçin.";
+    errors.priority = translate("Geçerli bir öncelik seçin.");
   }
 
   if (steps.length === 0) {
-    errors.stepsText = "En az bir test adımı girin (satır başına bir adım).";
+    errors.stepsText = translate("En az bir test adımı girin (satır başına bir adım).");
   }
 
   if (!expectedResult) {
-    errors.expectedResult = "Beklenen sonuç alanı boş olamaz.";
+    errors.expectedResult = translate("Beklenen sonuç alanı boş olamaz.");
   } else if (expectedResult.length > MAX_DESCRIPTION_LENGTH) {
-    errors.expectedResult = `Beklenen sonuç en fazla ${MAX_DESCRIPTION_LENGTH} karakter olabilir.`;
+    errors.expectedResult = translate("Beklenen sonuç en fazla {max} karakter olabilir.", {
+      max: MAX_DESCRIPTION_LENGTH,
+    });
   }
 
   if (values.requirements.length === 0) {
-    errors.requirements = "FR-REQ-01 gereği en az bir gereksinim seçilmelidir.";
+    errors.requirements = translate("FR-REQ-01 gereği en az bir gereksinim seçilmelidir.");
   }
 
   return errors;
@@ -268,19 +293,23 @@ export function validateTestSuiteForm(values: TestSuiteFormValues): TestSuiteFor
   const description = values.description.trim();
 
   if (!values.projectId || !Number.isInteger(projectId) || projectId <= 0) {
-    errors.projectId = "Geçerli bir proje seçin.";
+    errors.projectId = translate("Geçerli bir proje seçin.");
   }
 
   if (!name) {
-    errors.name = "Suite adı boş olamaz.";
+    errors.name = translate("Suite adı boş olamaz.");
   } else if (name.length < 2) {
-    errors.name = "Suite adı en az 2 karakter olmalıdır.";
+    errors.name = translate("Suite adı en az 2 karakter olmalıdır.");
   } else if (name.length > MAX_SUITE_NAME_LENGTH) {
-    errors.name = `Suite adı en fazla ${MAX_SUITE_NAME_LENGTH} karakter olabilir.`;
+    errors.name = translate("Suite adı en fazla {max} karakter olabilir.", {
+      max: MAX_SUITE_NAME_LENGTH,
+    });
   }
 
   if (description.length > MAX_DESCRIPTION_LENGTH) {
-    errors.description = `Açıklama en fazla ${MAX_DESCRIPTION_LENGTH} karakter olabilir.`;
+    errors.description = translate("Açıklama en fazla {max} karakter olabilir.", {
+      max: MAX_DESCRIPTION_LENGTH,
+    });
   }
 
   return errors;
@@ -292,19 +321,23 @@ export function validateTestRunForm(values: TestRunFormValues): TestRunFormError
   const name = values.name.trim();
 
   if (!name) {
-    errors.name = "Koşum adı boş olamaz.";
+    errors.name = translate("Koşum adı boş olamaz.");
   } else if (name.length < MIN_TITLE_LENGTH) {
-    errors.name = `Koşum adı en az ${MIN_TITLE_LENGTH} karakter olmalıdır.`;
+    errors.name = translate("Koşum adı en az {min} karakter olmalıdır.", {
+      min: MIN_TITLE_LENGTH,
+    });
   } else if (name.length > MAX_TITLE_LENGTH) {
-    errors.name = `Koşum adı en fazla ${MAX_TITLE_LENGTH} karakter olabilir.`;
+    errors.name = translate("Koşum adı en fazla {max} karakter olabilir.", {
+      max: MAX_TITLE_LENGTH,
+    });
   }
 
   if (!values.projectId || !Number.isInteger(projectId) || projectId <= 0) {
-    errors.projectId = "Geçerli bir proje seçin.";
+    errors.projectId = translate("Geçerli bir proje seçin.");
   }
 
   if (values.testCaseIds.length === 0) {
-    errors.testCaseIds = "Koşuma en az bir test vakası eklenmelidir.";
+    errors.testCaseIds = translate("Koşuma en az bir test vakası eklenmelidir.");
   }
 
   return errors;
@@ -317,13 +350,15 @@ export function validateExitCriteriaForm(values: ExitCriteriaFormValues): ExitCr
   const reqCoverage = Number(values.minReqCoverage);
 
   if (Number.isNaN(passRate) || passRate < 0 || passRate > 100) {
-    errors.minPassRate = "Başarı oranı 0 ile 100 arasında olmalıdır.";
+    errors.minPassRate = translate("Başarı oranı 0 ile 100 arasında olmalıdır.");
   }
   if (!Number.isInteger(openCritical) || openCritical < 0) {
-    errors.maxOpenCritical = "Açık Critical limiti 0 veya daha büyük tam sayı olmalıdır.";
+    errors.maxOpenCritical = translate(
+      "Açık Critical limiti 0 veya daha büyük tam sayı olmalıdır.",
+    );
   }
   if (Number.isNaN(reqCoverage) || reqCoverage < 0 || reqCoverage > 100) {
-    errors.minReqCoverage = "Gereksinim kapsamı 0 ile 100 arasında olmalıdır.";
+    errors.minReqCoverage = translate("Gereksinim kapsamı 0 ile 100 arasında olmalıdır.");
   }
 
   return errors;
@@ -331,10 +366,12 @@ export function validateExitCriteriaForm(values: ExitCriteriaFormValues): ExitCr
 
 export function validateWaiverReason(reason: string): string | undefined {
   const trimmed = reason.trim();
-  if (!trimmed) return "Muafiyet gerekçesi boş olamaz.";
-  if (trimmed.length < 5) return "Muafiyet gerekçesi en az 5 karakter olmalıdır.";
+  if (!trimmed) return translate("Muafiyet gerekçesi boş olamaz.");
+  if (trimmed.length < 5) return translate("Muafiyet gerekçesi en az 5 karakter olmalıdır.");
   if (trimmed.length > MAX_DESCRIPTION_LENGTH) {
-    return `Muafiyet gerekçesi en fazla ${MAX_DESCRIPTION_LENGTH} karakter olabilir.`;
+    return translate("Muafiyet gerekçesi en fazla {max} karakter olabilir.", {
+      max: MAX_DESCRIPTION_LENGTH,
+    });
   }
   return undefined;
 }
@@ -346,37 +383,54 @@ export function validateTestPlanForm(values: TestPlanFormValues): TestPlanFormEr
   const title = values.title.trim();
 
   if (!values.projectId || !Number.isInteger(projectId) || projectId <= 0) {
-    errors.projectId = "Geçerli bir proje seçin.";
+    errors.projectId = translate("Geçerli bir proje seçin.");
   }
 
   if (!version) {
-    errors.version = "Sürüm numarası boş olamaz (örn. v1.0).";
+    errors.version = translate("Sürüm numarası boş olamaz (örn. v1.0).");
   } else if (version.length > MAX_VERSION_LENGTH) {
-    errors.version = `Sürüm numarası en fazla ${MAX_VERSION_LENGTH} karakter olabilir.`;
+    errors.version = translate("Sürüm numarası en fazla {max} karakter olabilir.", {
+      max: MAX_VERSION_LENGTH,
+    });
   }
 
   if (!title) {
-    errors.title = "Test Plan başlığı boş olamaz.";
+    errors.title = translate("Test Plan başlığı boş olamaz.");
   } else if (title.length < MIN_TITLE_LENGTH) {
-    errors.title = `Başlık en az ${MIN_TITLE_LENGTH} karakter olmalıdır.`;
+    errors.title = translate("Başlık en az {min} karakter olmalıdır.", {
+      min: MIN_TITLE_LENGTH,
+    });
   } else if (title.length > MAX_PLAN_TITLE_LENGTH) {
-    errors.title = `Başlık en fazla ${MAX_PLAN_TITLE_LENGTH} karakter olabilir.`;
+    errors.title = translate("Başlık en fazla {max} karakter olabilir.", {
+      max: MAX_PLAN_TITLE_LENGTH,
+    });
   }
 
   if (values.scope.trim().length > MAX_PLAN_SECTION_LENGTH) {
-    errors.scope = `Kapsam alanı en fazla ${MAX_PLAN_SECTION_LENGTH} karakter olabilir.`;
+    errors.scope = translate("Kapsam alanı en fazla {max} karakter olabilir.", {
+      max: MAX_PLAN_SECTION_LENGTH,
+    });
   }
   if (values.approach.trim().length > MAX_PLAN_SECTION_LENGTH) {
-    errors.approach = `Yaklaşım alanı en fazla ${MAX_PLAN_SECTION_LENGTH} karakter olabilir.`;
+    errors.approach = translate("Yaklaşım alanı en fazla {max} karakter olabilir.", {
+      max: MAX_PLAN_SECTION_LENGTH,
+    });
   }
   if (values.passFailCriteria.trim().length > MAX_PLAN_SECTION_LENGTH) {
-    errors.passFailCriteria = `Kabul/Red kriterleri en fazla ${MAX_PLAN_SECTION_LENGTH} karakter olabilir.`;
+    errors.passFailCriteria = translate(
+      "Kabul/Red kriterleri en fazla {max} karakter olabilir.",
+      { max: MAX_PLAN_SECTION_LENGTH },
+    );
   }
   if (values.environment.trim().length > MAX_PLAN_SECTION_LENGTH) {
-    errors.environment = `Test ortamı alanı en fazla ${MAX_PLAN_SECTION_LENGTH} karakter olabilir.`;
+    errors.environment = translate("Test ortamı alanı en fazla {max} karakter olabilir.", {
+      max: MAX_PLAN_SECTION_LENGTH,
+    });
   }
   if (values.scheduleRisks.trim().length > MAX_PLAN_SECTION_LENGTH) {
-    errors.scheduleRisks = `Takvim ve riskler alanı en fazla ${MAX_PLAN_SECTION_LENGTH} karakter olabilir.`;
+    errors.scheduleRisks = translate("Takvim ve riskler alanı en fazla {max} karakter olabilir.", {
+      max: MAX_PLAN_SECTION_LENGTH,
+    });
   }
 
   return errors;
