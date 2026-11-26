@@ -35,6 +35,7 @@ import {
   validateDefectForm,
   validateTestRunForm,
 } from "../validation";
+import { useLang, useT } from "../i18n";
 
 export type TestRunsPageProps = {
   user: User | null;
@@ -63,11 +64,11 @@ function summarizeRun(run: TestRun) {
   return { counts, total, executed, passRate };
 }
 
-function formatIsoTime(iso: string | null): string {
+function formatIsoTime(iso: string | null, lang: "tr" | "en"): string {
   if (!iso) return "—";
   const parsed = new Date(iso);
   if (Number.isNaN(parsed.getTime())) return iso;
-  return parsed.toLocaleString("tr-TR", {
+  return parsed.toLocaleString(lang === "tr" ? "tr-TR" : "en-GB", {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -77,6 +78,8 @@ function formatIsoTime(iso: string | null): string {
 }
 
 export function TestRunsPage({ user }: TestRunsPageProps) {
+  const t = useT();
+  const lang = useLang();
   const [projects, setProjects] = useState<Project[]>([]);
   const [releases, setReleases] = useState<Release[]>([]);
   const [suites, setSuites] = useState<TestSuite[]>([]);
@@ -186,11 +189,11 @@ export function TestRunsPage({ user }: TestRunsPageProps) {
       });
       setError("");
     } catch (err) {
-      setError(formatErrorMessage(err, "Test koşumları yüklenemedi."));
+      setError(formatErrorMessage(err, t("Test koşumları yüklenemedi.")));
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, t]);
 
   useEffect(() => {
     void loadData();
@@ -251,7 +254,7 @@ export function TestRunsPage({ user }: TestRunsPageProps) {
     try {
       await api.downloadTestLog(runId, format);
     } catch (err) {
-      setError(formatErrorMessage(err, "Test Log indirilemedi."));
+      setError(formatErrorMessage(err, t("Test Log indirilemedi.")));
     }
   }
 
@@ -281,7 +284,7 @@ export function TestRunsPage({ user }: TestRunsPageProps) {
       setRunCaseIds([]);
       setRunFormErrors({});
       setSelectedRunId(created.id);
-      setNotice(`"${created.name}" test koşumu başlatıldı.`);
+      setNotice(t("\"{name}\" test koşumu başlatıldı.", { name: created.name }));
       setError("");
       await loadData();
     } catch (err) {
@@ -301,12 +304,14 @@ export function TestRunsPage({ user }: TestRunsPageProps) {
         setRunFormErrors({});
         setSelectedRunId(created.id);
         setNotice(
-          `"${created.name}" önizleme koşumu olarak bu tarayıcıda oluşturuldu.`,
+          t("\"{name}\" önizleme koşumu olarak bu tarayıcıda oluşturuldu.", {
+            name: created.name,
+          }),
         );
         setError("");
         await loadData();
       } else {
-        setError(formatErrorMessage(err, "Test koşumu oluşturulamadı."));
+        setError(formatErrorMessage(err, t("Test koşumu oluşturulamadı.")));
       }
     } finally {
       setSaving(false);
@@ -327,7 +332,12 @@ export function TestRunsPage({ user }: TestRunsPageProps) {
     setSavingExecId(ex.id);
     try {
       await api.recordExecution(activeRun.id, ex.id, payload);
-      setNotice(`${ex.test_case_id} yürütme sonucu (${draft.status}) kaydedildi.`);
+      setNotice(
+        t("{caseId} yürütme sonucu ({status}) kaydedildi.", {
+          caseId: ex.test_case_id,
+          status: draft.status,
+        }),
+      );
       setError("");
       await loadData();
     } catch (err) {
@@ -335,12 +345,15 @@ export function TestRunsPage({ user }: TestRunsPageProps) {
         recordPreviewExecution(activeRun.id, ex.id, payload, user?.username ?? "tester");
         setPreviewMode(true);
         setNotice(
-          `${ex.test_case_id} yürütme sonucu (${draft.status}) yerel önizleme deposuna kaydedildi.`,
+          t("{caseId} yürütme sonucu ({status}) yerel önizleme deposuna kaydedildi.", {
+            caseId: ex.test_case_id,
+            status: draft.status,
+          }),
         );
         setError("");
         await loadData();
       } else {
-        setError(formatErrorMessage(err, "Yürütme sonucu kaydedilemedi."));
+        setError(formatErrorMessage(err, t("Yürütme sonucu kaydedilemedi.")));
       }
     } finally {
       setSavingExecId(null);
@@ -351,7 +364,9 @@ export function TestRunsPage({ user }: TestRunsPageProps) {
     const tc = caseById.get(ex.test_case_id);
     setDefectExecId(ex.id);
     setDefectTitle(
-      `[${ex.test_case_id}] ${tc ? tc.title : "Test vakası"} yürütmesi başarısız`,
+      `[${ex.test_case_id}] ${
+        tc ? tc.title : t("Test vakası")
+      } ${t("yürütmesi başarısız")}`,
     );
     setDefectSeverity(tc?.priority === "Critical" ? "Critical" : "High");
     setDefectError("");
@@ -367,7 +382,7 @@ export function TestRunsPage({ user }: TestRunsPageProps) {
       testCase: serverCaseIds.has(ex.test_case_id) ? ex.test_case_id : "",
     });
     if (validation.title || validation.severity) {
-      setDefectError(validation.title ?? validation.severity ?? "Geçersiz defect bilgisi.");
+      setDefectError(validation.title ?? validation.severity ?? t("Geçersiz defect bilgisi."));
       return;
     }
 
@@ -394,12 +409,15 @@ export function TestRunsPage({ user }: TestRunsPageProps) {
       setDefectTitle("");
       setDefectError("");
       setNotice(
-        `Başarısız yürütmeden #${created.id} (${created.title}) defect kaydı oluşturuldu ve bağlandı.`,
+        t(
+          "Başarısız yürütmeden #{id} ({title}) defect kaydı oluşturuldu ve bağlandı.",
+          { id: created.id, title: created.title },
+        ),
       );
       setError("");
       await loadData();
     } catch (err) {
-      setDefectError(formatErrorMessage(err, "Defect oluşturulamadı."));
+      setDefectError(formatErrorMessage(err, t("Defect oluşturulamadı.")));
     } finally {
       setSavingExecId(null);
     }
@@ -425,25 +443,25 @@ export function TestRunsPage({ user }: TestRunsPageProps) {
 
   const historyColumns: DataTableColumn<TestRun>[] = [
     { key: "id", header: "#", render: (r) => <strong>#{r.id}</strong> },
-    { key: "name", header: "Koşum Adı", render: (r) => r.name },
+    { key: "name", header: t("Koşum Adı"), render: (r) => r.name },
     {
       key: "project_release",
-      header: "Proje / Sürüm",
+      header: t("Proje / Sürüm"),
       render: (r) => {
         const proj = projectNames.get(r.project_id) ?? `#${r.project_id}`;
         const rel = r.release_id ? releaseLabels.get(r.release_id) : null;
         return rel ? `${proj} · ${rel}` : proj;
       },
     },
-    { key: "created_by", header: "Başlatan", render: (r) => r.created_by },
+    { key: "created_by", header: t("Başlatan"), render: (r) => r.created_by },
     {
       key: "created_at",
-      header: "Tarih",
-      render: (r) => <span className="timeline-time">{formatIsoTime(r.created_at)}</span>,
+      header: t("Tarih"),
+      render: (r) => <span className="timeline-time">{formatIsoTime(r.created_at, lang)}</span>,
     },
     {
       key: "breakdown",
-      header: "Sonuç Dağılımı",
+      header: t("Sonuç Dağılımı"),
       render: (r) => {
         const s = summarizeRun(r);
         return (
@@ -459,19 +477,19 @@ export function TestRunsPage({ user }: TestRunsPageProps) {
     },
     {
       key: "pass_rate",
-      header: "Başarı",
+      header: t("Başarı"),
       render: (r) => <strong>{summarizeRun(r).passRate}%</strong>,
     },
     {
       key: "action",
-      header: "İşlem",
+      header: t("İşlem"),
       render: (r) => (
         <button
           type="button"
           className={r.id === selectedRunId ? "secondary-btn" : ""}
           onClick={() => setSelectedRunId(r.id)}
         >
-          {r.id === selectedRunId ? "Seçili" : "Yürüt / İncele"}
+          {r.id === selectedRunId ? t("Seçili") : t("Yürüt / İncele")}
         </button>
       ),
     },
@@ -485,7 +503,7 @@ export function TestRunsPage({ user }: TestRunsPageProps) {
         <section className="role-notice" role="status">
           <span>{notice}</span>
           <button type="button" className="secondary-btn" onClick={() => setNotice("")}>
-            Kapat
+            {t("Kapat")}
           </button>
         </section>
       )}
@@ -493,9 +511,10 @@ export function TestRunsPage({ user }: TestRunsPageProps) {
       {previewMode && (
         <section className="info-banner" role="note">
           <div>
-            <strong>Önizleme Modu:</strong> Test koşumu ve yürütme kayıtları şimdilik yalnızca
-            bu tarayıcıda saklanır. Başarısız yürütmeden açtığınız defect kayıtları ise kalıcı
-            olarak kaydedilir.
+            <strong>{t("Önizleme Modu:")}</strong>{" "}
+            {t(
+              "Test koşumu ve yürütme kayıtları şimdilik yalnızca bu tarayıcıda saklanır. Başarısız yürütmeden açtığınız defect kayıtları ise kalıcı olarak kaydedilir.",
+            )}
           </div>
         </section>
       )}
@@ -503,8 +522,8 @@ export function TestRunsPage({ user }: TestRunsPageProps) {
       {!user && (
         <section className="role-notice">
           <span>
-            Test koşumu başlatmak, sonuç girmek veya başarısız yürütmeden defect açmak için{" "}
-            <Link to="/login">giriş yapın</Link>.
+            {t("Test koşumu başlatmak, sonuç girmek veya başarısız yürütmeden defect açmak için")}{" "}
+            <Link to="/login">{t("giriş yapın")}</Link>.
           </span>
         </section>
       )}
@@ -512,22 +531,23 @@ export function TestRunsPage({ user }: TestRunsPageProps) {
       {user && !canExecute && (
         <section className="role-notice">
           <span>
-            Aktif rol: <StatusBadge text={user.role} /> · Test koşumu yürütme işlemleri yalnızca{" "}
-            <strong>Admin</strong>, <strong>Test Lead</strong> ve <strong>Tester</strong>{" "}
-            rolleri içindir.
+            {t("Aktif rol:")} <StatusBadge text={user.role} /> ·{" "}
+            {t("Test koşumu yürütme işlemleri yalnızca")} <strong>Admin</strong>,{" "}
+            <strong>Test Lead</strong> {t("ve")} <strong>Tester</strong>{" "}
+            {t("rolleri içindir.")}
           </span>
         </section>
       )}
 
       {canExecute && (
         <section>
-          <h2>Yeni Test Koşumu Başlat</h2>
+          <h2>{t("Yeni Test Koşumu Başlat")}</h2>
           <p className="section-desc">
-            Test Yürütme ve Test Olay Raporlama
+            {t("Test Yürütme ve Test Olay Raporlama")}
           </p>
           <form onSubmit={handleCreateRun} noValidate className="stacked-form">
             <div className="form-grid">
-              <FormField id="run-name" label="Koşum Adı" required error={runFormErrors.name}>
+              <FormField id="run-name" label={t("Koşum Adı")} required error={runFormErrors.name}>
                 <input
                   id="run-name"
                   value={runName}
@@ -537,13 +557,13 @@ export function TestRunsPage({ user }: TestRunsPageProps) {
                       setRunFormErrors((prev) => ({ ...prev, name: undefined }));
                     }
                   }}
-                  placeholder="Örn: v1.0 Çıkış Öncesi Regresyon"
+                  placeholder={t("Örn: v1.0 Çıkış Öncesi Regresyon")}
                 />
               </FormField>
 
               <FormField
                 id="run-project"
-                label="Proje"
+                label={t("Proje")}
                 required
                 error={runFormErrors.projectId}
               >
@@ -552,7 +572,7 @@ export function TestRunsPage({ user }: TestRunsPageProps) {
                   value={runProjectId}
                   onChange={(e) => setRunProjectId(e.target.value)}
                 >
-                  <option value="">Proje seçin</option>
+                  <option value="">{t("Proje seçin")}</option>
                   {projects.map((p) => (
                     <option key={p.id} value={String(p.id)}>
                       {p.name}
@@ -561,13 +581,13 @@ export function TestRunsPage({ user }: TestRunsPageProps) {
                 </select>
               </FormField>
 
-              <FormField id="run-release" label="Hedef Sürüm">
+              <FormField id="run-release" label={t("Hedef Sürüm")}>
                 <select
                   id="run-release"
                   value={runReleaseId}
                   onChange={(e) => setRunReleaseId(e.target.value)}
                 >
-                  <option value="">Sürüm seçilmedi</option>
+                  <option value="">{t("Sürüm seçilmedi")}</option>
                   {releases
                     .filter((r) => !runProjectId || String(r.project_id) === runProjectId)
                     .map((r) => (
@@ -578,16 +598,16 @@ export function TestRunsPage({ user }: TestRunsPageProps) {
                 </select>
               </FormField>
 
-              <FormField id="run-suite" label="Suite Şablonu (Opsiyonel)">
+              <FormField id="run-suite" label={t("Suite Şablonu (Opsiyonel)")}>
                 <select
                   id="run-suite"
                   value={runSuiteId}
                   onChange={(e) => handleSuiteTemplateChange(e.target.value)}
                 >
-                  <option value="">Elle test vakası seç</option>
+                  <option value="">{t("Elle test vakası seç")}</option>
                   {suites.map((s) => (
                     <option key={s.id} value={String(s.id)}>
-                      {s.name} ({s.test_cases.length} vaka)
+                      {s.name} ({t("{count} vaka", { count: s.test_cases.length })})
                     </option>
                   ))}
                 </select>
@@ -597,7 +617,7 @@ export function TestRunsPage({ user }: TestRunsPageProps) {
             <div className="trace-panel">
               <div className="trace-panel-header">
                 <strong>
-                  Koşuma Alınacak Test Vakaları <span className="required-mark">*</span>
+                  {t("Koşuma Alınacak Test Vakaları")} <span className="required-mark">*</span>
                 </strong>
                 {runFormErrors.testCaseIds && (
                   <span className="field-error" role="alert">
@@ -635,14 +655,14 @@ export function TestRunsPage({ user }: TestRunsPageProps) {
 
             <div className="row-actions">
               <button type="submit" disabled={saving}>
-                Test Koşumu Başlat
+                {t("Test Koşumu Başlat")}
               </button>
               <button
                 type="button"
                 className="secondary-btn"
                 onClick={() => setRunCaseIds(testCases.map((tc) => tc.id))}
               >
-                Tümünü Seç
+                {t("Tümünü Seç")}
               </button>
             </div>
           </form>
@@ -654,15 +674,19 @@ export function TestRunsPage({ user }: TestRunsPageProps) {
           <div className="section-header">
             <div>
               <h2>
-                Aktif Koşum: #{activeRun.id} · {activeRun.name}
+                {t("Aktif Koşum:")} #{activeRun.id} · {activeRun.name}
               </h2>
               <p className="section-desc">
-                {projectNames.get(activeRun.project_id) ?? `Proje #${activeRun.project_id}`}
+                {projectNames.get(activeRun.project_id) ??
+                  t("Proje #{id}", { id: activeRun.project_id })}
                 {activeRun.release_id
-                  ? ` · Sürüm ${releaseLabels.get(activeRun.release_id) ?? activeRun.release_id}`
+                  ? ` · ${t("Sürüm")} ${
+                      releaseLabels.get(activeRun.release_id) ?? activeRun.release_id
+                    }`
                   : ""}
-                {" · "}Başlatan: <strong>{activeRun.created_by}</strong> (
-                {formatIsoTime(activeRun.created_at)})
+                {" · "}
+                {t("Başlatan:")} <strong>{activeRun.created_by}</strong> (
+                {formatIsoTime(activeRun.created_at, lang)})
               </p>
             </div>
             <div className="badge-list">
@@ -671,7 +695,7 @@ export function TestRunsPage({ user }: TestRunsPageProps) {
               <span className="badge blocked">Blocked: {activeSummary.counts.Blocked}</span>
               <span className="badge skipped">Skipped: {activeSummary.counts.Skipped}</span>
               <span className="badge not-run">Not Run: {activeSummary.counts["Not Run"]}</span>
-              <span className="badge">Başarı: {activeSummary.passRate}%</span>
+              <span className="badge">{t("Başarı:")} {activeSummary.passRate}%</span>
               {!previewMode && (
                 <>
                   <button
@@ -697,7 +721,10 @@ export function TestRunsPage({ user }: TestRunsPageProps) {
             <div
               className="run-progress-bar"
               role="img"
-              aria-label={`Koşum ilerleme çubuğu: ${activeSummary.executed}/${activeSummary.total} yürütüldü`}
+              aria-label={t("Koşum ilerleme çubuğu: {executed}/{total} yürütüldü", {
+                executed: activeSummary.executed,
+                total: activeSummary.total,
+              })}
             >
               {(
                 [
@@ -739,12 +766,13 @@ export function TestRunsPage({ user }: TestRunsPageProps) {
                   <div className="execution-card-header">
                     <div>
                       <strong>{ex.test_case_id}</strong> ·{" "}
-                      <span>{tc?.title ?? "Test vakası"}</span>
+                      <span>{tc?.title ?? t("Test vakası")}</span>
                       <div className="badge-list" style={{ marginTop: 4 }}>
                         <StatusBadge text={ex.status} />
                         {ex.executed_by && (
                           <span className="hint">
-                            Son yürüten: {ex.executed_by} ({formatIsoTime(ex.executed_at)})
+                            {t("Son yürüten:")} {ex.executed_by} (
+                            {formatIsoTime(ex.executed_at, lang)})
                           </span>
                         )}
                         {ex.defect_ids.map((defId) => {
@@ -765,7 +793,7 @@ export function TestRunsPage({ user }: TestRunsPageProps) {
                         className="secondary-btn"
                         onClick={() => setExpandedExecId(isExpanded ? null : ex.id)}
                       >
-                        {isExpanded ? "Adımları Gizle" : "Adımlar & Beklenen"}
+                        {isExpanded ? t("Adımları Gizle") : t("Adımlar & Beklenen")}
                       </button>
                       {canExecute && ex.status === "Failed" && (
                         <button
@@ -775,7 +803,9 @@ export function TestRunsPage({ user }: TestRunsPageProps) {
                             isOpeningDefect ? setDefectExecId(null) : openDefectForm(ex)
                           }
                         >
-                          {isOpeningDefect ? "Vazgeç" : "Başarısız Yürütmeden Defect Aç"}
+                          {isOpeningDefect
+                            ? t("Vazgeç")
+                            : t("Başarısız Yürütmeden Defect Aç")}
                         </button>
                       )}
                     </div>
@@ -783,10 +813,11 @@ export function TestRunsPage({ user }: TestRunsPageProps) {
 
                   {relatedResolvedDefects.length > 0 && (
                     <p className="hint" style={{ margin: "6px 0" }}>
-                      Doğrulama Notu: İlişkili{" "}
-                      {relatedResolvedDefects.map((d) => `#${d.id}`).join(", ")} defect
-                      kayıtları <strong>Resolved</strong> durumda. Burada{" "}
-                      <strong>Passed</strong> yürütmesi kaydetmek doğrulama kanıtı oluşturur.
+                      {t("Doğrulama Notu: İlişkili")}{" "}
+                      {relatedResolvedDefects.map((d) => `#${d.id}`).join(", ")}{" "}
+                      {t("defect kayıtları")} <strong>Resolved</strong>{" "}
+                      {t("durumda. Burada")} <strong>Passed</strong>{" "}
+                      {t("yürütmesi kaydetmek doğrulama kanıtı oluşturur.")}
                     </p>
                   )}
 
@@ -794,15 +825,15 @@ export function TestRunsPage({ user }: TestRunsPageProps) {
                     <div className="case-detail-drawer" style={{ marginTop: 8, marginBottom: 10 }}>
                       <div className="detail-grid" style={{ marginBottom: 0 }}>
                         <div className="detail-item">
-                          <span className="detail-label">Test Adımları</span>
+                          <span className="detail-label">{t("Test Adımları")}</span>
                           <ol className="steps-list">
-                            {(tc.steps ?? ["Adım tanımlanmamış."]).map((step, i) => (
+                            {(tc.steps ?? [t("Adım tanımlanmamış.")]).map((step, i) => (
                               <li key={i}>{step}</li>
                             ))}
                           </ol>
                         </div>
                         <div className="detail-item">
-                          <span className="detail-label">Beklenen Sonuç</span>
+                          <span className="detail-label">{t("Beklenen Sonuç")}</span>
                           <p className="expected-text">{tc.expected_result ?? "—"}</p>
                         </div>
                       </div>
@@ -812,7 +843,7 @@ export function TestRunsPage({ user }: TestRunsPageProps) {
                   {canExecute && (
                     <div className="execution-controls">
                       <div className="form-field">
-                        <label htmlFor={`exec-status-${ex.id}`}>Sonuç</label>
+                        <label htmlFor={`exec-status-${ex.id}`}>{t("Sonuç")}</label>
                         <select
                           id={`exec-status-${ex.id}`}
                           value={draft.status}
@@ -835,7 +866,7 @@ export function TestRunsPage({ user }: TestRunsPageProps) {
                       </div>
 
                       <div className="form-field" style={{ flex: 2 }}>
-                        <label htmlFor={`exec-actual-${ex.id}`}>Gerçekleşen Sonuç</label>
+                        <label htmlFor={`exec-actual-${ex.id}`}>{t("Gerçekleşen Sonuç")}</label>
                         <input
                           id={`exec-actual-${ex.id}`}
                           value={draft.actual_result}
@@ -845,12 +876,12 @@ export function TestRunsPage({ user }: TestRunsPageProps) {
                               [ex.id]: { ...draft, actual_result: e.target.value },
                             }))
                           }
-                          placeholder="Gözlemlenen davranış / çıktı"
+                          placeholder={t("Gözlemlenen davranış / çıktı")}
                         />
                       </div>
 
                       <div className="form-field" style={{ flex: 1 }}>
-                        <label htmlFor={`exec-notes-${ex.id}`}>Not</label>
+                        <label htmlFor={`exec-notes-${ex.id}`}>{t("Not")}</label>
                         <input
                           id={`exec-notes-${ex.id}`}
                           value={draft.notes}
@@ -860,7 +891,7 @@ export function TestRunsPage({ user }: TestRunsPageProps) {
                               [ex.id]: { ...draft, notes: e.target.value },
                             }))
                           }
-                          placeholder="Ortam veya kısa not"
+                          placeholder={t("Ortam veya kısa not")}
                         />
                       </div>
 
@@ -870,7 +901,7 @@ export function TestRunsPage({ user }: TestRunsPageProps) {
                           disabled={savingExecId === ex.id}
                           onClick={() => void handleSaveExecution(ex)}
                         >
-                          {savingExecId === ex.id ? "Kaydediliyor..." : "Sonucu Kaydet"}
+                          {savingExecId === ex.id ? t("Kaydediliyor...") : t("Sonucu Kaydet")}
                         </button>
                       </div>
                     </div>
@@ -882,21 +913,25 @@ export function TestRunsPage({ user }: TestRunsPageProps) {
                       onSubmit={(e) => void handleCreateDefectFromExecution(ex, e)}
                       noValidate
                     >
-                      <strong>Başarısız Yürütmeden Yeni Defect Aç ({ex.test_case_id})</strong>
+                      <strong>
+                        {t("Başarısız Yürütmeden Yeni Defect Aç ({caseId})", {
+                          caseId: ex.test_case_id,
+                        })}
+                      </strong>
                       {defectError && (
                         <span className="field-error" role="alert">
                           {defectError}
                         </span>
                       )}
                       <div className="form-grid">
-                        <FormField id={`def-title-${ex.id}`} label="Defect Başlığı" required>
+                        <FormField id={`def-title-${ex.id}`} label={t("Defect Başlığı")} required>
                           <input
                             id={`def-title-${ex.id}`}
                             value={defectTitle}
                             onChange={(e) => setDefectTitle(e.target.value)}
                           />
                         </FormField>
-                        <FormField id={`def-sev-${ex.id}`} label="Önem Derecesi" required>
+                        <FormField id={`def-sev-${ex.id}`} label={t("Önem Derecesi")} required>
                           <select
                             id={`def-sev-${ex.id}`}
                             value={defectSeverity}
@@ -912,14 +947,14 @@ export function TestRunsPage({ user }: TestRunsPageProps) {
                       </div>
                       <div className="row-actions">
                         <button type="submit" disabled={savingExecId === ex.id}>
-                          Defect Oluştur &amp; Bağla
+                          {t("Defect Oluştur & Bağla")}
                         </button>
                         <button
                           type="button"
                           className="secondary-btn"
                           onClick={() => setDefectExecId(null)}
                         >
-                          İptal
+                          {t("İptal")}
                         </button>
                       </div>
                     </form>
@@ -934,24 +969,24 @@ export function TestRunsPage({ user }: TestRunsPageProps) {
       <section>
         <div className="section-header">
           <div>
-            <h2>Test Koşum Geçmişi</h2>
+            <h2>{t("Test Koşum Geçmişi")}</h2>
             <p className="section-desc">
-              Önceki ve aktif test koşumlarını sürüm veya ada göre filtreleyip inceleyin.
+              {t("Önceki ve aktif test koşumlarını sürüm veya ada göre filtreleyip inceleyin.")}
             </p>
           </div>
           <div className="filter-group">
             <input
-              aria-label="Koşum geçmişinde ara"
-              placeholder="Koşum adı veya #ID ara..."
+              aria-label={t("Koşum geçmişinde ara")}
+              placeholder={t("Koşum adı veya #ID ara...")}
               value={historySearch}
               onChange={(e) => setHistorySearch(e.target.value)}
             />
             <select
-              aria-label="Sürüme göre filtrele"
+              aria-label={t("Sürüme göre filtrele")}
               value={historyReleaseFilter}
               onChange={(e) => setHistoryReleaseFilter(e.target.value)}
             >
-              <option value="all">Tüm Sürümler</option>
+              <option value="all">{t("Tüm Sürümler")}</option>
               {releases.map((r) => (
                 <option key={r.id} value={String(r.id)}>
                   {r.version}
@@ -962,7 +997,7 @@ export function TestRunsPage({ user }: TestRunsPageProps) {
         </div>
 
         {loading ? (
-          <p className="hint">Yükleniyor...</p>
+          <p className="hint">{t("Yükleniyor...")}</p>
         ) : (
           <DataTable
             columns={historyColumns}

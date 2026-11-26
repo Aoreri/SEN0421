@@ -32,6 +32,7 @@ import {
   validateTestCaseForm,
   validateTestSuiteForm,
 } from "../validation";
+import { useT } from "../i18n";
 
 type ActiveTab = "cases" | "suites" | "matrix";
 
@@ -40,6 +41,7 @@ export type TestCasesPageProps = {
 };
 
 export function TestCasesPage({ user }: TestCasesPageProps) {
+  const t = useT();
   const [activeTab, setActiveTab] = useState<ActiveTab>("cases");
   const [projects, setProjects] = useState<Project[]>([]);
   const [requirements, setRequirements] = useState<Requirement[]>([]);
@@ -148,12 +150,12 @@ export function TestCasesPage({ user }: TestCasesPageProps) {
       setError("");
     } catch (err) {
       setError(
-        formatErrorMessage(err, "Test vakaları ve izlenebilirlik verileri yüklenemedi."),
+        formatErrorMessage(err, t("Test vakaları ve izlenebilirlik verileri yüklenemedi.")),
       );
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, t]);
 
   useEffect(() => {
     void loadData();
@@ -224,7 +226,7 @@ export function TestCasesPage({ user }: TestCasesPageProps) {
         await api.createTestCase(payload);
       }
       resetCaseForm();
-      setNotice("Test vakası kaydedildi.");
+      setNotice(t("Test vakası kaydedildi."));
       setError("");
       await loadData();
     } catch (err) {
@@ -233,12 +235,12 @@ export function TestCasesPage({ user }: TestCasesPageProps) {
         setPreviewMode(true);
         resetCaseForm();
         setNotice(
-          "Değişiklik şimdilik yalnızca bu tarayıcıda (önizleme) kaydedildi.",
+          t("Değişiklik şimdilik yalnızca bu tarayıcıda (önizleme) kaydedildi."),
         );
         setError("");
         await loadData();
       } else {
-        setError(formatErrorMessage(err, "Test vakası kaydedilemedi."));
+        setError(formatErrorMessage(err, t("Test vakası kaydedilemedi.")));
       }
     } finally {
       setSaving(false);
@@ -251,7 +253,7 @@ export function TestCasesPage({ user }: TestCasesPageProps) {
       await api.deleteTestCase(tc.id);
       if (editingCaseId === tc.id) resetCaseForm();
       if (expandedCaseId === tc.id) setExpandedCaseId(null);
-      setNotice(`${tc.stable_key ?? tc.id} silindi.`);
+      setNotice(t("{key} silindi.", { key: tc.stable_key ?? tc.id }));
       setError("");
       await loadData();
     } catch (err) {
@@ -260,11 +262,13 @@ export function TestCasesPage({ user }: TestCasesPageProps) {
         setPreviewMode(true);
         if (editingCaseId === tc.id) resetCaseForm();
         if (expandedCaseId === tc.id) setExpandedCaseId(null);
-        setNotice(`${tc.stable_key ?? tc.id} yerel önizleme deposundan kaldırıldı.`);
+        setNotice(
+          t("{key} yerel önizleme deposundan kaldırıldı.", { key: tc.stable_key ?? tc.id }),
+        );
         setError("");
         await loadData();
       } else {
-        setError(formatErrorMessage(err, "Test vakası silinemedi."));
+        setError(formatErrorMessage(err, t("Test vakası silinemedi.")));
       }
     } finally {
       setSaving(false);
@@ -352,7 +356,7 @@ export function TestCasesPage({ user }: TestCasesPageProps) {
         }
       }
       resetSuiteForm();
-      setNotice("Test suite kaydedildi.");
+      setNotice(t("Test suite kaydedildi."));
       setError("");
       await loadData();
     } catch (err) {
@@ -361,12 +365,12 @@ export function TestCasesPage({ user }: TestCasesPageProps) {
         setPreviewMode(true);
         resetSuiteForm();
         setNotice(
-          "Suite şimdilik yalnızca bu tarayıcıda (önizleme) kaydedildi.",
+          t("Suite şimdilik yalnızca bu tarayıcıda (önizleme) kaydedildi."),
         );
         setError("");
         await loadData();
       } else {
-        setError(formatErrorMessage(err, "Test suite kaydedilemedi."));
+        setError(formatErrorMessage(err, t("Test suite kaydedilemedi.")));
       }
     } finally {
       setSaving(false);
@@ -378,7 +382,7 @@ export function TestCasesPage({ user }: TestCasesPageProps) {
     try {
       await api.deleteTestSuite(suite.id);
       if (editingSuiteId === suite.id) resetSuiteForm();
-      setNotice(`${suite.name} silindi.`);
+      setNotice(t("{name} silindi.", { name: suite.name }));
       setError("");
       await loadData();
     } catch (err) {
@@ -386,11 +390,11 @@ export function TestCasesPage({ user }: TestCasesPageProps) {
         deletePreviewTestSuite(suite.id, projects);
         setPreviewMode(true);
         if (editingSuiteId === suite.id) resetSuiteForm();
-        setNotice(`${suite.name} yerel önizleme deposundan silindi.`);
+        setNotice(t("{name} yerel önizleme deposundan silindi.", { name: suite.name }));
         setError("");
         await loadData();
       } else {
-        setError(formatErrorMessage(err, "Test suite silinemedi."));
+        setError(formatErrorMessage(err, t("Test suite silinemedi.")));
       }
     } finally {
       setSaving(false);
@@ -403,7 +407,9 @@ export function TestCasesPage({ user }: TestCasesPageProps) {
 
     if (currentlyLinked && tc.requirements.length <= 1) {
       setError(
-        `FR-REQ-01 gereği ${tc.stable_key ?? tc.id} en az bir gereksinime bağlı kalmalıdır.`,
+        t("FR-REQ-01 gereği {key} en az bir gereksinime bağlı kalmalıdır.", {
+          key: tc.stable_key ?? tc.id,
+        }),
       );
       return;
     }
@@ -423,7 +429,7 @@ export function TestCasesPage({ user }: TestCasesPageProps) {
       setError("");
       await loadData();
     } catch (err) {
-      setError(formatErrorMessage(err, "İzlenebilirlik bağlantısı güncellenemedi."));
+      setError(formatErrorMessage(err, t("İzlenebilirlik bağlantısı güncellenemedi.")));
     } finally {
       setMatrixSavingCell(null);
     }
@@ -495,27 +501,27 @@ export function TestCasesPage({ user }: TestCasesPageProps) {
   const testCaseColumns: DataTableColumn<TestCase>[] = [
     {
       key: "stable_key",
-      header: "Anahtar",
+      header: t("Anahtar"),
       render: (tc) => <code>{tc.stable_key ?? tc.id}</code>,
     },
-    { key: "title", header: "Başlık", render: (tc) => tc.title },
+    { key: "title", header: t("Başlık"), render: (tc) => tc.title },
     {
       key: "priority",
-      header: "Öncelik",
+      header: t("Öncelik"),
       render: (tc) => <StatusBadge text={tc.priority ?? "Medium"} />,
     },
     {
       key: "automation",
-      header: "Otomasyon",
+      header: t("Otomasyon"),
       render: (tc) => (
         <span className={`badge ${tc.automated ? "auto-yes" : "auto-no"}`}>
-          {tc.automated ? "Otomatik" : "Manuel"}
+          {tc.automated ? t("Otomatik") : t("Manuel")}
         </span>
       ),
     },
     {
       key: "suite",
-      header: "Suite",
+      header: t("Suite"),
       render: (tc) => {
         const matchedSuite =
           (tc.suite_id ? suiteNames.get(tc.suite_id) : undefined) ??
@@ -525,7 +531,7 @@ export function TestCasesPage({ user }: TestCasesPageProps) {
     },
     {
       key: "requirements",
-      header: "Gereksinimler",
+      header: t("Gereksinimler"),
       render: (tc) =>
         tc.requirements.length > 0 ? (
           <div className="badge-list">
@@ -541,12 +547,12 @@ export function TestCasesPage({ user }: TestCasesPageProps) {
     },
     {
       key: "status",
-      header: "Son Durum",
+      header: t("Son Durum"),
       render: (tc) => <StatusBadge text={tc.status} />,
     },
     {
       key: "actions",
-      header: "İşlemler",
+      header: t("İşlemler"),
       render: (tc) => (
         <div className="row-actions">
           <button
@@ -554,7 +560,7 @@ export function TestCasesPage({ user }: TestCasesPageProps) {
             className="secondary-btn"
             onClick={() => setExpandedCaseId((prev) => (prev === tc.id ? null : tc.id))}
           >
-            {expandedCaseId === tc.id ? "Gizle" : "Adımlar"}
+            {expandedCaseId === tc.id ? t("Gizle") : t("Adımlar")}
           </button>
           {canManage && (
             <>
@@ -563,7 +569,7 @@ export function TestCasesPage({ user }: TestCasesPageProps) {
                 className="secondary-btn"
                 onClick={() => startEditCase(tc)}
               >
-                Düzenle
+                {t("Düzenle")}
               </button>
               <button
                 type="button"
@@ -571,7 +577,7 @@ export function TestCasesPage({ user }: TestCasesPageProps) {
                 disabled={saving}
                 onClick={() => void handleDeleteCase(tc)}
               >
-                Sil
+                {t("Sil")}
               </button>
             </>
           )}
@@ -581,20 +587,20 @@ export function TestCasesPage({ user }: TestCasesPageProps) {
   ];
 
   const suiteColumns: DataTableColumn<TestSuite>[] = [
-    { key: "name", header: "Suite Adı", render: (s) => <strong>{s.name}</strong> },
+    { key: "name", header: t("Suite Adı"), render: (s) => <strong>{s.name}</strong> },
     {
       key: "project",
-      header: "Proje",
+      header: t("Proje"),
       render: (s) => projectNames.get(s.project_id) ?? `#${s.project_id}`,
     },
     {
       key: "description",
-      header: "Açıklama",
+      header: t("Açıklama"),
       render: (s) => s.description || <span className="hint">—</span>,
     },
     {
       key: "cases",
-      header: "Test Vakaları",
+      header: t("Test Vakaları"),
       render: (s) =>
         s.test_cases.length > 0 ? (
           <div className="badge-list">
@@ -605,12 +611,12 @@ export function TestCasesPage({ user }: TestCasesPageProps) {
             ))}
           </div>
         ) : (
-          <span className="hint">Vaka atanmadı</span>
+          <span className="hint">{t("Vaka atanmadı")}</span>
         ),
     },
     {
       key: "actions",
-      header: "İşlemler",
+      header: t("İşlemler"),
       render: (s) =>
         canManage ? (
           <div className="row-actions">
@@ -619,7 +625,7 @@ export function TestCasesPage({ user }: TestCasesPageProps) {
               className="secondary-btn"
               onClick={() => startEditSuite(s)}
             >
-              Düzenle
+              {t("Düzenle")}
             </button>
             <button
               type="button"
@@ -627,11 +633,11 @@ export function TestCasesPage({ user }: TestCasesPageProps) {
               disabled={saving}
               onClick={() => void handleDeleteSuite(s)}
             >
-              Sil
+              {t("Sil")}
             </button>
           </div>
         ) : (
-          <span className="hint">Salt okunur</span>
+          <span className="hint">{t("Salt okunur")}</span>
         ),
     },
   ];
@@ -644,7 +650,7 @@ export function TestCasesPage({ user }: TestCasesPageProps) {
         <section className="role-notice" role="status">
           <span>{notice}</span>
           <button type="button" className="secondary-btn" onClick={() => setNotice("")}>
-            Kapat
+            {t("Kapat")}
           </button>
         </section>
       )}
@@ -652,10 +658,10 @@ export function TestCasesPage({ user }: TestCasesPageProps) {
       {previewMode && (
         <section className="info-banner" role="note">
           <div>
-            <strong>Önizleme Modu:</strong> Gereksinimler ve mevcut test vakaları canlı okunur;
-            mevcut test vakalarının matris değişiklikleri kalıcı olarak kaydedilir. Yeni test
-            vakaları, adım/öncelik/otomasyon alanları ve test suite işlemleri şimdilik yalnızca bu
-            tarayıcıda saklanır.
+            <strong>{t("Önizleme Modu:")}</strong>{" "}
+            {t(
+              "Gereksinimler ve mevcut test vakaları canlı okunur; mevcut test vakalarının matris değişiklikleri kalıcı olarak kaydedilir. Yeni test vakaları, adım/öncelik/otomasyon alanları ve test suite işlemleri şimdilik yalnızca bu tarayıcıda saklanır.",
+            )}
           </div>
         </section>
       )}
@@ -663,8 +669,8 @@ export function TestCasesPage({ user }: TestCasesPageProps) {
       {!user && (
         <section className="role-notice">
           <span>
-            Test vakası, suite ve izlenebilirlik matrisi düzenleme işlemleri için{" "}
-            <Link to="/login">giriş yapın</Link>.
+            {t("Test vakası, suite ve izlenebilirlik matrisi düzenleme işlemleri için")}{" "}
+            <Link to="/login">{t("giriş yapın")}</Link>.
           </span>
         </section>
       )}
@@ -672,9 +678,10 @@ export function TestCasesPage({ user }: TestCasesPageProps) {
       {user && !canManage && (
         <section className="role-notice">
           <span>
-            Aktif rol: <StatusBadge text={user.role} /> · Test vakası/suite yönetimi ve matris
-            düzenleme yalnızca <strong>Admin</strong>, <strong>Test Lead</strong> ve{" "}
-            <strong>Tester</strong> rolleri içindir.
+            {t("Aktif rol:")} <StatusBadge text={user.role} /> ·{" "}
+            {t("Test vakası/suite yönetimi ve matris düzenleme yalnızca")}{" "}
+            <strong>Admin</strong>, <strong>Test Lead</strong> {t("ve")}{" "}
+            <strong>Tester</strong> {t("rolleri içindir.")}
           </span>
         </section>
       )}
@@ -682,12 +689,12 @@ export function TestCasesPage({ user }: TestCasesPageProps) {
       <section>
         <div className="section-header">
           <div>
-            <h2>Test Vakası, Suite ve İzlenebilirlik Yönetimi</h2>
+            <h2>{t("Test Vakası, Suite ve İzlenebilirlik Yönetimi")}</h2>
             <p className="section-desc">
-              Test Tasarımı ve Gerçekleştirme
+              {t("Test Tasarımı ve Gerçekleştirme")}
             </p>
           </div>
-          <div className="tab-bar" role="tablist" aria-label="Test Tasarımı Görünümleri">
+          <div className="tab-bar" role="tablist" aria-label={t("Test Tasarımı Görünümleri")}>
             <button
               type="button"
               role="tab"
@@ -695,7 +702,7 @@ export function TestCasesPage({ user }: TestCasesPageProps) {
               className={`tab-btn${activeTab === "cases" ? " active" : ""}`}
               onClick={() => setActiveTab("cases")}
             >
-              Test Vakaları ({testCases.length})
+              {t("Test Vakaları")} ({testCases.length})
             </button>
             <button
               type="button"
@@ -704,7 +711,7 @@ export function TestCasesPage({ user }: TestCasesPageProps) {
               className={`tab-btn${activeTab === "suites" ? " active" : ""}`}
               onClick={() => setActiveTab("suites")}
             >
-              Test Suite&apos;ler ({suites.length})
+              {t("Test Suite'ler")} ({suites.length})
             </button>
             <button
               type="button"
@@ -713,7 +720,7 @@ export function TestCasesPage({ user }: TestCasesPageProps) {
               className={`tab-btn${activeTab === "matrix" ? " active" : ""}`}
               onClick={() => setActiveTab("matrix")}
             >
-              İzlenebilirlik Matrisi
+              {t("İzlenebilirlik Matrisi")}
             </button>
           </div>
         </div>
@@ -723,12 +730,16 @@ export function TestCasesPage({ user }: TestCasesPageProps) {
         <>
           {canManage && (
             <section>
-              <h3>{editingCaseId ? `Test Vakasını Düzenle (${editingCaseId})` : "Yeni Test Vakası"}</h3>
+              <h3>
+                {editingCaseId
+                  ? t("Test Vakasını Düzenle ({key})", { key: editingCaseId })
+                  : t("Yeni Test Vakası")}
+              </h3>
               <form onSubmit={handleCaseSubmit} noValidate className="stacked-form">
                 <div className="form-grid">
                   <FormField
                     id="tc-stable-key"
-                    label="Kararlı Anahtar"
+                    label={t("Kararlı Anahtar")}
                     required
                     error={caseFormErrors.stableKey}
                   >
@@ -742,13 +753,13 @@ export function TestCasesPage({ user }: TestCasesPageProps) {
                           setCaseFormErrors((prev) => ({ ...prev, stableKey: undefined }));
                         }
                       }}
-                      placeholder="Örn: TC-007"
+                      placeholder={t("Örn: TC-007")}
                     />
                   </FormField>
 
                   <FormField
                     id="tc-title"
-                    label="Test Vakası Başlığı"
+                    label={t("Test Vakası Başlığı")}
                     required
                     error={caseFormErrors.title}
                   >
@@ -761,13 +772,13 @@ export function TestCasesPage({ user }: TestCasesPageProps) {
                           setCaseFormErrors((prev) => ({ ...prev, title: undefined }));
                         }
                       }}
-                      placeholder="Örn: Sürüm çıkış kapısı doğrulaması"
+                      placeholder={t("Örn: Sürüm çıkış kapısı doğrulaması")}
                     />
                   </FormField>
 
                   <FormField
                     id="tc-priority"
-                    label="Öncelik"
+                    label={t("Öncelik")}
                     required
                     error={caseFormErrors.priority}
                   >
@@ -784,13 +795,13 @@ export function TestCasesPage({ user }: TestCasesPageProps) {
                     </select>
                   </FormField>
 
-                  <FormField id="tc-suite" label="Test Suite">
+                  <FormField id="tc-suite" label={t("Test Suite")}>
                     <select
                       id="tc-suite"
                       value={caseSuiteId}
                       onChange={(e) => setCaseSuiteId(e.target.value)}
                     >
-                      <option value="">Suite atanmadı</option>
+                      <option value="">{t("Suite atanmadı")}</option>
                       {suites.map((s) => (
                         <option key={s.id} value={String(s.id)}>
                           {s.name}
@@ -803,7 +814,7 @@ export function TestCasesPage({ user }: TestCasesPageProps) {
                 <div className="form-grid">
                   <FormField
                     id="tc-steps"
-                    label="Test Adımları (her satıra bir adım)"
+                    label={t("Test Adımları (her satıra bir adım)")}
                     required
                     error={caseFormErrors.stepsText}
                   >
@@ -817,13 +828,15 @@ export function TestCasesPage({ user }: TestCasesPageProps) {
                           setCaseFormErrors((prev) => ({ ...prev, stepsText: undefined }));
                         }
                       }}
-                      placeholder={"1. İlgili ekranı açın\n2. Geçerli veriyi gönderin\n3. Yanıtı doğrulayın"}
+                      placeholder={t(
+                        "1. İlgili ekranı açın\n2. Geçerli veriyi gönderin\n3. Yanıtı doğrulayın",
+                      )}
                     />
                   </FormField>
 
                   <FormField
                     id="tc-expected"
-                    label="Beklenen Sonuç"
+                    label={t("Beklenen Sonuç")}
                     required
                     error={caseFormErrors.expectedResult}
                   >
@@ -837,7 +850,7 @@ export function TestCasesPage({ user }: TestCasesPageProps) {
                           setCaseFormErrors((prev) => ({ ...prev, expectedResult: undefined }));
                         }
                       }}
-                      placeholder="Örn: HTTP 201 döner ve kayıt listede görünür."
+                      placeholder={t("Örn: HTTP 201 döner ve kayıt listede görünür.")}
                     />
                   </FormField>
                 </div>
@@ -845,10 +858,10 @@ export function TestCasesPage({ user }: TestCasesPageProps) {
                 <div className="trace-panel">
                   <div className="trace-panel-header">
                     <strong>
-                      Bağlı Gereksinimler <span className="required-mark">*</span>
+                      {t("Bağlı Gereksinimler")} <span className="required-mark">*</span>
                     </strong>
                     <span className="hint">
-                      FR-REQ-01 gereği her test vakası en az bir gereksinime bağlanmalıdır.
+                      {t("FR-REQ-01 gereği her test vakası en az bir gereksinime bağlanmalıdır.")}
                     </span>
                     {caseFormErrors.requirements && (
                       <span className="field-error" role="alert">
@@ -891,15 +904,15 @@ export function TestCasesPage({ user }: TestCasesPageProps) {
                       checked={isAutomated}
                       onChange={(e) => setIsAutomated(e.target.checked)}
                     />
-                    <span>Otomatikleştirilmiş test vakası (CI/CD ile koşulur)</span>
+                    <span>{t("Otomatikleştirilmiş test vakası (CI/CD ile koşulur)")}</span>
                   </label>
                   <div className="row-actions">
                     <button type="submit" disabled={saving}>
-                      {editingCaseId ? "Güncelle" : "Test Vakası Ekle"}
+                      {editingCaseId ? t("Güncelle") : t("Test Vakası Ekle")}
                     </button>
                     {editingCaseId && (
                       <button type="button" className="secondary-btn" onClick={resetCaseForm}>
-                        İptal
+                        {t("İptal")}
                       </button>
                     )}
                   </div>
@@ -910,20 +923,20 @@ export function TestCasesPage({ user }: TestCasesPageProps) {
 
           <section>
             <div className="section-header">
-              <h3>Test Vakası Kataloğu</h3>
+              <h3>{t("Test Vakası Kataloğu")}</h3>
               <div className="filter-group">
                 <input
-                  aria-label="Test vakası ara"
-                  placeholder="Anahtar veya başlık ara..."
+                  aria-label={t("Test vakası ara")}
+                  placeholder={t("Anahtar veya başlık ara...")}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
                 <select
-                  aria-label="Önceliğe göre filtrele"
+                  aria-label={t("Önceliğe göre filtrele")}
                   value={priorityFilter}
                   onChange={(e) => setPriorityFilter(e.target.value)}
                 >
-                  <option value="all">Tüm Öncelikler</option>
+                  <option value="all">{t("Tüm Öncelikler")}</option>
                   {TEST_PRIORITIES.map((p) => (
                     <option key={p} value={p}>
                       {p}
@@ -931,20 +944,20 @@ export function TestCasesPage({ user }: TestCasesPageProps) {
                   ))}
                 </select>
                 <select
-                  aria-label="Otomasyona göre filtrele"
+                  aria-label={t("Otomasyona göre filtrele")}
                   value={automationFilter}
                   onChange={(e) => setAutomationFilter(e.target.value)}
                 >
-                  <option value="all">Otomatik + Manuel</option>
-                  <option value="auto">Yalnızca Otomatik</option>
-                  <option value="manual">Yalnızca Manuel</option>
+                  <option value="all">{t("Otomatik + Manuel")}</option>
+                  <option value="auto">{t("Yalnızca Otomatik")}</option>
+                  <option value="manual">{t("Yalnızca Manuel")}</option>
                 </select>
                 <select
-                  aria-label="Suite'e göre filtrele"
+                  aria-label={t("Suite'e göre filtrele")}
                   value={suiteFilter}
                   onChange={(e) => setSuiteFilter(e.target.value)}
                 >
-                  <option value="all">Tüm Suite&apos;ler</option>
+                  <option value="all">{t("Tüm Suite'ler")}</option>
                   {suites.map((s) => (
                     <option key={s.id} value={String(s.id)}>
                       {s.name}
@@ -955,7 +968,7 @@ export function TestCasesPage({ user }: TestCasesPageProps) {
             </div>
 
             {loading ? (
-              <p className="hint">Yükleniyor...</p>
+              <p className="hint">{t("Yükleniyor...")}</p>
             ) : (
               <DataTable
                 columns={testCaseColumns}
@@ -967,7 +980,7 @@ export function TestCasesPage({ user }: TestCasesPageProps) {
             )}
 
             {expandedCase && (
-              <div className="case-detail-drawer" aria-label="Test Vakası Adım Detayları">
+              <div className="case-detail-drawer" aria-label={t("Test Vakası Adım Detayları")}>
                 <div className="detail-title-row">
                   <h3>
                     {expandedCase.stable_key ?? expandedCase.id} · {expandedCase.title}
@@ -977,12 +990,12 @@ export function TestCasesPage({ user }: TestCasesPageProps) {
                     className="secondary-btn"
                     onClick={() => setExpandedCaseId(null)}
                   >
-                    Kapat
+                    {t("Kapat")}
                   </button>
                 </div>
                 <div className="detail-grid">
                   <div className="detail-item">
-                    <span className="detail-label">Test Adımları (Test Procedure)</span>
+                    <span className="detail-label">{t("Test Adımları (Test Procedure)")}</span>
                     {expandedCase.steps && expandedCase.steps.length > 0 ? (
                       <ol className="steps-list">
                         {expandedCase.steps.map((step, idx) => (
@@ -990,13 +1003,13 @@ export function TestCasesPage({ user }: TestCasesPageProps) {
                         ))}
                       </ol>
                     ) : (
-                      <span className="hint">Adım bilgisi tanımlanmamış.</span>
+                      <span className="hint">{t("Adım bilgisi tanımlanmamış.")}</span>
                     )}
                   </div>
                   <div className="detail-item">
-                    <span className="detail-label">Beklenen Sonuç (Expected Result)</span>
+                    <span className="detail-label">{t("Beklenen Sonuç (Expected Result)")}</span>
                     <p className="expected-text">
-                      {expandedCase.expected_result || "Tanımlanmamış."}
+                      {expandedCase.expected_result || t("Tanımlanmamış.")}
                     </p>
                   </div>
                 </div>
@@ -1008,14 +1021,14 @@ export function TestCasesPage({ user }: TestCasesPageProps) {
 
       {activeTab === "suites" && (
         <section>
-          <h3>{editingSuiteId !== null ? "Test Suite Düzenle" : "Yeni Test Suite"}</h3>
+          <h3>{editingSuiteId !== null ? t("Test Suite Düzenle") : t("Yeni Test Suite")}</h3>
 
           {canManage && (
             <form onSubmit={handleSuiteSubmit} noValidate className="stacked-form">
               <div className="form-grid">
                 <FormField
                   id="suite-project"
-                  label="Proje"
+                  label={t("Proje")}
                   required
                   error={suiteFormErrors.projectId}
                 >
@@ -1029,7 +1042,7 @@ export function TestCasesPage({ user }: TestCasesPageProps) {
                       }
                     }}
                   >
-                    <option value="">Proje seçin</option>
+                    <option value="">{t("Proje seçin")}</option>
                     {projects.map((p) => (
                       <option key={p.id} value={String(p.id)}>
                         {p.name}
@@ -1040,7 +1053,7 @@ export function TestCasesPage({ user }: TestCasesPageProps) {
 
                 <FormField
                   id="suite-name"
-                  label="Suite Adı"
+                  label={t("Suite Adı")}
                   required
                   error={suiteFormErrors.name}
                 >
@@ -1053,13 +1066,13 @@ export function TestCasesPage({ user }: TestCasesPageProps) {
                         setSuiteFormErrors((prev) => ({ ...prev, name: undefined }));
                       }
                     }}
-                    placeholder="Örn: Sprint 2 Regresyon Paketi"
+                    placeholder={t("Örn: Sprint 2 Regresyon Paketi")}
                   />
                 </FormField>
 
                 <FormField
                   id="suite-description"
-                  label="Açıklama"
+                  label={t("Açıklama")}
                   error={suiteFormErrors.description}
                 >
                   <input
@@ -1071,15 +1084,17 @@ export function TestCasesPage({ user }: TestCasesPageProps) {
                         setSuiteFormErrors((prev) => ({ ...prev, description: undefined }));
                       }
                     }}
-                    placeholder="Kapsam ve hedef koşum notu"
+                    placeholder={t("Kapsam ve hedef koşum notu")}
                   />
                 </FormField>
               </div>
 
               <div className="trace-panel">
                 <div className="trace-panel-header">
-                  <strong>Suite İçindeki Test Vakaları</strong>
-                  <span className="hint">Bu test suite kapsamında koşulacak vakaları seçin.</span>
+                  <strong>{t("Suite İçindeki Test Vakaları")}</strong>
+                  <span className="hint">
+                    {t("Bu test suite kapsamında koşulacak vakaları seçin.")}
+                  </span>
                 </div>
                 <div className="trace-checkbox-grid">
                   {testCases.map((tc) => {
@@ -1108,11 +1123,11 @@ export function TestCasesPage({ user }: TestCasesPageProps) {
 
               <div className="row-actions">
                 <button type="submit" disabled={saving}>
-                  {editingSuiteId !== null ? "Suite Güncelle" : "Suite Oluştur"}
+                  {editingSuiteId !== null ? t("Suite Güncelle") : t("Suite Oluştur")}
                 </button>
                 {editingSuiteId !== null && (
                   <button type="button" className="secondary-btn" onClick={resetSuiteForm}>
-                    İptal
+                    {t("İptal")}
                   </button>
                 )}
               </div>
@@ -1133,19 +1148,19 @@ export function TestCasesPage({ user }: TestCasesPageProps) {
         <>
           <section className="metrics">
             <div className="card">
-              <span>Toplam Gereksinim</span>
+              <span>{t("Toplam Gereksinim")}</span>
               <strong>{matrixStats.totalReqs}</strong>
             </div>
             <div className="card">
-              <span>Kapsanan Gereksinim</span>
+              <span>{t("Kapsanan Gereksinim")}</span>
               <strong>{matrixStats.coveredCount}</strong>
             </div>
             <div className="card">
-              <span>Gereksinim Kapsamı</span>
+              <span>{t("Gereksinim Kapsamı")}</span>
               <strong>{matrixStats.coverageRate}%</strong>
             </div>
             <div className="card">
-              <span>Toplam İzlenebilirlik Bağı</span>
+              <span>{t("Toplam İzlenebilirlik Bağı")}</span>
               <strong>{matrixStats.totalLinks}</strong>
             </div>
           </section>
@@ -1153,22 +1168,22 @@ export function TestCasesPage({ user }: TestCasesPageProps) {
           <section>
             <div className="section-header">
               <div>
-                <h3>Gereksinim – Test İzlenebilirlik Matrisi</h3>
+                <h3>{t("Gereksinim – Test İzlenebilirlik Matrisi")}</h3>
                 <p className="section-desc">
-                  Her satır bir gereksinimi, her sütun bir test vakasını temsil eder.{" "}
+                  {t("Her satır bir gereksinimi, her sütun bir test vakasını temsil eder.")}{" "}
                   {canManage
-                    ? "Hücrelere tıklayarak bağlantıyı doğrudan güncelleyebilirsiniz."
-                    : "Salt okunur görünüm."}
+                    ? t("Hücrelere tıklayarak bağlantıyı doğrudan güncelleyebilirsiniz.")
+                    : t("Salt okunur görünüm.")}
                 </p>
               </div>
               <div className="filter-group">
-                <label htmlFor="matrix-project-filter">Proje:</label>
+                <label htmlFor="matrix-project-filter">{t("Proje:")}</label>
                 <select
                   id="matrix-project-filter"
                   value={matrixProjectFilter}
                   onChange={(e) => setMatrixProjectFilter(e.target.value)}
                 >
-                  <option value="all">Tüm Projeler</option>
+                  <option value="all">{t("Tüm Projeler")}</option>
                   {projects.map((p) => (
                     <option key={p.id} value={String(p.id)}>
                       {p.name}
@@ -1180,23 +1195,24 @@ export function TestCasesPage({ user }: TestCasesPageProps) {
 
             {matrixStats.uncoveredReqs.length > 0 && (
               <div className="gap-alert" role="status">
-                <strong>Kapsam Eksikliği (Gap):</strong>{" "}
-                {matrixStats.uncoveredReqs.map((r) => r.id).join(", ")} gereksinimlerine henüz
-                test vakası bağlanmamış.
+                <strong>{t("Kapsam Eksikliği (Gap):")}</strong>{" "}
+                {t("{requirements} gereksinimlerine henüz test vakası bağlanmamış.", {
+                  requirements: matrixStats.uncoveredReqs.map((r) => r.id).join(", "),
+                })}
               </div>
             )}
 
             {filteredRequirements.length === 0 || testCases.length === 0 ? (
               <p className="table-empty">
-                Matris oluşturmak için en az bir gereksinim ve bir test vakası bulunmalıdır.
+                {t("Matris oluşturmak için en az bir gereksinim ve bir test vakası bulunmalıdır.")}
               </p>
             ) : (
               <div className="matrix-scroll">
-                <table className="matrix-table" aria-label="Gereksinim Test İzlenebilirlik Matrisi">
+                <table className="matrix-table" aria-label={t("Gereksinim Test İzlenebilirlik Matrisi")}>
                   <thead>
                     <tr>
-                      <th className="matrix-sticky-col">Gereksinim</th>
-                      <th>Özet (P / F / B / NR)</th>
+                      <th className="matrix-sticky-col">{t("Gereksinim")}</th>
+                      <th>{t("Özet (P / F / B / NR)")}</th>
                       {testCases.map((tc) => (
                         <th key={tc.id} title={`${tc.stable_key ?? tc.id}: ${tc.title}`}>
                           <div className="matrix-col-header">
@@ -1226,12 +1242,13 @@ export function TestCasesPage({ user }: TestCasesPageProps) {
                           <td className="matrix-sticky-col">
                             <strong>{req.id}</strong> · {req.title}
                             {linkedCases.length === 0 && (
-                              <span className="badge gap-badge">Kapsamsız</span>
+                              <span className="badge gap-badge">{t("Kapsamsız")}</span>
                             )}
                           </td>
                           <td>
                             <span className="matrix-summary">
-                              {linkedCases.length} test ({passedCount}/{failedCount}/{blockedCount}/
+                              {t("{count} test", { count: linkedCases.length })} ({passedCount}/
+                              {failedCount}/{blockedCount}/
                               {notRunCount})
                             </span>
                           </td>
@@ -1245,9 +1262,11 @@ export function TestCasesPage({ user }: TestCasesPageProps) {
                                   type="button"
                                   disabled={!canManage || isBusy}
                                   className={`matrix-cell-btn${linked ? " linked" : ""}`}
-                                  aria-label={`${req.id} ve ${tc.stable_key ?? tc.id} bağlantısı: ${
-                                    linked ? "Bağlı" : "Bağlı değil"
-                                  }`}
+                                  aria-label={t("{req} ve {caseKey} bağlantısı: {state}", {
+                                    req: req.id,
+                                    caseKey: tc.stable_key ?? tc.id,
+                                    state: linked ? t("Bağlı") : t("Bağlı değil"),
+                                  })}
                                   aria-pressed={linked}
                                   onClick={() => void handleMatrixToggle(req, tc, !linked)}
                                 >

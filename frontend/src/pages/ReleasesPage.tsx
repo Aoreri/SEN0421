@@ -18,12 +18,15 @@ import { ErrorAlert } from "../components/ErrorAlert";
 import { MetricsCharts } from "../components/MetricsCharts";
 import { ReleaseGateCard } from "../components/ReleaseGateCard";
 import { StatusBadge } from "../components/StatusBadge";
+import { useLang, useT } from "../i18n";
 
 export type ReleasesPageProps = {
   user: User | null;
 };
 
 export function ReleasesPage({ user }: ReleasesPageProps) {
+  const t = useT();
+  const lang = useLang();
   const [searchParams, setSearchParams] = useSearchParams();
   const releaseParam = Number(searchParams.get("release")) || null;
 
@@ -58,8 +61,8 @@ export function ReleasesPage({ user }: ReleasesPageProps) {
         setProjects(p);
         setReleases(r);
       })
-      .catch((err) => setError(formatErrorMessage(err, "Sürümler yüklenemedi.")));
-  }, [user]);
+      .catch((err) => setError(formatErrorMessage(err, t("Sürümler yüklenemedi."))));
+  }, [user, t]);
 
   useEffect(() => {
     setSprints([]);
@@ -67,8 +70,8 @@ export function ReleasesPage({ user }: ReleasesPageProps) {
     api
       .sprints({ releaseId })
       .then(setSprints)
-      .catch((err) => setError(formatErrorMessage(err, "Sprintler yüklenemedi.")));
-  }, [releaseId]);
+      .catch((err) => setError(formatErrorMessage(err, t("Sprintler yüklenemedi."))));
+  }, [releaseId, t]);
 
   const loadRelease = useCallback(async () => {
     if (releaseId === null) {
@@ -88,9 +91,9 @@ export function ReleasesPage({ user }: ReleasesPageProps) {
       setSnapshots(s);
       setError("");
     } catch (err) {
-      setError(formatErrorMessage(err, "Sürüm verileri yüklenemedi."));
+      setError(formatErrorMessage(err, t("Sürüm verileri yüklenemedi.")));
     }
-  }, [releaseId, sprintId]);
+  }, [releaseId, sprintId, t]);
 
   useEffect(() => {
     void loadRelease();
@@ -115,8 +118,8 @@ export function ReleasesPage({ user }: ReleasesPageProps) {
     if (releaseId === null) return;
     const ok = await runGateAction(
       () => api.updateReleaseStatus(releaseId, status),
-      `Sürüm durumu "${status}" olarak güncellendi.`,
-      "Sürüm durumu güncellenemedi.",
+      t("Sürüm durumu \"{status}\" olarak güncellendi.", { status }),
+      t("Sürüm durumu güncellenemedi."),
     );
     if (ok) {
       setReleases((rs) => rs.map((r) => (r.id === releaseId ? { ...r, status } : r)));
@@ -127,8 +130,8 @@ export function ReleasesPage({ user }: ReleasesPageProps) {
     if (releaseId === null) return false;
     return runGateAction(
       () => api.updateExitCriteria(releaseId, criteria),
-      "Sürüm çıkış kriterleri güncellendi.",
-      "Çıkış kriterleri güncellenemedi.",
+      t("Sürüm çıkış kriterleri güncellendi."),
+      t("Çıkış kriterleri güncellenemedi."),
     );
   }
 
@@ -136,8 +139,8 @@ export function ReleasesPage({ user }: ReleasesPageProps) {
     if (releaseId === null) return;
     await runGateAction(
       () => api.createReleaseWaiver(releaseId, reason),
-      "Test Lead muafiyeti kaydedildi.",
-      "Muafiyet kaydedilemedi.",
+      t("Test Lead muafiyeti kaydedildi."),
+      t("Muafiyet kaydedilemedi."),
     );
   }
 
@@ -145,8 +148,8 @@ export function ReleasesPage({ user }: ReleasesPageProps) {
     if (releaseId === null) return;
     await runGateAction(
       () => api.deleteReleaseWaiver(releaseId),
-      "Test Lead muafiyeti kaldırıldı.",
-      "Muafiyet kaldırılamadı.",
+      t("Test Lead muafiyeti kaldırıldı."),
+      t("Muafiyet kaldırılamadı."),
     );
   }
 
@@ -156,10 +159,10 @@ export function ReleasesPage({ user }: ReleasesPageProps) {
     try {
       const snap = await api.createSummaryReportSnapshot(releaseId);
       setSnapshots((s) => [...s, snap]);
-      setNotice(`Test Summary Report anlık görüntüsü #${snap.id} oluşturuldu.`);
+      setNotice(t("Test Summary Report anlık görüntüsü #{id} oluşturuldu.", { id: snap.id }));
       setError("");
     } catch (err) {
-      setError(formatErrorMessage(err, "Test Summary Report anlık görüntüsü oluşturulamadı."));
+      setError(formatErrorMessage(err, t("Test Summary Report anlık görüntüsü oluşturulamadı.")));
     } finally {
       setSaving(false);
     }
@@ -170,38 +173,39 @@ export function ReleasesPage({ user }: ReleasesPageProps) {
     try {
       await api.downloadSummaryReport(releaseId, format, snapshotId);
     } catch (err) {
-      setError(formatErrorMessage(err, "Test Summary Report indirilemedi."));
+      setError(formatErrorMessage(err, t("Test Summary Report indirilemedi.")));
     }
   }
 
-  const projectName = (id: number) => projects.find((p) => p.id === id)?.name ?? `Proje #${id}`;
+  const projectName = (id: number) =>
+    projects.find((p) => p.id === id)?.name ?? t("Proje #{id}", { id });
   const activeSprint = sprints.find((s) => s.id === sprintId) ?? null;
 
   const snapshotColumns: DataTableColumn<TestSummaryReportSnapshotSummary>[] = [
     { key: "id", header: "#", render: (s) => `#${s.id}` },
     {
       key: "generated_at",
-      header: "Üretim Zamanı",
-      render: (s) => new Date(s.generated_at).toLocaleString("tr-TR"),
+      header: t("Üretim Zamanı"),
+      render: (s) => new Date(s.generated_at).toLocaleString(lang === "tr" ? "tr-TR" : "en-GB"),
     },
-    { key: "generated_by", header: "Üreten", render: (s) => s.generated_by },
+    { key: "generated_by", header: t("Üreten"), render: (s) => s.generated_by },
     {
       key: "release_status",
-      header: "Sürüm Durumu",
+      header: t("Sürüm Durumu"),
       render: (s) => <StatusBadge text={s.release_status} />,
     },
     {
       key: "gate_passed",
-      header: "Çıkış Kapısı",
+      header: t("Çıkış Kapısı"),
       render: (s) => (
         <span className={`badge ${s.gate_passed ? "passed" : "failed"}`}>
-          {s.gate_passed ? "Geçti" : "Engelli"}
+          {s.gate_passed ? t("Geçti") : t("Engelli")}
         </span>
       ),
     },
     {
       key: "download",
-      header: "İndir",
+      header: t("İndir"),
       render: (s) => (
         <div className="row-actions">
           <button type="button" className="secondary-btn" onClick={() => void handleDownload("html", s.id)}>
@@ -222,7 +226,7 @@ export function ReleasesPage({ user }: ReleasesPageProps) {
         <section className="role-notice" role="status">
           <span>{notice}</span>
           <button type="button" className="secondary-btn" onClick={() => setNotice("")}>
-            Kapat
+            {t("Kapat")}
           </button>
         </section>
       )}
@@ -230,14 +234,15 @@ export function ReleasesPage({ user }: ReleasesPageProps) {
       <section>
         <div className="section-header">
           <div>
-            <h2>Sürüm Yönetimi</h2>
+            <h2>{t("Sürüm Yönetimi")}</h2>
             <p className="section-desc">
-              Test Tamamlama · Sürüm durumu, çıkış kriterleri, muafiyet ve
-              IEEE 829 Test Summary Report
+              {t(
+                "Test Tamamlama · Sürüm durumu, çıkış kriterleri, muafiyet ve IEEE 829 Test Summary Report",
+              )}
             </p>
           </div>
           <div className="filter-group">
-            <label htmlFor="release-select">Sürüm:</label>
+            <label htmlFor="release-select">{t("Sürüm:")}</label>
             <select
               id="release-select"
               value={releaseId ? String(releaseId) : ""}
@@ -262,7 +267,7 @@ export function ReleasesPage({ user }: ReleasesPageProps) {
               }
               disabled={sprints.length === 0}
             >
-              <option value="">Tüm sprintler</option>
+              <option value="">{t("Tüm sprintler")}</option>
               {sprints.map((s) => (
                 <option key={s.id} value={String(s.id)}>
                   {s.name} ({s.status})
@@ -273,8 +278,9 @@ export function ReleasesPage({ user }: ReleasesPageProps) {
         </div>
         {releases.length === 0 && (
           <p className="table-empty">
-            Henüz sürüm yok. <Link to="/projects">Projeler &amp; Gereksinimler</Link> ekranından
-            bir sürüm tanımlayın.
+            {t("Henüz sürüm yok.")}{" "}
+            <Link to="/projects">{t("Projeler & Gereksinimler")}</Link>{" "}
+            {t("ekranından bir sürüm tanımlayın.")}
           </p>
         )}
       </section>
@@ -283,28 +289,31 @@ export function ReleasesPage({ user }: ReleasesPageProps) {
         <section>
           <div className="section-header">
             <div>
-              <h2>Metrik Paneli{activeSprint ? ` · ${activeSprint.name}` : ""}</h2>
+              <h2>
+                {t("Metrik Paneli")}
+                {activeSprint ? ` · ${activeSprint.name}` : ""}
+              </h2>
               <p className="section-desc">
-                Test İzleme ve Kontrol · Seçili sürüm
-                {activeSprint ? " ve sprint" : ""} kapsamında
+                {t("Test İzleme ve Kontrol · Seçili sürüm")}
+                {activeSprint ? ` ${t("ve sprint")}` : ""} {t("kapsamında")}
               </p>
             </div>
           </div>
           <div className="sub-metrics">
             <div className="sub-metric-item">
-              <span>Başarı Oranı</span>
+              <span>{t("Başarı Oranı")}</span>
               <strong>{metrics.pass_rate}%</strong>
             </div>
             <div className="sub-metric-item">
-              <span>Gereksinim Kapsamı</span>
+              <span>{t("Gereksinim Kapsamı")}</span>
               <strong>{metrics.requirement_coverage}%</strong>
             </div>
             <div className="sub-metric-item">
-              <span>Açık Defect</span>
+              <span>{t("Açık Defect")}</span>
               <strong>{metrics.open_defects}</strong>
             </div>
             <div className="sub-metric-item">
-              <span>Yeniden Açılma Oranı</span>
+              <span>{t("Yeniden Açılma Oranı")}</span>
               <strong>{metrics.reopen_rate}%</strong>
             </div>
           </div>
@@ -328,20 +337,19 @@ export function ReleasesPage({ user }: ReleasesPageProps) {
             <div>
               <h2>IEEE 829 Test Summary Report</h2>
               <p className="section-desc">
-                Canlı rapor veya saklanmış anlık
-                görüntü (snapshot)
+                {t("Canlı rapor veya saklanmış anlık görüntü (snapshot)")}
               </p>
             </div>
             <div className="row-actions">
               <button type="button" className="secondary-btn" onClick={() => void handleDownload("html")}>
-                Canlı Rapor (HTML)
+                {t("Canlı Rapor (HTML)")}
               </button>
               <button type="button" className="secondary-btn" onClick={() => void handleDownload("pdf")}>
-                Canlı Rapor (PDF)
+                {t("Canlı Rapor (PDF)")}
               </button>
               {canCreateSnapshot && (
                 <button type="button" disabled={saving} onClick={() => void handleCreateSnapshot()}>
-                  Anlık Görüntü Oluştur
+                  {t("Anlık Görüntü Oluştur")}
                 </button>
               )}
             </div>
