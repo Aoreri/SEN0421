@@ -7,8 +7,9 @@ takip platformu. Test planlama, test vakası yazımı, defect yaşam döngüsü 
 yayınlama adımlarını tek yerde yönetir; IEEE 829 dokümanlarını ISO/IEC/IEEE 29119-2
 (test süreçleri) ve 29119-3 (test dokümantasyonu) eşlemesiyle üretmeyi hedefler.
 
-> ⚠️ Proje geliştirme aşamasındadır. Demo kullanıcıların parolaları herkese açıktır;
-> bu yapılandırma yalnızca yerel demo içindir, üretim için uygun değildir.
+> Varsayılan kurulum boş gelir: demo hesapları ve demo verisi yalnızca `DEMO_MODE=1` ile
+> yüklenir (bkz. [Demo modu](#demo-modu)). Demo hesaplarının parolası herkese açıktır; demo modu
+> üretim için uygun değildir.
 
 ## Ekran görüntüleri
 
@@ -96,8 +97,10 @@ docker compose up --build -d --wait
 - Arayüz: http://localhost:5173
 - API / Swagger: http://localhost:8000/docs · sağlık kontrolü: http://localhost:8000/api/health
 
-Backend açılışta `alembic upgrade head` çalıştırır; ilk migrasyon demo verisini yükler.
-`docker compose down` veriyi korur, `docker compose down -v` demo veritabanını siler.
+Backend açılışta `alembic upgrade head` çalıştırır. Veritabanı boş gelir; demo verisiyle
+başlatmak için `DEMO_MODE=1 docker compose up --build -d --wait`, boş kurulumda ilk Admin
+hesabı için `ADMIN_USERNAME=... ADMIN_PASSWORD=... docker compose up --build -d --wait`
+kullanın. `docker compose down` veriyi korur, `docker compose down -v` veritabanını siler.
 
 ### Yerel geliştirme
 
@@ -107,7 +110,7 @@ docker compose up -d db                      # yalnızca PostgreSQL
 cd backend
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements-dev.txt
-alembic upgrade head                         # şema + demo verisi
+DEMO_MODE=1 alembic upgrade head             # şema; DEMO_MODE=1 ise demo verisi de
 uvicorn app.main:app --reload                # http://localhost:8000
 
 cd frontend
@@ -117,11 +120,15 @@ npm run dev                                  # http://localhost:5173, /api → :
 
 Ortam değişkenleri: `DATABASE_URL` (varsayılan
 `postgresql+psycopg://sds06:sds06@localhost:5432/sds06`), `JWT_SECRET` (verilmezse her
-başlatmada rastgele üretilir).
+başlatmada rastgele üretilir), `DEMO_MODE` (`1`: demo hesapları ve verisi, varsayılan kapalı),
+`ADMIN_USERNAME` / `ADMIN_PASSWORD` (demo kapalıyken boş veritabanında ilk Admin hesabı).
 
-### Demo kullanıcılar
+### Demo modu
 
-Hepsinin parolası `demo1234`. API sözleşmesi: [docs/api-auth.md](docs/api-auth.md).
+Varsayılan olarak kapalıdır. `DEMO_MODE=1` iken boş veritabanına SDS-06 demo projesi (R1–R8,
+6 test vakası, 3 defect) ve aşağıdaki hesaplar eklenir; arayüz başlığında **DEMO** rozeti ve
+giriş ekranında demo hesapları görünür. Hepsinin parolası `demo1234`. Kod: `backend/app/demo.py`.
+API sözleşmesi: [docs/api-auth.md](docs/api-auth.md).
 
 | Kullanıcı | Rol |
 | --- | --- |
@@ -129,6 +136,17 @@ Hepsinin parolası `demo1234`. API sözleşmesi: [docs/api-auth.md](docs/api-aut
 | `testlead` | Test Lead |
 | `tester` | Tester |
 | `developer` | Developer |
+
+Ekibin demo sunucusu demo modunda çalışır ve her gün Türkiye saatiyle 00:00'da sıfırlanır
+(veritabanı silinir, migrasyonlar ve demo verisi yeniden yüklenir). Sıfırlama komutu yalnızca
+`DEMO_MODE=1` iken çalışır:
+
+```bash
+docker compose exec -T backend python -m app.demo reset
+```
+
+Sunucuda bu komut bir systemd zamanlayıcısıyla çalışır; saat dilimi sunucudan bağımsız olsun diye
+`OnCalendar=*-*-* 00:00:00 Europe/Istanbul` kullanılır.
 
 ## Testler ve CI
 

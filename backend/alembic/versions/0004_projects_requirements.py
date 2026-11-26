@@ -15,7 +15,7 @@ depends_on = None
 
 
 def upgrade() -> None:
-    projects = op.create_table(
+    op.create_table(
         "projects",
         sa.Column("id", sa.Integer, primary_key=True),
         sa.Column("name", sa.String(100), nullable=False, unique=True),
@@ -28,7 +28,7 @@ def upgrade() -> None:
         sa.Column("version", sa.String(50), nullable=False),
         sa.UniqueConstraint("project_id", "version"),
     )
-    requirements = op.create_table(
+    op.create_table(
         "requirements",
         sa.Column("id", sa.String(20), primary_key=True),
         sa.Column("project_id", sa.Integer, sa.ForeignKey("projects.id"), nullable=False, index=True),
@@ -41,12 +41,7 @@ def upgrade() -> None:
         sa.Column("requirement_id", sa.String(20), sa.ForeignKey("requirements.id"), primary_key=True),
     )
 
-    # Boş tabloda ilk kayıt id=1 alır; R1-R8 başlıkları yer tutucudur.
-    op.bulk_insert(projects, [{"name": "SDS-06", "description": ""}])
-    op.bulk_insert(requirements, [
-        {"id": f"R{n}", "project_id": 1, "title": f"Gereksinim R{n}", "description": ""}
-        for n in range(1, 9)
-    ])
+    # Demo projesi ve R1-R8 PLN-38 ile app/demo.py'ye taşındı.
     # Mevcut test vakası -> gereksinim eşlemesini koru
     op.execute("""
         INSERT INTO test_case_requirements (test_case_id, requirement_id)

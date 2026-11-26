@@ -25,6 +25,7 @@ def main() -> None:
     with tempfile.TemporaryDirectory(prefix="sds06-ci-import-") as directory:
         # Override inherited CI test URLs; migrations must never target a deployment.
         os.environ["DATABASE_URL"] = f"sqlite:///{directory}/dogfood.db"
+        os.environ["DEMO_MODE"] = "1"  # throwaway DB needs the demo accounts
         from fastapi.testclient import TestClient
 
         from alembic import command

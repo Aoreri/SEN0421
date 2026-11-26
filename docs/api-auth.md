@@ -107,5 +107,7 @@ stop working after a restart. Set it when running more than one worker.
 
 ## Demo users
 
+Only present when the backend runs with `DEMO_MODE=1` (`backend/app/demo.py`).
+
 `admin` (Admin), `testlead` (Test Lead), `tester` (Tester), `developer` (Developer).
 The password for all of them is `demo1234`.

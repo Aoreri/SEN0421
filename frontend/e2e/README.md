@@ -39,7 +39,7 @@ Always run the final cleanup, including after failure. This stack exposes only
 `e2e_pgdata` volume is separate from the development `pgdata` volume. Never
 run this against shared or production data. The explicit `E2E_DISPOSABLE=1`
 opt-in acknowledges that tests create records. Demo accounts are seeded by
-the normal migrations, with the documented `demo1234` password.
+the normal migrations with `DEMO_MODE=1` (set in `e2e/compose.yml`), with the documented `demo1234` password.
 
 `E2E_BASE_URL` can point to another **disposable** instance (default:
 `http://127.0.0.1:5173`). For an installed local Chromium, set

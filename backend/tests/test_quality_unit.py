@@ -48,7 +48,7 @@ def test_initial_history_and_public_listing():
     db.scalars.side_effect = None
     db.scalars.return_value = h
     assert main.defect_history(1, db, ADMIN)[0]["from"] is None
-    assert main.health() == {"status": "ok"}
+    assert main.health()["status"] == "ok"
 
 
 @pytest.mark.parametrize("body", [main.DefectCreate(title=" "), main.DefectCreate(title="A", test_case="missing")])
@@ -105,6 +105,16 @@ def test_legacy_exception_is_limited_to_documented_seed():
     db.scalars.return_value, db.scalar.return_value = [], None
     db.get.return_value = Case(status="Not Run")
     main.require_verification_passed(db, Defect(id=3, test_case="TC-005"))
+
+
+def test_legacy_exception_does_not_apply_outside_demo(monkeypatch):
+    monkeypatch.setenv("DEMO_MODE", "0")
+    db = MagicMock()
+    db.scalars.return_value, db.scalar.return_value = [], None
+    db.get.return_value = Case(status="Not Run")
+    with pytest.raises(HTTPException) as err:
+        main.require_verification_passed(db, Defect(id=3, test_case="TC-005"))
+    assert err.value.status_code == 409
 
 
 @pytest.mark.parametrize("num,den,expected", [(0, 0, 0), (1, 3, 33.3), (3, 3, 100)])

@@ -357,6 +357,7 @@ def main() -> None:
         sys.path.insert(0, str(backend))
     with tempfile.TemporaryDirectory(prefix="sds06-release-v1-") as directory:
         os.environ["DATABASE_URL"] = f"sqlite:///{directory}/release.db"
+        os.environ["DEMO_MODE"] = "1"  # throwaway DB needs the demo accounts
         from alembic import command
         from alembic.config import Config
         from app.db import engine
