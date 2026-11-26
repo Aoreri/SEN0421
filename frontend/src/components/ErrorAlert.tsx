@@ -1,9 +1,12 @@
+import { useT } from "../i18n";
+
 export type ErrorAlertProps = {
   message: string;
   onDismiss?: () => void;
 };
 
 export function ErrorAlert({ message, onDismiss }: ErrorAlertProps) {
+  const t = useT();
   if (!message) return null;
 
   return (
@@ -14,9 +17,9 @@ export function ErrorAlert({ message, onDismiss }: ErrorAlertProps) {
           type="button"
           className="error-dismiss"
           onClick={onDismiss}
-          aria-label="Hata mesajını kapat"
+          aria-label={t("Hata mesajını kapat")}
         >
-          Kapat
+          {t("Kapat")}
         </button>
       )}
     </div>

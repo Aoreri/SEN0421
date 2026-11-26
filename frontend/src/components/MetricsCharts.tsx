@@ -4,6 +4,7 @@ import {
   RunMetricPoint,
   SeverityDistributionItem,
 } from "../api";
+import { useT } from "../i18n";
 
 export type MetricsChartsProps = {
   metrics: ExpandedMetrics;
@@ -14,8 +15,9 @@ function shortLabel(text: string, maxLen = 14): string {
 }
 
 function StackedRunTrendChart({ series }: { series: RunMetricPoint[] }) {
+  const t = useT();
   if (series.length === 0) {
-    return <p className="table-empty">Grafik için henüz test koşumu verisi yok.</p>;
+    return <p className="table-empty">{t("Grafik için henüz test koşumu verisi yok.")}</p>;
   }
 
   const width = 520;
@@ -42,7 +44,7 @@ function StackedRunTrendChart({ series }: { series: RunMetricPoint[] }) {
   return (
     <div className="chart-card">
       <div className="chart-header">
-        <h3>Koşum Başına Sonuç Dağılımı &amp; Başarı Trendi</h3>
+        <h3>{t("Koşum Başına Sonuç Dağılımı & Başarı Trendi")}</h3>
         <div className="chart-legend">
           <span>
             <i className="legend-dot passed" /> Passed
@@ -57,7 +59,7 @@ function StackedRunTrendChart({ series }: { series: RunMetricPoint[] }) {
             <i className="legend-dot skipped" /> Skipped
           </span>
           <span>
-            <i className="legend-line" /> Başarı %
+            <i className="legend-line" /> {t("Başarı %")}
           </span>
         </div>
       </div>
@@ -66,7 +68,7 @@ function StackedRunTrendChart({ series }: { series: RunMetricPoint[] }) {
         viewBox={`0 0 ${width} ${height}`}
         className="chart-svg"
         role="img"
-        aria-label="Koşum başına yığılmış test sonuçları ve başarı oranı trend grafiği"
+        aria-label={t("Koşum başına yığılmış test sonuçları ve başarı oranı trend grafiği")}
       >
         {[0, 0.25, 0.5, 0.75, 1].map((ratio) => {
           const y = pad.top + plotH * (1 - ratio);
@@ -172,7 +174,7 @@ function StackedRunTrendChart({ series }: { series: RunMetricPoint[] }) {
         {trendPoints.map((pt, idx) => (
           <g key={idx}>
             <circle cx={pt.cx} cy={pt.cy} r={4.5} fill="#ffffff" stroke="#1d4ed8" strokeWidth="2.5">
-              <title>{`${pt.name}: %${pt.rate} başarı oranı`}</title>
+              <title>{`${pt.name}: %${pt.rate} ${t("başarı oranı")}`}</title>
             </circle>
             <text
               x={pt.cx}
@@ -192,8 +194,9 @@ function StackedRunTrendChart({ series }: { series: RunMetricPoint[] }) {
 }
 
 function DefectBurnUpChart({ points }: { points: DefectBurnupPoint[] }) {
+  const t = useT();
   if (points.length === 0) {
-    return <p className="table-empty">Defect burn-up için henüz zaman serisi verisi yok.</p>;
+    return <p className="table-empty">{t("Defect burn-up için henüz zaman serisi verisi yok.")}</p>;
   }
 
   const width = 460;
@@ -217,15 +220,17 @@ function DefectBurnUpChart({ points }: { points: DefectBurnupPoint[] }) {
   return (
     <div className="chart-card">
       <div className="chart-header">
-        <h3>Defect Burn-up (Açılan vs Kapatılan)</h3>
+        <h3>{t("Defect Burn-up (Açılan vs Kapatılan)")}</h3>
         <div className="chart-legend">
           <span>
-            <i className="legend-dot failed" /> Açılan ({latest.opened})
+            <i className="legend-dot failed" /> {t("Açılan")} ({latest.opened})
           </span>
           <span>
-            <i className="legend-dot passed" /> Kapatılan ({latest.closed})
+            <i className="legend-dot passed" /> {t("Kapatılan")} ({latest.closed})
           </span>
-          <span className="badge">Açık Kalan: {latest.open_remaining}</span>
+          <span className="badge">
+            {t("Açık Kalan: {count}", { count: latest.open_remaining })}
+          </span>
         </div>
       </div>
 
@@ -233,7 +238,7 @@ function DefectBurnUpChart({ points }: { points: DefectBurnupPoint[] }) {
         viewBox={`0 0 ${width} ${height}`}
         className="chart-svg"
         role="img"
-        aria-label="Zaman içinde açılan ve kapatılan defect burn-up grafiği"
+        aria-label={t("Zaman içinde açılan ve kapatılan defect burn-up grafiği")}
       >
         {[0, 0.5, 1].map((ratio) => {
           const y = pad.top + plotH * (1 - ratio);
@@ -280,10 +285,10 @@ function DefectBurnUpChart({ points }: { points: DefectBurnupPoint[] }) {
           return (
             <g key={p.date}>
               <circle cx={cx} cy={yAt(p.opened)} r={4} fill="#ef4444">
-                <title>{`${p.date} · Toplam Açılan: ${p.opened}`}</title>
+                <title>{`${p.date} · ${t("Toplam Açılan:")} ${p.opened}`}</title>
               </circle>
               <circle cx={cx} cy={yAt(p.closed)} r={4} fill="#10b981">
-                <title>{`${p.date} · Toplam Kapatılan: ${p.closed}`}</title>
+                <title>{`${p.date} · ${t("Toplam Kapatılan:")} ${p.closed}`}</title>
               </circle>
               <text
                 x={cx}
@@ -303,19 +308,20 @@ function DefectBurnUpChart({ points }: { points: DefectBurnupPoint[] }) {
 }
 
 function SeverityDistributionChart({ items }: { items: SeverityDistributionItem[] }) {
+  const t = useT();
   const maxTotal = Math.max(1, ...items.map((item) => item.total));
   const ordered = [...items].reverse();
 
   return (
     <div className="chart-card">
       <div className="chart-header">
-        <h3>Önem Derecesine Göre Defect Dağılımı</h3>
+        <h3>{t("Önem Derecesine Göre Defect Dağılımı")}</h3>
         <div className="chart-legend">
           <span>
-            <i className="legend-dot failed" /> Açık / İşlemde
+            <i className="legend-dot failed" /> {t("Açık / İşlemde")}
           </span>
           <span>
-            <i className="legend-dot passed" /> Kapatılan
+            <i className="legend-dot passed" /> {t("Kapatılan")}
           </span>
         </div>
       </div>
@@ -332,26 +338,28 @@ function SeverityDistributionChart({ items }: { items: SeverityDistributionItem[
               <div
                 className="severity-track"
                 role="img"
-                aria-label={`${item.severity}: ${item.open} açık, ${item.closed} kapalı`}
+                aria-label={`${item.severity}: ${t("{count} açık, {closed} kapalı", { count: item.open, closed: item.closed })}`}
               >
                 {item.open > 0 && (
                   <div
                     className="severity-seg open-seg"
                     style={{ width: `${openPct}%` }}
-                    title={`${item.severity} Açık: ${item.open}`}
+                    title={`${item.severity} ${t("Açık:")} ${item.open}`}
                   />
                 )}
                 {item.closed > 0 && (
                   <div
                     className="severity-seg closed-seg"
                     style={{ width: `${closedPct}%` }}
-                    title={`${item.severity} Kapatılan: ${item.closed}`}
+                    title={`${item.severity} ${t("Kapatılan:")} ${item.closed}`}
                   />
                 )}
               </div>
               <div className="severity-count-col">
                 <strong>{item.total}</strong>{" "}
-                <span className="hint">({item.open} açık)</span>
+                <span className="hint">
+                  ({t("{count} açık", { count: item.open })})
+                </span>
               </div>
             </div>
           );

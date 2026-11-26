@@ -14,6 +14,7 @@ import {
   validateWaiverReason,
 } from "../validation";
 import { StatusBadge } from "./StatusBadge";
+import { useLang, useT } from "../i18n";
 
 export type ReleaseGateCardProps = {
   gate: ReleaseGateStatus | null;
@@ -37,6 +38,8 @@ export function ReleaseGateCard({
   onDeleteWaiver,
   showManageLink = false,
 }: ReleaseGateCardProps) {
+  const t = useT();
+  const lang = useLang();
   const [editingCriteria, setEditingCriteria] = useState(false);
   const [minPassRate, setMinPassRate] = useState("80");
   const [maxOpenCritical, setMaxOpenCritical] = useState("0");
@@ -56,9 +59,9 @@ export function ReleaseGateCard({
   if (!gate) {
     return (
       <section>
-        <h2>Sürüm Çıkış Kapısı (R7)</h2>
+        <h2>{t("Sürüm Çıkış Kapısı")}</h2>
         <p className="table-empty">
-          Çıkış kapısı değerlendirmesi için önce bir sürüm tanımlayın.
+          {t("Çıkış kapısı değerlendirmesi için önce bir sürüm tanımlayın.")}
         </p>
       </section>
     );
@@ -106,16 +109,16 @@ export function ReleaseGateCard({
       <div className="section-header">
         <div>
           <h2>
-            Sürüm Çıkış Kapısı: {gate.release_version}
+            {t("Sürüm Çıkış Kapısı:")} {gate.release_version}
           </h2>
           <p className="section-desc">
-            ISO/IEC/IEEE 29119-2 · Test İzleme ve Kontrol · Sürüm Yayınlama Kriterleri (R7)
+            {t("Test İzleme ve Kontrol · Sürüm Yayınlama Kriterleri")}
           </p>
         </div>
         <div className="badge-list">
           <StatusBadge text={gate.status} />
           <span className={`badge ${gate.gate_passed ? "passed" : "failed"}`}>
-            {gate.gate_passed ? "Çıkış Kapısı Geçti" : "Çıkış Kapısı Engelli"}
+            {gate.gate_passed ? t("Çıkış Kapısı Geçti") : t("Çıkış Kapısı Engelli")}
           </span>
         </div>
       </div>
@@ -124,39 +127,45 @@ export function ReleaseGateCard({
         <div
           className={`gate-criterion ${gate.passed_criteria.pass_rate ? "ok" : "fail"}`}
         >
-          <span className="detail-label">Test Başarı Oranı</span>
+          <span className="detail-label">{t("Test Başarı Oranı")}</span>
           <strong>
             {gate.actual_pass_rate}%{" "}
-            <span className="hint">/ hedef ≥ {gate.criteria.min_pass_rate}%</span>
+            <span className="hint">
+              {t("/ hedef ≥ {target}%", { target: gate.criteria.min_pass_rate })}
+            </span>
           </strong>
           <span className={`badge ${gate.passed_criteria.pass_rate ? "passed" : "failed"}`}>
-            {gate.passed_criteria.pass_rate ? "Karşılandı" : "Eşik Altında"}
+            {gate.passed_criteria.pass_rate ? t("Karşılandı") : t("Eşik Altında")}
           </span>
         </div>
 
         <div
           className={`gate-criterion ${gate.passed_criteria.open_critical ? "ok" : "fail"}`}
         >
-          <span className="detail-label">Açık Critical Defect</span>
+          <span className="detail-label">{t("Açık Critical Defect")}</span>
           <strong>
             {gate.actual_open_critical}{" "}
-            <span className="hint">/ limit ≤ {gate.criteria.max_open_critical}</span>
+            <span className="hint">
+              {t("/ limit ≤ {limit}", { limit: gate.criteria.max_open_critical })}
+            </span>
           </strong>
           <span className={`badge ${gate.passed_criteria.open_critical ? "passed" : "failed"}`}>
-            {gate.passed_criteria.open_critical ? "Karşılandı" : "Limit Aşıldı"}
+            {gate.passed_criteria.open_critical ? t("Karşılandı") : t("Limit Aşıldı")}
           </span>
         </div>
 
         <div
           className={`gate-criterion ${gate.passed_criteria.req_coverage ? "ok" : "fail"}`}
         >
-          <span className="detail-label">Gereksinim Kapsamı</span>
+          <span className="detail-label">{t("Gereksinim Kapsamı")}</span>
           <strong>
             {gate.actual_req_coverage}%{" "}
-            <span className="hint">/ hedef ≥ {gate.criteria.min_req_coverage}%</span>
+            <span className="hint">
+              {t("/ hedef ≥ {target}%", { target: gate.criteria.min_req_coverage })}
+            </span>
           </strong>
           <span className={`badge ${gate.passed_criteria.req_coverage ? "passed" : "failed"}`}>
-            {gate.passed_criteria.req_coverage ? "Karşılandı" : "Eşik Altında"}
+            {gate.passed_criteria.req_coverage ? t("Karşılandı") : t("Eşik Altında")}
           </span>
         </div>
       </div>
@@ -168,13 +177,15 @@ export function ReleaseGateCard({
               {gate.passed_criteria.pass_rate &&
               gate.passed_criteria.open_critical &&
               gate.passed_criteria.req_coverage
-                ? "Kayıtlı Test Lead Muafiyeti (Kriterler sağlandığı için pasif):"
-                : "Aktif Test Lead Muafiyeti:"}
+                ? t("Kayıtlı Test Lead Muafiyeti (Kriterler sağlandığı için pasif):")
+                : t("Aktif Test Lead Muafiyeti:")}
             </strong>{" "}
             {gate.waiver.reason}{" "}
             <span className="hint">
-              (Onaylayan: <strong>{gate.waiver.waived_by}</strong> ·{" "}
-              {new Date(gate.waiver.waived_at).toLocaleString("tr-TR")})
+              ({t("Onaylayan:")} <strong>{gate.waiver.waived_by}</strong> ·{" "}
+              {new Date(gate.waiver.waived_at).toLocaleString(
+                lang === "tr" ? "tr-TR" : "en-GB",
+              )})
             </span>
           </div>
           {canWaive && (
@@ -184,7 +195,7 @@ export function ReleaseGateCard({
               disabled={saving}
               onClick={() => void onDeleteWaiver()}
             >
-              Muafiyeti Kaldır
+              {t("Muafiyeti Kaldır")}
             </button>
           )}
         </div>
@@ -192,7 +203,7 @@ export function ReleaseGateCard({
 
       <div className="gate-actions-bar">
         <div className="row-actions">
-          <span className="detail-label">Sürüm Durumu:</span>
+          <span className="detail-label">{t("Sürüm Durumu:")}</span>
           {RELEASE_STATUSES.map((status) => {
             const requiresGate = status === "Ready" || status === "Released";
             const blockedByGate = requiresGate && !gate.gate_passed;
@@ -204,7 +215,9 @@ export function ReleaseGateCard({
                 disabled={!canManageGate || saving || blockedByGate || gate.status === status}
                 title={
                   blockedByGate
-                    ? "Çıkış kriterleri karşılanmadan veya muafiyet girilmeden Ready/Released yapılamaz"
+                    ? t(
+                        "Çıkış kriterleri karşılanmadan veya muafiyet girilmeden Ready/Released yapılamaz",
+                      )
                     : undefined
                 }
                 onClick={() => void onUpdateStatus(status)}
@@ -221,21 +234,22 @@ export function ReleaseGateCard({
             className="secondary-btn"
             onClick={() => setEditingCriteria((v) => !v)}
           >
-            {editingCriteria ? "Eşikleri Gizle" : "Çıkış Eşikleri Düzenle"}
+            {editingCriteria ? t("Eşikleri Gizle") : t("Çıkış Eşikleri Düzenle")}
           </button>
         )}
 
         {showManageLink && (
           <Link to={`/releases?release=${gate.release_id}`} className="detail-link">
-            Sürüm Yönetimi &amp; Test Summary Report →
+            {t("Sürüm Yönetimi & Test Summary Report →")}
           </Link>
         )}
       </div>
 
       {!canManageGate && (
         <p className="hint" style={{ marginTop: 8 }}>
-          Sürüm durumu güncelleme ve eşik yapılandırma yalnızca <strong>Test Lead</strong> ve{" "}
-          <strong>Admin</strong> rolleri içindir.
+          {t("Sürüm durumu güncelleme ve eşik yapılandırma yalnızca")}{" "}
+          <strong>Test Lead</strong> {t("ve")} <strong>Admin</strong>{" "}
+          {t("rolleri içindir.")}
         </p>
       )}
 
@@ -243,7 +257,7 @@ export function ReleaseGateCard({
         <form onSubmit={(e) => void handleSaveCriteria(e)} className="gate-subform" noValidate>
           <div className="form-grid">
             <div className="form-field">
-              <label htmlFor="crit-pass">Min. Başarı Oranı (%)</label>
+              <label htmlFor="crit-pass">{t("Min. Başarı Oranı (%)")}</label>
               <input
                 id="crit-pass"
                 type="number"
@@ -257,7 +271,7 @@ export function ReleaseGateCard({
               )}
             </div>
             <div className="form-field">
-              <label htmlFor="crit-crit">Maks. Açık Critical Defect</label>
+              <label htmlFor="crit-crit">{t("Maks. Açık Critical Defect")}</label>
               <input
                 id="crit-crit"
                 type="number"
@@ -270,7 +284,7 @@ export function ReleaseGateCard({
               )}
             </div>
             <div className="form-field">
-              <label htmlFor="crit-cov">Min. Gereksinim Kapsamı (%)</label>
+              <label htmlFor="crit-cov">{t("Min. Gereksinim Kapsamı (%)")}</label>
               <input
                 id="crit-cov"
                 type="number"
@@ -286,7 +300,7 @@ export function ReleaseGateCard({
           </div>
           <div className="row-actions">
             <button type="submit" disabled={saving}>
-              Eşikleri Kaydet
+              {t("Eşikleri Kaydet")}
             </button>
           </div>
         </form>
@@ -296,8 +310,9 @@ export function ReleaseGateCard({
         <form onSubmit={(e) => void handleWaiverSubmit(e)} className="gate-subform" noValidate>
           <div className="form-field" style={{ flex: 1, width: "100%" }}>
             <label htmlFor="waiver-reason">
-              Test Lead Muafiyeti Gerekçesi (Kriterler karşılanmasa da sürüm çıkışını onaylamak
-              için)
+              {t(
+                "Test Lead Muafiyeti Gerekçesi (Kriterler karşılanmasa da sürüm çıkışını onaylamak için)",
+              )}
             </label>
             <input
               id="waiver-reason"
@@ -306,7 +321,9 @@ export function ReleaseGateCard({
                 setWaiverReason(e.target.value);
                 if (waiverError) setWaiverError("");
               }}
-              placeholder="Örn: Bilinen düşük etkili sorun sonraki yamaya ertelendi."
+              placeholder={t(
+                "Örn: Bilinen düşük etkili sorun sonraki yamaya ertelendi.",
+              )}
             />
             {waiverError && (
               <span className="field-error" role="alert">
@@ -316,7 +333,7 @@ export function ReleaseGateCard({
           </div>
           <div className="row-actions">
             <button type="submit" disabled={saving}>
-              Muafiyet Kaydet
+              {t("Muafiyet Kaydet")}
             </button>
           </div>
         </form>

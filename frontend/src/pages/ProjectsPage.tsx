@@ -23,12 +23,14 @@ import {
   validateReleaseForm,
   validateRequirementForm,
 } from "../validation";
+import { useT } from "../i18n";
 
 export type ProjectsPageProps = {
   user: User | null;
 };
 
 export function ProjectsPage({ user }: ProjectsPageProps) {
+  const t = useT();
   const [projects, setProjects] = useState<Project[]>([]);
   const [releases, setReleases] = useState<Release[]>([]);
   const [requirements, setRequirements] = useState<Requirement[]>([]);
@@ -100,11 +102,11 @@ export function ProjectsPage({ user }: ProjectsPageProps) {
       setError(
         formatErrorMessage(
           err,
-          "Proje ve gereksinim verileri yüklenemedi. Önce backend'i başlatın.",
+          t("Proje ve gereksinim verileri yüklenemedi. Önce backend'i başlatın."),
         ),
       );
     }
-  }, [user]);
+  }, [user, t]);
 
   useEffect(() => {
     void loadAll();
@@ -147,7 +149,7 @@ export function ProjectsPage({ user }: ProjectsPageProps) {
       setError("");
       await loadAll();
     } catch (err) {
-      setError(formatErrorMessage(err, "Proje kaydedilirken bir hata oluştu."));
+      setError(formatErrorMessage(err, t("Proje kaydedilirken bir hata oluştu.")));
     } finally {
       setSavingProject(false);
     }
@@ -156,14 +158,15 @@ export function ProjectsPage({ user }: ProjectsPageProps) {
   async function removeProject(id: number) {
     const project = projects.find((p) => p.id === id);
     const label = project ? project.name : `#${id}`;
-    if (!window.confirm(`"${label}" projesi silinsin mi? Bu işlem geri alınamaz.`)) return;
+    if (!window.confirm(t("\"{name}\" projesi silinsin mi? Bu işlem geri alınamaz.", { name: label })))
+      return;
     try {
       await api.deleteProject(id);
       if (editingProjectId === id) resetProjectForm();
       setError("");
       await loadAll();
     } catch (err) {
-      setError(formatErrorMessage(err, "Proje silinirken bir hata oluştu."));
+      setError(formatErrorMessage(err, t("Proje silinirken bir hata oluştu.")));
     }
   }
 
@@ -203,7 +206,7 @@ export function ProjectsPage({ user }: ProjectsPageProps) {
       setError("");
       await loadAll();
     } catch (err) {
-      setError(formatErrorMessage(err, "Sürüm kaydedilirken bir hata oluştu."));
+      setError(formatErrorMessage(err, t("Sürüm kaydedilirken bir hata oluştu.")));
     } finally {
       setSavingRelease(false);
     }
@@ -212,14 +215,15 @@ export function ProjectsPage({ user }: ProjectsPageProps) {
   async function removeRelease(id: number) {
     const release = releases.find((r) => r.id === id);
     const label = release ? release.version : `#${id}`;
-    if (!window.confirm(`"${label}" sürümü silinsin mi? Bu işlem geri alınamaz.`)) return;
+    if (!window.confirm(t("\"{name}\" sürümü silinsin mi? Bu işlem geri alınamaz.", { name: label })))
+      return;
     try {
       await api.deleteRelease(id);
       if (editingReleaseId === id) resetReleaseForm();
       setError("");
       await loadAll();
     } catch (err) {
-      setError(formatErrorMessage(err, "Sürüm silinirken bir hata oluştu."));
+      setError(formatErrorMessage(err, t("Sürüm silinirken bir hata oluştu.")));
     }
   }
 
@@ -268,7 +272,7 @@ export function ProjectsPage({ user }: ProjectsPageProps) {
       setError("");
       await loadAll();
     } catch (err) {
-      setError(formatErrorMessage(err, "Gereksinim kaydedilirken bir hata oluştu."));
+      setError(formatErrorMessage(err, t("Gereksinim kaydedilirken bir hata oluştu.")));
     } finally {
       setSavingReq(false);
     }
@@ -277,7 +281,12 @@ export function ProjectsPage({ user }: ProjectsPageProps) {
   async function removeRequirement(id: string) {
     const requirement = requirements.find((r) => r.id === id);
     const label = requirement ? `${requirement.id} · ${requirement.title}` : id;
-    if (!window.confirm(`"${label}" gereksinimi silinsin mi? Bu işlem geri alınamaz.`)) return;
+    if (
+      !window.confirm(
+        t("\"{name}\" gereksinimi silinsin mi? Bu işlem geri alınamaz.", { name: label }),
+      )
+    )
+      return;
     try {
       await api.deleteRequirement(id);
       if (editingRequirementId === id) resetRequirementForm();
@@ -285,7 +294,7 @@ export function ProjectsPage({ user }: ProjectsPageProps) {
       setError("");
       await loadAll();
     } catch (err) {
-      setError(formatErrorMessage(err, "Gereksinim silinirken bir hata oluştu."));
+      setError(formatErrorMessage(err, t("Gereksinim silinirken bir hata oluştu.")));
     }
   }
 
@@ -311,7 +320,7 @@ export function ProjectsPage({ user }: ProjectsPageProps) {
       setError("");
       await loadAll();
     } catch (err) {
-      setError(formatErrorMessage(err, "İzlenebilirlik bağlantıları güncellenemedi."));
+      setError(formatErrorMessage(err, t("İzlenebilirlik bağlantıları güncellenemedi.")));
     } finally {
       setSavingTrace(false);
     }
@@ -324,13 +333,13 @@ export function ProjectsPage({ user }: ProjectsPageProps) {
 
   const projectColumns: DataTableColumn<Project>[] = [
     { key: "id", header: "ID", render: (p) => p.id },
-    { key: "name", header: "Proje Adı", render: (p) => <strong>{p.name}</strong> },
-    { key: "description", header: "Açıklama", render: (p) => p.description || "—" },
+    { key: "name", header: t("Proje Adı"), render: (p) => <strong>{p.name}</strong> },
+    { key: "description", header: t("Açıklama"), render: (p) => p.description || "—" },
     ...(canWriteCatalog
       ? [
           {
             key: "actions",
-            header: "İşlemler",
+            header: t("İşlemler"),
             render: (p: Project) => (
               <div className="row-actions">
                 <button
@@ -338,14 +347,14 @@ export function ProjectsPage({ user }: ProjectsPageProps) {
                   className="secondary-btn"
                   onClick={() => startEditProject(p)}
                 >
-                  Düzenle
+                  {t("Düzenle")}
                 </button>
                 <button
                   type="button"
                   className="danger-btn"
                   onClick={() => void removeProject(p.id)}
                 >
-                  Sil
+                  {t("Sil")}
                 </button>
               </div>
             ),
@@ -356,13 +365,13 @@ export function ProjectsPage({ user }: ProjectsPageProps) {
 
   const releaseColumns: DataTableColumn<Release>[] = [
     { key: "id", header: "ID", render: (r) => r.id },
-    { key: "project", header: "Proje", render: (r) => projectNameById(r.project_id) },
-    { key: "version", header: "Sürüm", render: (r) => <StatusBadge text={r.version} /> },
+    { key: "project", header: t("Proje"), render: (r) => projectNameById(r.project_id) },
+    { key: "version", header: t("Sürüm"), render: (r) => <StatusBadge text={r.version} /> },
     ...(canWriteCatalog
       ? [
           {
             key: "actions",
-            header: "İşlemler",
+            header: t("İşlemler"),
             render: (r: Release) => (
               <div className="row-actions">
                 <button
@@ -370,14 +379,14 @@ export function ProjectsPage({ user }: ProjectsPageProps) {
                   className="secondary-btn"
                   onClick={() => startEditRelease(r)}
                 >
-                  Düzenle
+                  {t("Düzenle")}
                 </button>
                 <button
                   type="button"
                   className="danger-btn"
                   onClick={() => void removeRelease(r.id)}
                 >
-                  Sil
+                  {t("Sil")}
                 </button>
               </div>
             ),
@@ -387,13 +396,13 @@ export function ProjectsPage({ user }: ProjectsPageProps) {
   ];
 
   const requirementColumns: DataTableColumn<Requirement>[] = [
-    { key: "id", header: "Kod", render: (r) => <strong>{r.id}</strong> },
-    { key: "project", header: "Proje", render: (r) => projectNameById(r.project_id) },
-    { key: "title", header: "Başlık", render: (r) => r.title },
-    { key: "description", header: "Açıklama", render: (r) => r.description || "—" },
+    { key: "id", header: t("Kod"), render: (r) => <strong>{r.id}</strong> },
+    { key: "project", header: t("Proje"), render: (r) => projectNameById(r.project_id) },
+    { key: "title", header: t("Başlık"), render: (r) => r.title },
+    { key: "description", header: t("Açıklama"), render: (r) => r.description || "—" },
     {
       key: "test_cases",
-      header: "Bağlı Test Vakaları",
+      header: t("Bağlı Test Vakaları"),
       render: (r) =>
         r.test_cases.length > 0 ? (
           <div className="badge-list">
@@ -402,14 +411,14 @@ export function ProjectsPage({ user }: ProjectsPageProps) {
             ))}
           </div>
         ) : (
-          <span className="hint">Bağlı test yok</span>
+          <span className="hint">{t("Bağlı test yok")}</span>
         ),
     },
     ...(canEditTraceability || canWriteCatalog
       ? [
           {
             key: "actions",
-            header: "İşlemler",
+            header: t("İşlemler"),
             render: (r: Requirement) => (
               <div className="row-actions">
                 {canEditTraceability && (
@@ -417,7 +426,7 @@ export function ProjectsPage({ user }: ProjectsPageProps) {
                     type="button"
                     onClick={() => openTraceabilityEditor(r)}
                   >
-                    Test Bağla
+                    {t("Test Bağla")}
                   </button>
                 )}
                 {canWriteCatalog && (
@@ -427,14 +436,14 @@ export function ProjectsPage({ user }: ProjectsPageProps) {
                       className="secondary-btn"
                       onClick={() => startEditRequirement(r)}
                     >
-                      Düzenle
+                      {t("Düzenle")}
                     </button>
                     <button
                       type="button"
                       className="danger-btn"
                       onClick={() => void removeRequirement(r.id)}
                     >
-                      Sil
+                      {t("Sil")}
                     </button>
                   </>
                 )}
@@ -452,11 +461,12 @@ export function ProjectsPage({ user }: ProjectsPageProps) {
       {!user && (
         <section className="role-notice">
           <span>
-            Proje, sürüm ve gereksinim kayıtlarını görüntülüyorsunuz. Düzenleme veya izlenebilirlik
-            eşleştirmesi yapmak için giriş yapın.
+            {t(
+              "Proje, sürüm ve gereksinim kayıtlarını görüntülüyorsunuz. Düzenleme veya izlenebilirlik eşleştirmesi yapmak için giriş yapın.",
+            )}
           </span>
           <Link to="/login" className="btn-link">
-            Giriş Ekranına Git
+            {t("Giriş Ekranına Git")}
           </Link>
         </section>
       )}
@@ -464,21 +474,29 @@ export function ProjectsPage({ user }: ProjectsPageProps) {
       {user && !canWriteCatalog && (
         <section className="role-notice">
           <span>
-            Aktif rolünüz (<StatusBadge text={user.role} />):{" "}
+            {t("Aktif rolünüz (")}
+            <StatusBadge text={user.role} />
+            {t("):")}{" "}
             {canEditTraceability
-              ? "Gereksinim ↔ Test Vakası izlenebilirlik bağlantılarını güncelleyebilirsiniz. Proje/sürüm/gereksinim ekleme ve silme işlemleri Admin veya Test Lead rolü gerektirir."
-              : "Katalog kayıtlarını salt okunur görüntülüyorsunuz."}
+              ? t(
+                  "Gereksinim ↔ Test Vakası izlenebilirlik bağlantılarını güncelleyebilirsiniz. Proje/sürüm/gereksinim ekleme ve silme işlemleri Admin veya Test Lead rolü gerektirir.",
+                )
+              : t("Katalog kayıtlarını salt okunur görüntülüyorsunuz.")}
           </span>
         </section>
       )}
 
       <section>
-        <h2>Projeler</h2>
+        <h2>{t("Projeler")}</h2>
         {canWriteCatalog && (
           <form onSubmit={submitProject} noValidate>
             <FormField
               id="project-name"
-              label={editingProjectId !== null ? `Proje Adı (#${editingProjectId})` : "Proje Adı"}
+              label={
+                editingProjectId !== null
+                  ? t("Proje Adı (#{id})", { id: editingProjectId })
+                  : t("Proje Adı")
+              }
               required
               error={projectErrors.name}
             >
@@ -491,14 +509,14 @@ export function ProjectsPage({ user }: ProjectsPageProps) {
                     setProjectErrors((prev) => ({ ...prev, name: undefined }));
                   }
                 }}
-                placeholder="Örn: SDS-06"
+                placeholder={t("Örn: SDS-06")}
                 aria-invalid={Boolean(projectErrors.name)}
               />
             </FormField>
 
             <FormField
               id="project-desc"
-              label="Açıklama"
+              label={t("Açıklama")}
               error={projectErrors.description}
             >
               <input
@@ -510,7 +528,7 @@ export function ProjectsPage({ user }: ProjectsPageProps) {
                     setProjectErrors((prev) => ({ ...prev, description: undefined }));
                   }
                 }}
-                placeholder="Proje açıklaması (isteğe bağlı)"
+                placeholder={t("Proje açıklaması (isteğe bağlı)")}
                 aria-invalid={Boolean(projectErrors.description)}
               />
             </FormField>
@@ -518,10 +536,10 @@ export function ProjectsPage({ user }: ProjectsPageProps) {
             <div className="form-actions">
               <button type="submit" disabled={savingProject}>
                 {savingProject
-                  ? "Kaydediliyor..."
+                  ? t("Kaydediliyor...")
                   : editingProjectId !== null
-                    ? "Projeyi Güncelle"
-                    : "Proje Ekle"}
+                    ? t("Projeyi Güncelle")
+                    : t("Proje Ekle")}
               </button>
               {editingProjectId !== null && (
                 <button
@@ -529,7 +547,7 @@ export function ProjectsPage({ user }: ProjectsPageProps) {
                   className="secondary-btn"
                   onClick={resetProjectForm}
                 >
-                  İptal
+                  {t("İptal")}
                 </button>
               )}
             </div>
@@ -548,12 +566,12 @@ export function ProjectsPage({ user }: ProjectsPageProps) {
       {canWriteCatalog && <ProjectMembers projects={projects} />}
 
       <section>
-        <h2>Sürümler (Releases)</h2>
+        <h2>{t("Sürümler (Releases)")}</h2>
         {canWriteCatalog && (
           <form onSubmit={submitRelease} noValidate>
             <FormField
               id="release-project"
-              label="Proje"
+              label={t("Proje")}
               required
               error={releaseErrors.projectId}
             >
@@ -568,7 +586,7 @@ export function ProjectsPage({ user }: ProjectsPageProps) {
                 }}
                 aria-invalid={Boolean(releaseErrors.projectId)}
               >
-                <option value="">Proje seçin</option>
+                <option value="">{t("Proje seçin")}</option>
                 {projects.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name} (#{p.id})
@@ -579,7 +597,11 @@ export function ProjectsPage({ user }: ProjectsPageProps) {
 
             <FormField
               id="release-version"
-              label={editingReleaseId !== null ? `Sürüm (#${editingReleaseId})` : "Sürüm"}
+              label={
+                editingReleaseId !== null
+                  ? t("Sürüm (#{id})", { id: editingReleaseId })
+                  : t("Sürüm")
+              }
               required
               error={releaseErrors.version}
             >
@@ -592,7 +614,7 @@ export function ProjectsPage({ user }: ProjectsPageProps) {
                     setReleaseErrors((prev) => ({ ...prev, version: undefined }));
                   }
                 }}
-                placeholder="Örn: v0.1.0"
+                placeholder={t("Örn: v0.1.0")}
                 aria-invalid={Boolean(releaseErrors.version)}
               />
             </FormField>
@@ -600,10 +622,10 @@ export function ProjectsPage({ user }: ProjectsPageProps) {
             <div className="form-actions">
               <button type="submit" disabled={savingRelease}>
                 {savingRelease
-                  ? "Kaydediliyor..."
+                  ? t("Kaydediliyor...")
                   : editingReleaseId !== null
-                    ? "Sürümü Güncelle"
-                    : "Sürüm Ekle"}
+                    ? t("Sürümü Güncelle")
+                    : t("Sürüm Ekle")}
               </button>
               {editingReleaseId !== null && (
                 <button
@@ -611,7 +633,7 @@ export function ProjectsPage({ user }: ProjectsPageProps) {
                   className="secondary-btn"
                   onClick={resetReleaseForm}
                 >
-                  İptal
+                  {t("İptal")}
                 </button>
               )}
             </div>
@@ -630,20 +652,21 @@ export function ProjectsPage({ user }: ProjectsPageProps) {
       <section>
         <div className="section-header">
           <div>
-            <h2>Gereksinimler ve Test Vakası İzlenebilirliği (R1–R8)</h2>
+            <h2>{t("Gereksinimler ve Test Vakası İzlenebilirliği")}</h2>
             <p className="hint">
-              ISO/IEC/IEEE 29119-2 Test Tasarımı ve Gerçekleştirme · Gereksinim ↔ Test Vakası
-              çoka-çok izlenebilirlik matrisi
+              {t(
+                "Test Tasarımı ve Gerçekleştirme · Gereksinim ↔ Test Vakası çoka-çok izlenebilirlik matrisi",
+              )}
             </p>
           </div>
           <div className="filter-group">
-            <label htmlFor="req-project-filter">Proje Filtresi:</label>
+            <label htmlFor="req-project-filter">{t("Proje Filtresi:")}</label>
             <select
               id="req-project-filter"
               value={filterProjectId}
               onChange={(e) => setFilterProjectId(e.target.value)}
             >
-              <option value="all">Tüm Projeler</option>
+              <option value="all">{t("Tüm Projeler")}</option>
               {projects.map((p) => (
                 <option key={p.id} value={String(p.id)}>
                   {p.name}
@@ -657,7 +680,7 @@ export function ProjectsPage({ user }: ProjectsPageProps) {
           <form onSubmit={submitRequirement} noValidate>
             <FormField
               id="req-id"
-              label="Gereksinim Kodu"
+              label={t("Gereksinim Kodu")}
               required
               error={reqErrors.id}
             >
@@ -671,14 +694,14 @@ export function ProjectsPage({ user }: ProjectsPageProps) {
                     setReqErrors((prev) => ({ ...prev, id: undefined }));
                   }
                 }}
-                placeholder="Örn: R9"
+                placeholder={t("Örn: R9")}
                 aria-invalid={Boolean(reqErrors.id)}
               />
             </FormField>
 
             <FormField
               id="req-project"
-              label="Proje"
+              label={t("Proje")}
               required
               error={reqErrors.projectId}
             >
@@ -693,7 +716,7 @@ export function ProjectsPage({ user }: ProjectsPageProps) {
                 }}
                 aria-invalid={Boolean(reqErrors.projectId)}
               >
-                <option value="">Proje seçin</option>
+                <option value="">{t("Proje seçin")}</option>
                 {projects.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name} (#{p.id})
@@ -704,7 +727,7 @@ export function ProjectsPage({ user }: ProjectsPageProps) {
 
             <FormField
               id="req-title"
-              label="Başlık"
+              label={t("Başlık")}
               required
               error={reqErrors.title}
             >
@@ -717,14 +740,14 @@ export function ProjectsPage({ user }: ProjectsPageProps) {
                     setReqErrors((prev) => ({ ...prev, title: undefined }));
                   }
                 }}
-                placeholder="Gereksinim başlığı"
+                placeholder={t("Gereksinim başlığı")}
                 aria-invalid={Boolean(reqErrors.title)}
               />
             </FormField>
 
             <FormField
               id="req-desc"
-              label="Açıklama"
+              label={t("Açıklama")}
               error={reqErrors.description}
             >
               <input
@@ -736,7 +759,7 @@ export function ProjectsPage({ user }: ProjectsPageProps) {
                     setReqErrors((prev) => ({ ...prev, description: undefined }));
                   }
                 }}
-                placeholder="Detaylı açıklama (isteğe bağlı)"
+                placeholder={t("Detaylı açıklama (isteğe bağlı)")}
                 aria-invalid={Boolean(reqErrors.description)}
               />
             </FormField>
@@ -744,10 +767,10 @@ export function ProjectsPage({ user }: ProjectsPageProps) {
             <div className="form-actions">
               <button type="submit" disabled={savingReq}>
                 {savingReq
-                  ? "Kaydediliyor..."
+                  ? t("Kaydediliyor...")
                   : editingRequirementId !== null
-                    ? "Gereksinimi Güncelle"
-                    : "Gereksinim Ekle"}
+                    ? t("Gereksinimi Güncelle")
+                    : t("Gereksinim Ekle")}
               </button>
               {editingRequirementId !== null && (
                 <button
@@ -755,7 +778,7 @@ export function ProjectsPage({ user }: ProjectsPageProps) {
                   className="secondary-btn"
                   onClick={resetRequirementForm}
                 >
-                  İptal
+                  {t("İptal")}
                 </button>
               )}
             </div>
@@ -766,9 +789,12 @@ export function ProjectsPage({ user }: ProjectsPageProps) {
           <form className="trace-panel" onSubmit={saveTraceability}>
             <div className="trace-panel-header">
               <strong>
-                {traceRequirement.id} · {traceRequirement.title} — Test Vakası Bağlantıları
+                {t("{code} · {title} — Test Vakası Bağlantıları", {
+                  code: traceRequirement.id,
+                  title: traceRequirement.title,
+                })}
               </strong>
-              <span>Bağlanacak test vakalarını seçin:</span>
+              <span>{t("Bağlanacak test vakalarını seçin:")}</span>
             </div>
             <div className="trace-checkbox-grid">
               {testCases.map((tc) => {
@@ -790,14 +816,14 @@ export function ProjectsPage({ user }: ProjectsPageProps) {
             </div>
             <div className="row-actions">
               <button type="submit" disabled={savingTrace}>
-                {savingTrace ? "Kaydediliyor..." : "Bağlantıları Kaydet"}
+                {savingTrace ? t("Kaydediliyor...") : t("Bağlantıları Kaydet")}
               </button>
               <button
                 type="button"
                 className="secondary-btn"
                 onClick={() => setTraceRequirement(null)}
               >
-                İptal
+                {t("İptal")}
               </button>
             </div>
           </form>

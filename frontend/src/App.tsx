@@ -47,24 +47,27 @@ import {
   updatePreviewReleaseStatus,
 } from "./previewStore";
 import { DefectFormErrors, hasFormErrors, validateDefectForm } from "./validation";
-
-const TEST_CASE_COLUMNS: DataTableColumn<TestCase>[] = [
-  { key: "id", header: "ID", render: (t) => t.id },
-  { key: "title", header: "Başlık", render: (t) => t.title },
-  {
-    key: "requirement",
-    header: "Gereksinim",
-    render: (t) =>
-      t.requirements && t.requirements.length > 0 ? t.requirements.join(", ") : t.requirement,
-  },
-  { key: "status", header: "Durum", render: (t) => <StatusBadge text={t.status} /> },
-];
+import { useLang, useSetLang, useT } from "./i18n";
 
 type DashboardViewProps = {
   user: User | null;
 };
 
 function DashboardView({ user }: DashboardViewProps) {
+  const t = useT();
+  const testCaseColumns: DataTableColumn<TestCase>[] = [
+    { key: "id", header: "ID", render: (row) => row.id },
+    { key: "title", header: t("Başlık"), render: (row) => row.title },
+    {
+      key: "requirement",
+      header: t("Gereksinim"),
+      render: (row) =>
+        row.requirements && row.requirements.length > 0
+          ? row.requirements.join(", ")
+          : row.requirement,
+    },
+    { key: "status", header: t("Durum"), render: (row) => <StatusBadge text={row.status} /> },
+  ];
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [expandedMetrics, setExpandedMetrics] = useState<ExpandedMetrics | null>(null);
   const [tests, setTests] = useState<TestCase[]>([]);
@@ -208,11 +211,11 @@ function DashboardView({ user }: DashboardViewProps) {
       setError(
         formatErrorMessage(
           err,
-          "Backend'e ulaşılamadı. Önce backend'i başlatın (README'ye bakın).",
+          t("Backend'e ulaşılamadı. Önce backend'i başlatın (README'ye bakın)."),
         ),
       );
     }
-  }, [user]);
+  }, [user, t]);
 
   useEffect(() => {
     void load();
@@ -222,7 +225,7 @@ function DashboardView({ user }: DashboardViewProps) {
     e.preventDefault();
     const validationErrors = validateDefectForm(
       { title, severity, testCase },
-      tests.map((t) => t.id),
+      tests.map((row) => row.id),
     );
     setFormErrors(validationErrors);
     if (hasFormErrors(validationErrors)) {
@@ -238,7 +241,7 @@ function DashboardView({ user }: DashboardViewProps) {
       setError("");
       await load();
     } catch (err) {
-      setError(formatErrorMessage(err, "Defect oluşturulurken bir hata oluştu."));
+      setError(formatErrorMessage(err, t("Defect oluşturulurken bir hata oluştu.")));
     } finally {
       setSubmitting(false);
     }
@@ -251,7 +254,7 @@ function DashboardView({ user }: DashboardViewProps) {
       setError("");
       await load();
     } catch (err) {
-      setError(formatErrorMessage(err, "Durum geçişi sırasında bir hata oluştu."));
+      setError(formatErrorMessage(err, t("Durum geçişi sırasında bir hata oluştu.")));
     } finally {
       setTransitioningId(null);
     }
@@ -264,7 +267,7 @@ function DashboardView({ user }: DashboardViewProps) {
     try {
       const updated = await api.updateReleaseStatus(activeRelease.id, status);
       setReleaseGate(updated);
-      setNotice(`Sürüm durumu "${status}" olarak güncellendi.`);
+      setNotice(t("Sürüm durumu \"{status}\" olarak güncellendi.", { status }));
       setError("");
     } catch (err) {
       if (isEndpointUnavailableError(err)) {
@@ -276,10 +279,12 @@ function DashboardView({ user }: DashboardViewProps) {
         );
         setReleaseGate(updated);
         setAnalyticsPreviewMode(true);
-        setNotice(`Sürüm durumu "${status}" olarak yerel önizleme deposuna kaydedildi.`);
+        setNotice(
+          t("Sürüm durumu \"{status}\" olarak yerel önizleme deposuna kaydedildi.", { status }),
+        );
         setError("");
       } else {
-        setError(formatErrorMessage(err, "Sürüm durumu güncellenemedi."));
+        setError(formatErrorMessage(err, t("Sürüm durumu güncellenemedi.")));
       }
     } finally {
       setGateSaving(false);
@@ -293,7 +298,7 @@ function DashboardView({ user }: DashboardViewProps) {
     try {
       const updated = await api.updateExitCriteria(activeRelease.id, criteria);
       setReleaseGate(updated);
-      setNotice("Sürüm çıkış kriterleri güncellendi.");
+      setNotice(t("Sürüm çıkış kriterleri güncellendi."));
       setError("");
       return true;
     } catch (err) {
@@ -306,11 +311,11 @@ function DashboardView({ user }: DashboardViewProps) {
         );
         setReleaseGate(updated);
         setAnalyticsPreviewMode(true);
-        setNotice("Sürüm çıkış kriterleri yerel önizleme deposunda güncellendi.");
+        setNotice(t("Sürüm çıkış kriterleri yerel önizleme deposunda güncellendi."));
         setError("");
         return true;
       } else {
-        setError(formatErrorMessage(err, "Çıkış kriterleri güncellenemedi."));
+        setError(formatErrorMessage(err, t("Çıkış kriterleri güncellenemedi.")));
         return false;
       }
     } finally {
@@ -325,7 +330,7 @@ function DashboardView({ user }: DashboardViewProps) {
     try {
       const updated = await api.createReleaseWaiver(activeRelease.id, reason);
       setReleaseGate(updated);
-      setNotice("Test Lead muafiyeti kaydedildi.");
+      setNotice(t("Test Lead muafiyeti kaydedildi."));
       setError("");
     } catch (err) {
       if (isEndpointUnavailableError(err)) {
@@ -338,10 +343,10 @@ function DashboardView({ user }: DashboardViewProps) {
         );
         setReleaseGate(updated);
         setAnalyticsPreviewMode(true);
-        setNotice("Test Lead muafiyeti yerel önizleme deposuna kaydedildi.");
+        setNotice(t("Test Lead muafiyeti yerel önizleme deposuna kaydedildi."));
         setError("");
       } else {
-        setError(formatErrorMessage(err, "Muafiyet kaydedilemedi."));
+        setError(formatErrorMessage(err, t("Muafiyet kaydedilemedi.")));
       }
     } finally {
       setGateSaving(false);
@@ -355,7 +360,7 @@ function DashboardView({ user }: DashboardViewProps) {
     try {
       const updated = await api.deleteReleaseWaiver(activeRelease.id);
       setReleaseGate(updated);
-      setNotice("Test Lead muafiyeti kaldırıldı.");
+      setNotice(t("Test Lead muafiyeti kaldırıldı."));
       setError("");
     } catch (err) {
       if (isEndpointUnavailableError(err)) {
@@ -366,10 +371,10 @@ function DashboardView({ user }: DashboardViewProps) {
         );
         setReleaseGate(updated);
         setAnalyticsPreviewMode(true);
-        setNotice("Test Lead muafiyeti yerel önizleme deposundan kaldırıldı.");
+        setNotice(t("Test Lead muafiyeti yerel önizleme deposundan kaldırıldı."));
         setError("");
       } else {
-        setError(formatErrorMessage(err, "Muafiyet kaldırılamadı."));
+        setError(formatErrorMessage(err, t("Muafiyet kaldırılamadı.")));
       }
     } finally {
       setGateSaving(false);
@@ -388,19 +393,19 @@ function DashboardView({ user }: DashboardViewProps) {
     },
     {
       key: "title",
-      header: "Başlık",
+      header: t("Başlık"),
       render: (d) => (
         <Link to={`/defects/${d.id}`} className="table-link">
           {d.title}
         </Link>
       ),
     },
-    { key: "test_case", header: "Test Vakası", render: (d) => d.test_case ?? "—" },
-    { key: "severity", header: "Önem", render: (d) => <StatusBadge text={d.severity} /> },
-    { key: "status", header: "Durum", render: (d) => <StatusBadge text={d.status} /> },
+    { key: "test_case", header: t("Test Vakası"), render: (d) => d.test_case ?? "—" },
+    { key: "severity", header: t("Önem"), render: (d) => <StatusBadge text={d.severity} /> },
+    { key: "status", header: t("Durum"), render: (d) => <StatusBadge text={d.status} /> },
     {
       key: "allowed",
-      header: "Geçiş",
+      header: t("Geçiş"),
       render: (d) =>
         d.allowed.length > 0 ? (
           d.allowed.map((to) => (
@@ -419,10 +424,10 @@ function DashboardView({ user }: DashboardViewProps) {
     },
     {
       key: "detail",
-      header: "Geçmiş",
+      header: t("Geçmiş"),
       render: (d) => (
         <Link to={`/defects/${d.id}`} className="detail-link">
-          Detay &amp; Zaman Çizelgesi
+          {t("Detay & Zaman Çizelgesi")}
         </Link>
       ),
     },
@@ -436,7 +441,7 @@ function DashboardView({ user }: DashboardViewProps) {
         <section className="role-notice" role="status">
           <span>{notice}</span>
           <button type="button" className="secondary-btn" onClick={() => setNotice("")}>
-            Kapat
+            {t("Kapat")}
           </button>
         </section>
       )}
@@ -444,10 +449,10 @@ function DashboardView({ user }: DashboardViewProps) {
       {metrics && (
         <section className="metrics">
           {[
-            ["Toplam Test", metrics.total_tests],
-            ["Koşum Oranı", `${metrics.execution_rate}%`],
-            ["Başarı Oranı", `${metrics.pass_rate}%`],
-            ["Açık Defect", metrics.open_defects],
+            [t("Toplam Test"), metrics.total_tests],
+            [t("Koşum Oranı"), `${metrics.execution_rate}%`],
+            [t("Başarı Oranı"), `${metrics.pass_rate}%`],
+            [t("Açık Defect"), metrics.open_defects],
           ].map(([label, value]) => (
             <div className="card" key={label}>
               <span>{label}</span>
@@ -461,15 +466,14 @@ function DashboardView({ user }: DashboardViewProps) {
         <section>
           <div className="section-header">
             <div>
-              <h2>Grafikli Metrik Paneli (R5)</h2>
+              <h2>{t("Grafikli Metrik Paneli")}</h2>
               <p className="section-desc">
-                ISO/IEC/IEEE 29119-2 · Test İzleme ve Kontrol · Koşum trendi, defect burn-up ve
-                önem dağılımı
+                {t("Test İzleme ve Kontrol · Koşum trendi, defect burn-up ve önem dağılımı")}
               </p>
             </div>
             {releases.length > 0 && (
               <div className="filter-group">
-                <label htmlFor="dashboard-release-select">Sürüm:</label>
+                <label htmlFor="dashboard-release-select">{t("Sürüm:")}</label>
                 <select
                   id="dashboard-release-select"
                   value={selectedReleaseId ? String(selectedReleaseId) : ""}
@@ -492,30 +496,33 @@ function DashboardView({ user }: DashboardViewProps) {
 
           {analyticsPreviewMode && (
             <div className="info-banner" style={{ marginBottom: 12 }} role="note">
-              <strong>Önizleme Modu (PLN-18 / PLN-24 Backend Bekleniyor):</strong>{" "}
-              Genişletilmiş metrikler ve sürüm çıkış kapısı değerleri mevcut canlı{" "}
-              <code>/api/defects</code>, <code>/api/requirements</code>,{" "}
-              <code>/api/test-cases</code> verileri ile önizleme test koşumlarından
-              hesaplanır.
+              <strong>{t("Önizleme Modu:")}</strong>{" "}
+              {t(
+                "Genişletilmiş metrikler ve sürüm çıkış kapısı değerleri canlı defect, gereksinim ve test vakası verileriyle önizleme test koşumlarından hesaplanır.",
+              )}
             </div>
           )}
 
           <div className="sub-metrics">
             <div className="sub-metric-item">
-              <span>Gereksinim Kapsamı</span>
+              <span>{t("Gereksinim Kapsamı")}</span>
               <strong>{expandedMetrics.requirement_coverage}%</strong>
             </div>
             <div className="sub-metric-item">
-              <span>Yeniden Açılma Oranı</span>
+              <span>{t("Yeniden Açılma Oranı")}</span>
               <strong>{expandedMetrics.reopen_rate}%</strong>
             </div>
             <div className="sub-metric-item">
-              <span>Ort. Defect Yaşı</span>
-              <strong>{expandedMetrics.avg_defect_age_hours ?? "—"} sa</strong>
+              <span>{t("Ort. Defect Yaşı")}</span>
+              <strong>
+                {expandedMetrics.avg_defect_age_hours ?? "—"} {t("sa")}
+              </strong>
             </div>
             <div className="sub-metric-item">
-              <span>Ort. Çözüm Süresi</span>
-              <strong>{expandedMetrics.avg_resolution_hours ?? "—"} sa</strong>
+              <span>{t("Ort. Çözüm Süresi")}</span>
+              <strong>
+                {expandedMetrics.avg_resolution_hours ?? "—"} {t("sa")}
+              </strong>
             </div>
           </div>
 
@@ -536,46 +543,47 @@ function DashboardView({ user }: DashboardViewProps) {
 
       <section>
         <div className="section-header">
-          <h2>Test Vakaları</h2>
+          <h2>{t("Test Vakaları")}</h2>
           <div className="row-actions">
             <Link to="/test-cases" className="detail-link">
-              Test Vakası / Suite &amp; Matris Yönetimi →
+              {t("Test Vakası / Suite & Matris Yönetimi →")}
             </Link>
             <Link to="/test-runs" className="detail-link">
-              Test Koşumu Başlat / Yürüt →
+              {t("Test Koşumu Başlat / Yürüt →")}
             </Link>
             <Link to="/test-plans" className="detail-link">
-              IEEE 829 Test Planları &amp; HTML/PDF →
+              {t("IEEE 829 Test Planları & HTML/PDF →")}
             </Link>
           </div>
         </div>
         <DataTable
-          columns={TEST_CASE_COLUMNS}
+          columns={testCaseColumns}
           rows={tests}
-          getRowKey={(t) => t.id}
+          getRowKey={(row) => row.id}
           emptyMessage="Kayıtlı test vakası bulunamadı."
           ariaLabel="Test Vakaları"
         />
       </section>
 
       <section>
-        <h2>Defect&apos;ler</h2>
+        <h2>{t("Defect'ler")}</h2>
         {!user && (
           <p className="hint role-inline-hint">
-            Defect oluşturmak ve durum geçişi yapmak için{" "}
-            <Link to="/login">giriş yapın</Link>.
+            {t("Defect oluşturmak ve durum geçişi yapmak için")}{" "}
+            <Link to="/login">{t("giriş yapın")}</Link>.
           </p>
         )}
         {user && !canCreateDefect && (
           <p className="hint role-inline-hint">
-            Yeni defect kaydı yalnızca Admin, Test Lead veya Tester rolleri tarafından
-            oluşturulabilir.
+            {t(
+              "Yeni defect kaydı yalnızca Admin, Test Lead veya Tester rolleri tarafından oluşturulabilir.",
+            )}
           </p>
         )}
 
         {canCreateDefect && (
           <form onSubmit={addDefect} noValidate>
-            <FormField id="defect-title" label="Başlık" required error={formErrors.title}>
+            <FormField id="defect-title" label={t("Başlık")} required error={formErrors.title}>
               <input
                 id="defect-title"
                 value={title}
@@ -585,13 +593,13 @@ function DashboardView({ user }: DashboardViewProps) {
                     setFormErrors((prev) => ({ ...prev, title: undefined }));
                   }
                 }}
-                placeholder="Yeni defect başlığı (en az 3 karakter)"
+                placeholder={t("Yeni defect başlığı (en az 3 karakter)")}
                 aria-invalid={Boolean(formErrors.title)}
                 aria-describedby={formErrors.title ? "defect-title-error" : undefined}
               />
             </FormField>
 
-            <FormField id="defect-severity" label="Önem" required error={formErrors.severity}>
+            <FormField id="defect-severity" label={t("Önem")} required error={formErrors.severity}>
               <select
                 id="defect-severity"
                 value={severity}
@@ -612,7 +620,7 @@ function DashboardView({ user }: DashboardViewProps) {
               </select>
             </FormField>
 
-            <FormField id="defect-test-case" label="Test Vakası" error={formErrors.testCase}>
+            <FormField id="defect-test-case" label={t("Test Vakası")} error={formErrors.testCase}>
               <select
                 id="defect-test-case"
                 value={testCase}
@@ -625,10 +633,10 @@ function DashboardView({ user }: DashboardViewProps) {
                 aria-invalid={Boolean(formErrors.testCase)}
                 aria-describedby={formErrors.testCase ? "defect-test-case-error" : undefined}
               >
-                <option value="">Bağlı değil</option>
-                {tests.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.id} · {t.title}
+                <option value="">{t("Bağlı değil")}</option>
+                {tests.map((row) => (
+                  <option key={row.id} value={row.id}>
+                    {row.id} · {row.title}
                   </option>
                 ))}
               </select>
@@ -636,7 +644,7 @@ function DashboardView({ user }: DashboardViewProps) {
 
             <div className="form-actions">
               <button type="submit" disabled={submitting}>
-                {submitting ? "Ekleniyor..." : "Ekle"}
+                {submitting ? t("Ekleniyor...") : t("Ekle")}
               </button>
             </div>
           </form>
@@ -649,7 +657,9 @@ function DashboardView({ user }: DashboardViewProps) {
           emptyMessage="Kayıtlı defect bulunamadı."
           ariaLabel="Defect Listesi"
         />
-        <p className="hint">Yaşam döngüsü: Open → In Progress → Resolved → Closed (+ Reopen)</p>
+        <p className="hint">
+          {t("Yaşam döngüsü:")} Open → In Progress → Resolved → Closed (+ Reopen)
+        </p>
       </section>
     </>
   );
@@ -659,6 +669,9 @@ const DEMO_NOTICE =
   "Bu bir demo sürümüdür; tüm veriler her gün Türkiye saatiyle gece 00:00'da sıfırlanır.";
 
 export default function App() {
+  const t = useT();
+  const lang = useLang();
+  const setLang = useSetLang();
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
   const [authReady, setAuthReady] = useState(() => !getStoredToken());
@@ -708,15 +721,32 @@ export default function App() {
             <h1>
               SDS-06 · Agile Test and Defect Tracking System
               {demo && (
-                <span className="demo-badge" tabIndex={0} title={DEMO_NOTICE} aria-label={DEMO_NOTICE}>
+                <span className="demo-badge" tabIndex={0} title={t(DEMO_NOTICE)} aria-label={t(DEMO_NOTICE)}>
                   DEMO
                 </span>
               )}
             </h1>
-            <p>ISO/IEC/IEEE 12207 · IEEE 829 · ISO/IEC/IEEE 29119-2 / 29119-3</p>
           </div>
 
           <div className="auth-bar">
+            <div className="lang-toggle" role="group" aria-label="Dil / Language">
+              <button
+                type="button"
+                className="header-btn"
+                aria-pressed={lang === "tr"}
+                onClick={() => setLang("tr")}
+              >
+                TR
+              </button>
+              <button
+                type="button"
+                className="header-btn"
+                aria-pressed={lang === "en"}
+                onClick={() => setLang("en")}
+              >
+                EN
+              </button>
+            </div>
             {user ? (
               <>
                 <span className="auth-user">
@@ -727,69 +757,63 @@ export default function App() {
                   className="header-btn"
                   onClick={handleLogout}
                 >
-                  Çıkış Yap
+                  {t("Çıkış Yap")}
                 </button>
               </>
             ) : (
               <Link to="/login" className="header-btn">
-                Giriş Yap
+                {t("Giriş Yap")}
               </Link>
             )}
           </div>
         </div>
 
-        <nav className="top-nav" aria-label="Ana Gezinme">
+        <nav className="top-nav" aria-label={t("Ana Gezinme")}>
           <NavLink to="/" end className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}>
-            Panel &amp; Metrikler
+            {t("Panel & Metrikler")}
           </NavLink>
           <NavLink
             to="/test-cases"
             className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
           >
-            Test Vakaları &amp; Matris
+            {t("Test Vakaları & Matris")}
           </NavLink>
           <NavLink
             to="/test-runs"
             className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
           >
-            Test Koşumları
+            {t("Test Koşumları")}
           </NavLink>
           <NavLink
             to="/test-plans"
             className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
           >
-            Test Planları
+            {t("Test Planları")}
           </NavLink>
           <NavLink
             to="/releases"
             className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
           >
-            Sürüm Yönetimi
+            {t("Sürüm Yönetimi")}
           </NavLink>
           <NavLink
             to="/projects"
             className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
           >
-            Projeler &amp; Gereksinimler
-          </NavLink>
-          <NavLink
-            to="/login"
-            className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
-          >
-            Giriş / Rol Seçimi
+            {t("Projeler & Gereksinimler")}
           </NavLink>
           {user?.role === "Admin" && (
             <NavLink to="/users" className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}>
-              Kullanıcılar
+              {t("Kullanıcılar")}
             </NavLink>
           )}
-          <NavLink to="/junit-imports" className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}>JUnit Raporları</NavLink>
+          <NavLink to="/junit-imports" className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}>{t("JUnit Raporları")}</NavLink>
         </nav>
       </header>
 
       <main>
         <Routes>
-          <Route path="/" element={authReady ? <DashboardView user={user} /> : <p role="status">Oturum doğrulanıyor...</p>} />
+          <Route path="/" element={authReady ? <DashboardView user={user} /> : <p role="status">{t("Oturum doğrulanıyor...")}</p>} />
           <Route path="/test-cases" element={<TestCasesPage user={user} />} />
           <Route path="/junit-imports" element={<JUnitImportsPage user={user} />} />
           <Route path="/test-runs" element={<TestRunsPage user={user} />} />
@@ -806,7 +830,7 @@ export default function App() {
       </main>
 
       <footer>
-        İstanbul Kültür Üniversitesi · Software Development with Standards · v1.0
+        {t("İstanbul Kültür Üniversitesi · Software Development with Standards · v1.0")}
       </footer>
     </>
   );

@@ -11,13 +11,14 @@ import {
 } from "../api";
 import { ErrorAlert } from "../components/ErrorAlert";
 import { StatusBadge } from "../components/StatusBadge";
+import { useLang, useT } from "../i18n";
 
-function formatTimestamp(iso: string): string {
+function formatTimestamp(iso: string, lang: "tr" | "en"): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) {
     return iso;
   }
-  return date.toLocaleString("tr-TR", {
+  return date.toLocaleString(lang === "tr" ? "tr-TR" : "en-GB", {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -32,6 +33,8 @@ export type DefectDetailPageProps = {
 };
 
 export function DefectDetailPage({ user }: DefectDetailPageProps) {
+  const t = useT();
+  const lang = useLang();
   const { id } = useParams<{ id: string }>();
   const defectId = Number(id);
   const isValidId = Boolean(id) && Number.isInteger(defectId) && defectId > 0;
@@ -71,12 +74,12 @@ export function DefectDetailPage({ user }: DefectDetailPageProps) {
       setError("");
     } catch (err) {
       setError(
-        formatErrorMessage(err, "Defect detayları ve değişiklik geçmişi yüklenemedi."),
+        formatErrorMessage(err, t("Defect detayları ve değişiklik geçmişi yüklenemedi.")),
       );
     } finally {
       setLoading(false);
     }
-  }, [defectId, isValidId, user]);
+  }, [defectId, isValidId, user, t]);
 
   useEffect(() => {
     setDefect(null);
@@ -98,7 +101,7 @@ export function DefectDetailPage({ user }: DefectDetailPageProps) {
       setError("");
       await loadDetail();
     } catch (err) {
-      setError(formatErrorMessage(err, "Durum geçişi sırasında bir hata oluştu."));
+      setError(formatErrorMessage(err, t("Durum geçişi sırasında bir hata oluştu.")));
     } finally {
       setTransitioning(false);
     }
@@ -113,7 +116,7 @@ export function DefectDetailPage({ user }: DefectDetailPageProps) {
     try {
       await api.downloadIncidentReport(defectId, format, snapshotId);
     } catch (err) {
-      setError(formatErrorMessage(err, "Test Incident Report indirilemedi."));
+      setError(formatErrorMessage(err, t("Test Incident Report indirilemedi.")));
     }
   }
 
@@ -125,7 +128,7 @@ export function DefectDetailPage({ user }: DefectDetailPageProps) {
       setError("");
       await loadDetail();
     } catch (err) {
-      setError(formatErrorMessage(err, "Test Incident Report anlık görüntüsü oluşturulamadı."));
+      setError(formatErrorMessage(err, t("Test Incident Report anlık görüntüsü oluşturulamadı.")));
     } finally {
       setCreatingSnapshot(false);
     }
@@ -136,11 +139,11 @@ export function DefectDetailPage({ user }: DefectDetailPageProps) {
       <section>
         <p className="back-row">
           <Link to="/" className="back-link">
-            ← Defect Listesine Dön
+            {t("← Defect Listesine Dön")}
           </Link>
         </p>
-        <h2>Geçersiz Defect Numarası</h2>
-        <p>İstenen defect kimliği geçerli bir sayı değil.</p>
+        <h2>{t("Geçersiz Defect Numarası")}</h2>
+        <p>{t("İstenen defect kimliği geçerli bir sayı değil.")}</p>
       </section>
     );
   }
@@ -152,18 +155,18 @@ export function DefectDetailPage({ user }: DefectDetailPageProps) {
       <section>
         <div className="detail-top-bar">
           <Link to="/" className="back-link">
-            ← Defect Listesine Dön
+            {t("← Defect Listesine Dön")}
           </Link>
-          <span className="hint">IEEE 829 Test Incident Report · ISO/IEC/IEEE 29119-2</span>
+          <span className="hint">IEEE 829 Test Incident Report</span>
         </div>
 
         {loading && !defect ? (
-          <p className="hint">Yükleniyor...</p>
+          <p className="hint">{t("Yükleniyor...")}</p>
         ) : !defect ? (
           <div>
-            <h2>Defect #{defectId} Bulunamadı</h2>
+            <h2>{t("Defect #{id} Bulunamadı", { id: defectId })}</h2>
             <p className="section-desc">
-              Bu numaraya ait bir defect kaydı mevcut değil.
+              {t("Bu numaraya ait bir defect kaydı mevcut değil.")}
             </p>
           </div>
         ) : (
@@ -180,23 +183,25 @@ export function DefectDetailPage({ user }: DefectDetailPageProps) {
 
             <div className="detail-grid">
               <div className="detail-item">
-                <span className="detail-label">Kayıt No</span>
+                <span className="detail-label">{t("Kayıt No")}</span>
                 <strong>#{defect.id}</strong>
               </div>
               <div className="detail-item">
-                <span className="detail-label">Önem Derecesi (Severity)</span>
+                <span className="detail-label">{t("Önem Derecesi (Severity)")}</span>
                 <div>
                   <StatusBadge text={defect.severity} />
                 </div>
               </div>
               <div className="detail-item">
-                <span className="detail-label">Mevcut Durum (Status)</span>
+                <span className="detail-label">{t("Mevcut Durum (Status)")}</span>
                 <div>
                   <StatusBadge text={defect.status} />
                 </div>
               </div>
               <div className="detail-item">
-                <span className="detail-label">Bağlı Test Vakası (Test Case Specification)</span>
+                <span className="detail-label">
+                  {t("Bağlı Test Vakası (Test Case Specification)")}
+                </span>
                 <div>
                   {defect.test_case ? (
                     linkedTestCase ? (
@@ -204,7 +209,7 @@ export function DefectDetailPage({ user }: DefectDetailPageProps) {
                         <strong>{linkedTestCase.id}</strong> · {linkedTestCase.title}{" "}
                         <StatusBadge text={linkedTestCase.status} />
                         <span className="hint">
-                          (Gereksinim:{" "}
+                          ({t("Gereksinim:")}{" "}
                           {linkedTestCase.requirements && linkedTestCase.requirements.length > 0
                             ? linkedTestCase.requirements.join(", ")
                             : linkedTestCase.requirement}
@@ -215,14 +220,14 @@ export function DefectDetailPage({ user }: DefectDetailPageProps) {
                       <strong>{defect.test_case}</strong>
                     )
                   ) : (
-                    <span className="hint">Bağlı test vakası yok</span>
+                    <span className="hint">{t("Bağlı test vakası yok")}</span>
                   )}
                 </div>
               </div>
             </div>
 
             <div className="transition-box">
-              <h3>İzin Verilen Durum Geçişleri</h3>
+              <h3>{t("İzin Verilen Durum Geçişleri")}</h3>
               {defect.allowed.length > 0 ? (
                 <div className="row-actions">
                   {defect.allowed.map((to) => (
@@ -238,13 +243,15 @@ export function DefectDetailPage({ user }: DefectDetailPageProps) {
                 </div>
               ) : !user ? (
                 <p className="hint">
-                  Durum geçişi yapmak için{" "}
-                  <Link to="/login">giriş yapın</Link>.
+                  {t("Durum geçişi yapmak için")}{" "}
+                  <Link to="/login">{t("giriş yapın")}</Link>.
                 </p>
               ) : (
                 <p className="hint">
-                  Aktif rolünüz (<StatusBadge text={user.role} />) için{" "}
-                  <strong>{defect.status}</strong> durumundan yapılabilecek bir geçiş bulunmuyor.
+                  {t("Aktif rolünüz (")}
+                  <StatusBadge text={user.role} />
+                  {t(") için")} <strong>{defect.status}</strong>{" "}
+                  {t("durumundan yapılabilecek bir geçiş bulunmuyor.")}
                 </p>
               )}
             </div>
@@ -256,10 +263,9 @@ export function DefectDetailPage({ user }: DefectDetailPageProps) {
         <section>
           <div className="section-header">
             <div>
-              <h2>IEEE 829 Test Incident Report Çıktısı &amp; Anlık Görüntüler (PLN-39)</h2>
+              <h2>{t("IEEE 829 Test Incident Report Çıktısı & Anlık Görüntüler")}</h2>
               <p className="section-desc">
-                ISO/IEC/IEEE 29119-3 · Test Incident Report · Canlı veya saklanmış anlık görüntüden
-                (snapshot) HTML ve PDF rapor üretimi
+                {t("Canlı veya saklanmış anlık görüntüden (snapshot) HTML ve PDF rapor üretimi")}
               </p>
             </div>
             <div className="row-actions">
@@ -268,14 +274,14 @@ export function DefectDetailPage({ user }: DefectDetailPageProps) {
                 className="btn-link secondary-btn"
                 onClick={() => void handleDownload(defect.id, "html")}
               >
-                Canlı HTML
+                {t("Canlı HTML")}
               </button>
               <button
                 type="button"
                 className="btn-link secondary-btn"
                 onClick={() => void handleDownload(defect.id, "pdf")}
               >
-                Canlı PDF İndir
+                {t("Canlı PDF İndir")}
               </button>
               {canCreateSnapshot && (
                 <button
@@ -283,7 +289,7 @@ export function DefectDetailPage({ user }: DefectDetailPageProps) {
                   disabled={creatingSnapshot}
                   onClick={() => void handleCreateSnapshot()}
                 >
-                  {creatingSnapshot ? "Kaydediliyor..." : "Anlık Görüntü (Snapshot) Al"}
+                  {creatingSnapshot ? t("Kaydediliyor...") : t("Anlık Görüntü (Snapshot) Al")}
                 </button>
               )}
             </div>
@@ -294,7 +300,7 @@ export function DefectDetailPage({ user }: DefectDetailPageProps) {
               {snapshots.map((snap) => (
                 <span key={snap.id} className="badge">
                   Snapshot #{snap.id} ({snap.status} · {snap.generated_by} ·{" "}
-                  {formatTimestamp(snap.generated_at)}){" "}
+                  {formatTimestamp(snap.generated_at, lang)}){" "}
                   <button
                     type="button"
                     className="detail-link"
@@ -319,16 +325,21 @@ export function DefectDetailPage({ user }: DefectDetailPageProps) {
 
       {defect && (
         <section>
-          <h2>Değişiklik Geçmişi Zaman Çizelgesi</h2>
+          <h2>{t("Değişiklik Geçmişi Zaman Çizelgesi")}</h2>
           <p className="section-desc">
-            Bu defect için kaydedilen tüm durum geçişleri kronolojik sırayla listelenir. Geçmiş
-            tablosu değiştirilemez (append-only) yapıdadır.
+            {t(
+              "Bu defect için kaydedilen tüm durum geçişleri kronolojik sırayla listelenir. Geçmiş tablosu değiştirilemez (append-only) yapıdadır.",
+            )}
           </p>
 
           {history.length === 0 ? (
-            <p className="table-empty">Henüz geçmiş kaydı bulunamadı.</p>
+            <p className="table-empty">{t("Henüz geçmiş kaydı bulunamadı.")}</p>
           ) : (
-            <ol className="timeline" role="list" aria-label="Defect Değişiklik Geçmişi">
+            <ol
+              className="timeline"
+              role="list"
+              aria-label={t("Defect Değişiklik Geçmişi")}
+            >
               {history.map((entry, index) => {
                 const isInitial = entry.from === null;
                 const isReopen = entry.from !== null && entry.to === "Open";
@@ -346,14 +357,14 @@ export function DefectDetailPage({ user }: DefectDetailPageProps) {
                       <div className="timeline-transition">
                         {isInitial ? (
                           <>
-                            <span className="timeline-event-tag">Oluşturuldu</span>
+                            <span className="timeline-event-tag">{t("Oluşturuldu")}</span>
                             <span>→</span>
                             <StatusBadge text={entry.to} />
                           </>
                         ) : (
                           <>
                             <span className="timeline-event-tag">
-                              {isReopen ? "Yeniden Açıldı (Reopen)" : "Durum Geçişi"}
+                              {isReopen ? t("Yeniden Açıldı (Reopen)") : t("Durum Geçişi")}
                             </span>
                             <StatusBadge text={entry.from ?? "—"} />
                             <span>→</span>
@@ -362,7 +373,7 @@ export function DefectDetailPage({ user }: DefectDetailPageProps) {
                         )}
                       </div>
                       <time className="timeline-time" dateTime={entry.at}>
-                        {formatTimestamp(entry.at)}
+                        {formatTimestamp(entry.at, lang)}
                       </time>
                     </div>
                   </li>

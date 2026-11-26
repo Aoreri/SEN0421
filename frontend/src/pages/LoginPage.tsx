@@ -5,6 +5,7 @@ import { ErrorAlert } from "../components/ErrorAlert";
 import { FormField } from "../components/FormField";
 import { StatusBadge } from "../components/StatusBadge";
 import { hasFormErrors, LoginFormErrors, validateLoginForm } from "../validation";
+import { useT } from "../i18n";
 
 const DEMO_USERS: { username: string; role: Role; summary: string }[] = [
   { username: "admin", role: "Admin", summary: "Tüm katalog, izlenebilirlik ve defect geçiş yetkileri" },
@@ -22,6 +23,7 @@ export type LoginPageProps = {
 };
 
 export function LoginPage({ user, onLogin, onLogout, demo }: LoginPageProps) {
+  const t = useT();
   const navigate = useNavigate();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -45,7 +47,7 @@ export function LoginPage({ user, onLogin, onLogout, demo }: LoginPageProps) {
       setError("");
       navigate("/");
     } catch (err) {
-      setError(formatErrorMessage(err, "Giriş yapılırken bir hata oluştu."));
+      setError(formatErrorMessage(err, t("Giriş yapılırken bir hata oluştu.")));
     } finally {
       setSubmitting(false);
     }
@@ -65,24 +67,30 @@ export function LoginPage({ user, onLogin, onLogout, demo }: LoginPageProps) {
       {user && (
         <section className="session-card">
           <div>
-            <strong>Aktif Oturum:</strong> {user.username}{" "}
+            <strong>{t("Aktif Oturum:")}</strong> {user.username}{" "}
             <StatusBadge text={user.role} />
           </div>
           <button type="button" className="secondary-btn" onClick={onLogout}>
-            Çıkış Yap
+            {t("Çıkış Yap")}
           </button>
         </section>
       )}
 
       <section>
-        <h2>Kullanıcı Girişi (JWT Kimlik Doğrulama)</h2>
+        <h2>{t("Kullanıcı Girişi")}</h2>
         <p className="section-desc">
-          Rol tabanlı işlemleri (defect oluşturma, durum geçişleri, proje/sürüm/gereksinim yönetimi
-          ve izlenebilirlik) gerçekleştirmek için giriş yapın.
+          {t(
+            "Rol tabanlı işlemleri (defect oluşturma, durum geçişleri, proje/sürüm/gereksinim yönetimi ve izlenebilirlik) gerçekleştirmek için giriş yapın.",
+          )}
         </p>
 
         <form onSubmit={handleSubmit} noValidate>
-          <FormField id="login-username" label="Kullanıcı Adı" required error={formErrors.username}>
+          <FormField
+            id="login-username"
+            label={t("Kullanıcı Adı")}
+            required
+            error={formErrors.username}
+          >
             <input
               id="login-username"
               autoComplete="username"
@@ -93,13 +101,13 @@ export function LoginPage({ user, onLogin, onLogout, demo }: LoginPageProps) {
                   setFormErrors((prev) => ({ ...prev, username: undefined }));
                 }
               }}
-              placeholder="Örn: tester"
+              placeholder={t("Örn: tester")}
               aria-invalid={Boolean(formErrors.username)}
               aria-describedby={formErrors.username ? "login-username-error" : undefined}
             />
           </FormField>
 
-          <FormField id="login-password" label="Parola" required error={formErrors.password}>
+          <FormField id="login-password" label={t("Parola")} required error={formErrors.password}>
             <input
               id="login-password"
               type="password"
@@ -111,7 +119,7 @@ export function LoginPage({ user, onLogin, onLogout, demo }: LoginPageProps) {
                   setFormErrors((prev) => ({ ...prev, password: undefined }));
                 }
               }}
-              placeholder="Parolanızı girin"
+              placeholder={t("Parolanızı girin")}
               aria-invalid={Boolean(formErrors.password)}
               aria-describedby={formErrors.password ? "login-password-error" : undefined}
             />
@@ -119,7 +127,7 @@ export function LoginPage({ user, onLogin, onLogout, demo }: LoginPageProps) {
 
           <div className="form-actions">
             <button type="submit" disabled={submitting}>
-              {submitting ? "Giriş yapılıyor..." : "Giriş Yap"}
+              {submitting ? t("Giriş yapılıyor...") : t("Giriş Yap")}
             </button>
           </div>
         </form>
@@ -127,14 +135,14 @@ export function LoginPage({ user, onLogin, onLogout, demo }: LoginPageProps) {
 
       {demo && (
       <section>
-        <h2>Demo Hesapları (Varsayılan Parola: <code>demo1234</code>)</h2>
-        <table aria-label="Demo Kullanıcıları">
+        <h2>{t("Demo Hesapları")}</h2>
+        <table aria-label={t("Demo Kullanıcıları")}>
           <thead>
             <tr>
-              <th>Kullanıcı Adı</th>
-              <th>Rol</th>
-              <th>Yetki Özeti</th>
-              <th>Hızlı Seçim</th>
+              <th>{t("Kullanıcı Adı")}</th>
+              <th>{t("Rol")}</th>
+              <th>{t("Yetki Özeti")}</th>
+              <th>{t("Hızlı Seçim")}</th>
             </tr>
           </thead>
           <tbody>
@@ -146,14 +154,14 @@ export function LoginPage({ user, onLogin, onLogout, demo }: LoginPageProps) {
                 <td>
                   <StatusBadge text={u.role} />
                 </td>
-                <td>{u.summary}</td>
+                <td>{t(u.summary)}</td>
                 <td>
                   <button
                     type="button"
                     className="secondary-btn"
                     onClick={() => fillDemoUser(u.username)}
                   >
-                    Bilgileri Doldur
+                    {t("Bilgileri Doldur")}
                   </button>
                 </td>
               </tr>

@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "lint": "eslint . --max-warnings 0",
     "typecheck": "tsc --noEmit && tsc -p e2e/tsconfig.json",
+    "test": "node --test tests/i18n.test.mjs",
     "test:e2e": "playwright test",
     "test:e2e:report": "node e2e/import-results.mjs"
   },

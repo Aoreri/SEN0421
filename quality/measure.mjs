@@ -82,7 +82,7 @@ try {
       assert.equal(metrics.total_tests, fixture.panel_executions);
       assert.equal(metrics.pass_rate, fixture.panel_pass_rate);
       assert.equal(metrics.denominators.planned_executions, fixture.panel_executions);
-      await page.getByRole("heading", { name: "Grafikli Metrik Paneli (R5)", exact: true }).waitFor();
+      await page.getByRole("heading", { name: "Grafikli Metrik Paneli", exact: true }).waitFor();
       await page.locator(".metrics .card").filter({ hasText: "Toplam Test" }).getByText(String(fixture.panel_executions), { exact: true }).waitFor();
       await page.getByRole("img", { name: "Koşum başına yığılmış test sonuçları ve başarı oranı trend grafiği", exact: true }).waitFor();
       await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
