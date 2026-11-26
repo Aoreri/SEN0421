@@ -67,7 +67,7 @@ The improvement actions and follow-up owners are listed in `retrospective.md`.
 
 ## 7. Final demonstration video
 
-**Recording status:** Recorded from the integrated application following `demo-video-script.md` and published on the team's demo site.
+**Recording status:** Recorded from the integrated application following `demo-video-script.md`.
 
 ## 8. Final acceptance checklist
 
@@ -79,7 +79,7 @@ The improvement actions and follow-up owners are listed in `retrospective.md`.
 - [ ] FR-REQ-02 and NFR-REQ-01 performance evidence is complete or formally accepted as a documented deviation.
 - [ ] NFR-REQ-02 clean-machine Compose timing is recorded or formally accepted as a documented deviation.
 - [ ] v1.0.0 tag, GitHub Release, Docker images, and report attachments exist (after release workflow execution).
-- [x] Demo video is recorded and published on the demo site.
+- [x] Demo video is recorded.
 - [ ] Original R1–R8 wording is confirmed and the RTM is approved.
 
 ## 9. Report references

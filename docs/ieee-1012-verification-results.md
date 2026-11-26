@@ -29,7 +29,7 @@ IEEE 1012-2024 is the active edition identified by IEEE SA. Its V&V scope includ
 | V-12 | Release automation | PLN-36 PR #40 adds release workflow and report generator; its PR checks are reported successful. | **Code/checks present on PR branch.** | No v1.0.0 GitHub Release is claimed; execute tag workflow and inspect images/artifacts after merge. |
 | V-13 | Performance | Benchmark 200 requirements and 1,000 test cases; calculate p95. | **Not executed / no result found.** | Run and publish a reproducible measurement report. |
 | V-14 | Clean-machine installability | Time a fresh machine running the Compose startup command. | **Not executed / no timing evidence found.** | Record OS/Docker prerequisites, elapsed time, and any manual intervention. |
-| V-15 | End-to-end demonstration | Record login, catalogue, traceability, run, defect lifecycle, metrics, and document export. | **Pass: video recorded and published on the demo site.** | None. |
+| V-15 | End-to-end demonstration | Record login, catalogue, traceability, run, defect lifecycle, metrics, and document export. | **Pass: video recorded.** | None. |
 
 ## 3. Focused test names in the integrated baseline
 

@@ -3,7 +3,7 @@
 **Plan item:** PLN-38  
 **Prepared:** 22 November 2026  
 **Target length:** 7–9 minutes  
-**Recording status:** Recorded and published on the team's demo site.
+**Recording status:** Recorded.
 
 ## 1. Recording preparation
 
